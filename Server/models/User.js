@@ -39,6 +39,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '', // You can set a default profile picture URL
     },
+    bio:{
+      type: String,
+      default: '',
+      trim: true,
+    },
     phone_number: {
       type: String,
       default: '', // Optional field

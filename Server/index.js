@@ -9,6 +9,10 @@ app.use(express.json());
 
 connectDB();
 
+//user routes
+const userRoutes = require('./routes/userRoutes');
+app.use('/users', userRoutes);
+
 app.get('/', (req, res) => {
   res.send('Project Management Platform Backend');
 });
