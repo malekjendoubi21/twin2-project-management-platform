@@ -1,6 +1,7 @@
 const User = require('../models/user');
 const bcrypt = require('bcrypt');
 const { validateUser } = require('../validators/validators');
+const jwt = require("jsonwebtoken");
 
 
 const getAllUsers = (req, res) => {
@@ -49,5 +50,34 @@ const addUser = async (req, res) => {
 
 
 
+const login = async (req, res) => {
+    const { email, password } = req.body;
 
-module.exports = { getAllUsers,addUser };
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+        }
+
+        const token = jwt.sign(
+            { id: user._id, email: user.email },
+            "secret_key",
+            { expiresIn: "1h" }
+        );
+
+        res.json({ message: "Connexion réussie", token });
+    } catch (error) {
+        res.status(500).json({ error: "Erreur serveur", details: error });
+    }
+};
+
+module.exports = { getAllUsers,addUser ,login};
+
+
+
+
