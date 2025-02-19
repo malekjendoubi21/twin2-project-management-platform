@@ -12,7 +12,6 @@ const getAllUsers = (req, res) => {
 
 const addUser = async (req, res) => {
     try {
-        // Validate request body with Joi
         const { error, value } = validateUser(req.body);
         if (error) {
             return res.status(400).json({ errors: error.details.map(err => err.message) });
@@ -20,16 +19,13 @@ const addUser = async (req, res) => {
 
         const { name, email, password, authentication_method, role, phone_number, bio } = value;
 
-        // Check if email already exists
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ error: 'Email already in use.' });
         }
 
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create user
         const newUser = new User({
             name,
             email,
@@ -40,7 +36,6 @@ const addUser = async (req, res) => {
             bio: bio ? bio.trim() : '',
         });
 
-        // Save user
         await newUser.save();
         res.status(201).json({ message: 'User created successfully', user: newUser });
     } catch (error) {
@@ -48,6 +43,37 @@ const addUser = async (req, res) => {
     }
 };
 
+const updateUser = async (req, res) => {
+    try {
+
+        const { id } = req.params;
+        const { error, value } = validateUser(req.body);
+        if (error) {
+            return res.status(400).json({ errors: error.details.map(err => err.message) });
+        }
+        const { name, email, password, authentication_method, role, phone_number, bio } = req.body;
+        
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        user.name = name || user.name;
+        user.email = email || user.email;
+        if (password) {
+            user.password = await bcrypt.hash(password, 10);
+        }
+        user.authentication_method = authentication_method || user.authentication_method;
+        user.role = role || user.role;
+        user.phone_number = phone_number || user.phone_number;
+        user.bio = bio ? bio.trim() : user.bio;
+
+        await user.save();
+        res.status(200).json({ message: 'User updated successfully', user });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 
 const login = async (req, res) => {
@@ -76,7 +102,7 @@ const login = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers,addUser ,login};
+module.exports = { getAllUsers,addUser, updateUser ,login};
 
 
 
