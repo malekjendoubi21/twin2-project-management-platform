@@ -9,6 +9,18 @@ const getAllUsers = (req, res) => {
         .then(data => res.json(data))
         .catch(err => res.status(500).json({ error: "Failed to retrieve users", details: err }));
 };
+const getUser = (req, res) => {
+    const { id } = req.params;
+
+    User.findById(id)
+        .then(user => {
+            if (!user) {
+                return res.status(404).json({ error: "User not found" });
+            }
+            res.json(user);
+        })
+        .catch(err => res.status(500).json({ error: "Failed to retrieve user", details: err }));
+};
 
 const addUser = async (req, res) => {
     try {
@@ -102,7 +114,7 @@ const login = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers,addUser, updateUser ,login};
+module.exports = { getAllUsers,addUser, updateUser ,login,getUser};
 
 
 
