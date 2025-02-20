@@ -22,7 +22,16 @@ pipeline {
         stage('Build application') {
             steps {
                 dir('Server') {
-                    sh 'npm start'
+                    script {
+                        sh '''
+                            export NVM_DIR="$HOME/.nvm"
+                            source "$NVM_DIR/nvm.sh"
+                            nvm use 18
+                            node -v
+                            which node
+                            npm start
+                        '''
+                    }
                 }
             }
         }
