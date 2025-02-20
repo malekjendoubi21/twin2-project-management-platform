@@ -6,7 +6,12 @@ pipeline {
         stage('Build Server') {
             steps {
                 dir('Server') {
-                    sh 'npm install'
+                                sh '''
+                export NVM_DIR="$HOME/.nvm"
+                source "$NVM_DIR/nvm.sh"
+                nvm use 18
+                npm install
+            '''
                 }
             }
         }
@@ -23,14 +28,7 @@ pipeline {
             steps {
                 dir('Server') {
                     script {
-                        sh '''
-                            export NVM_DIR="$HOME/.nvm"
-                            source "$NVM_DIR/nvm.sh"
-                            nvm use 18
-                            node -v
-                            which node
-                            npm start
-                        '''
+                        sh 'npm start'
                     }
                 }
             }
