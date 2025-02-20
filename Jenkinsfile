@@ -5,7 +5,7 @@ pipeline {
 
         stage('Build Server') {
             steps {
-                dir('server') {
+                dir('Server') {
                     sh 'npm install'
                 }
             }
@@ -13,7 +13,7 @@ pipeline {
 
         stage('Test Server') {
             steps {
-                dir('server') {
+                dir('Server') {
                     sh 'npm test'
                 }
             }
@@ -21,7 +21,7 @@ pipeline {
 
         stage('Build application') {
             steps {
-                dir('server') {
+                dir('Server') {
                     sh 'npm start'
                 }
             }
