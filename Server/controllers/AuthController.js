@@ -1,7 +1,9 @@
+const jwt = require("jsonwebtoken");
+const crypto = require('crypto');
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const { validateUser } = require('../validators/validators');
-const jwt = require("jsonwebtoken");
+
 
 exports.login = async (req, res) => {
     const { email, password } = req.body;
@@ -107,4 +109,26 @@ exports.allowTo = (...roles) => {
         }
         next();
     }
+}
+
+exports.forgotPassword = async (req, res) => {
+    const { email } = req.body;
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé.' });
+        }
+
+        const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+        const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');      
+        user.passwordResetToken = hashedToken;
+        user.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+        await user.save();
+
+        // Send email with resetToken
+    } catch (error) {     
+        res.status(500).json({ error: error.message });
+    }           
 }
