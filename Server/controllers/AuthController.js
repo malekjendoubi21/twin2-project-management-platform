@@ -82,6 +82,13 @@ exports.protection = async (req, res, next) => {
         if (!user) {
             return res.status(401).json({ error: 'Utilisateur non trouvé. Veuillez vous connecter.' });
         }
+
+        if (user.passwordChangedAt) {
+            const passwordChangedTimestamp = parseInt(user.passwordChangedAt.getTime() / 1000, 10);
+            if (decoded.iat < passwordChangedTimestamp) {
+                return res.status(401).json({ error: 'Mot de passe récemment changé. Veuillez vous reconnecter.' });
+            }
+        }
         
         req.user = user;
         next();     
