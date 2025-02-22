@@ -68,3 +68,24 @@ exports.register = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+exports.protection = async (req, res, next) => {
+    const token = req.header('Authorization');
+    if (!token) {
+        return res.status(401).json({ error: 'Non authentifié. Veuillez vous connecter.' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+
+        if (!user) {
+            return res.status(401).json({ error: 'Utilisateur non trouvé. Veuillez vous connecter.' });
+        }
+        
+        req.user = user;
+        next();     
+    } catch (error) {
+        res.status(401).json({ error: 'Non authentifié. Veuillez vous connecter.' });
+    }
+}
