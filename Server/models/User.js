@@ -48,6 +48,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '', // Optional field
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true, // Automatically adds `created_at` and `updated_at`
