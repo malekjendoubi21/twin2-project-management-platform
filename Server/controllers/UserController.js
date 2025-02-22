@@ -87,10 +87,33 @@ const updateUser = async (req, res) => {
     }
 };
 
+const changePassword = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { oldPassword, newPassword } = req.body;
+
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Invalid password' });
+        }
+
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.passwordChangedAt = Date.now();
+        await user.save();
+        res.status(200).json({ message: 'Password updated successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 
 
-module.exports = { getAllUsers, addUser, updateUser, getUser };
+module.exports = { getAllUsers, addUser, updateUser, getUser, changePassword };
 
 
 

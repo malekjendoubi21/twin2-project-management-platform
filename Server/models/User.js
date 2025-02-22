@@ -18,6 +18,9 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    passwordChangedAt: {  
+      type: Date,
+    },
     authentication_method: {
       type: String,
       enum: ['local', 'google', 'github'], // Add more methods if needed
