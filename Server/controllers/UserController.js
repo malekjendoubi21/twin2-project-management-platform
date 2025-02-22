@@ -1,18 +1,16 @@
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const { validateUser } = require('../validators/validators');
-const jwt = require("jsonwebtoken");
 
-
-const getAllUsers = (req, res) => {
-    User.find()
+const getAllUsers = async (req, res) => {
+    await User.find()
         .then(data => res.json(data))
         .catch(err => res.status(500).json({ error: "Failed to retrieve users", details: err }));
 };
-const getUser = (req, res) => {
+const getUserById = async (req, res) => {
     const { id } = req.params;
 
-    User.findById(id)
+    await User.findById(id)
         .then(user => {
             if (!user) {
                 return res.status(404).json({ error: "User not found" });
@@ -74,6 +72,7 @@ const updateUser = async (req, res) => {
         user.email = email || user.email;
         if (password) {
             user.password = await bcrypt.hash(password, 10);
+            user.passwordChangedAt = Date.now();
         }
         user.authentication_method = authentication_method || user.authentication_method;
         user.role = role || user.role;
@@ -113,7 +112,7 @@ const changePassword = async (req, res) => {
 
 
 
-module.exports = { getAllUsers, addUser, updateUser, getUser, changePassword };
+module.exports = { getAllUsers, addUser, updateUser, getUserById, changePassword };
 
 
 
