@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const { validateUser } = require('../validators/validators');
+const sendEmail = require('../utils/sendEmail');
 
 
 exports.login = async (req, res) => {
@@ -125,10 +126,40 @@ exports.forgotPassword = async (req, res) => {
         user.passwordResetToken = hashedToken;
         user.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-        await user.save();
+        await user.save();  
 
-        // Send email with resetToken
+        await sendEmail({
+            email: user.email,
+            name: user.name,
+            subject: '[Planify] Réinitialisation du mot de passe',
+            resetToken
+        });
+
+        res.status(200).json({ status:'succes', message: 'Code de réinitialisation envoyé à votre adresse email.' });
+
     } catch (error) {     
         res.status(500).json({ error: error.message });
     }           
 }
+
+exports.verifyResetToken = async (req, res) => {
+    const hashedToken = crypto
+    .createHash('sha256')
+    .update(req.body.resetToken)
+    .digest('hex');      
+    
+    const user = await User.findOne({
+         passwordResetToken: hashedToken,
+          passwordResetExpires: { $gt: Date.now() }
+         });
+    
+    if (!user) {
+        return res.status(400).json({ error: 'Token invalide ou expiré.' });
+    }
+
+    user.passwordResetVerified = true;
+    await user.save();
+
+    res.status(200).json({ status: 'success', message: 'Token vérifié avec succès.' });
+
+};
