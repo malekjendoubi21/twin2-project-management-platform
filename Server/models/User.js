@@ -21,6 +21,16 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: {  
       type: Date,
     },
+    passwordResetToken: {
+      type: String,
+    },
+    passwordResetExpires: {
+      type: Date,
+    },
+    passwordResetVerified: {
+      type: Boolean,
+      default: false,
+    },
     authentication_method: {
       type: String,
       enum: ['local', 'google', 'github'], // Add more methods if needed
@@ -49,7 +59,7 @@ const userSchema = new mongoose.Schema(
     },
     phone_number: {
       type: String,
-      default: '', // Optional field
+      default: '', 
     },
     isActive: {
       type: Boolean,
@@ -57,7 +67,7 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // Automatically adds `created_at` and `updated_at`
+    timestamps: true, 
   }
 );
 
