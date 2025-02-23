@@ -67,7 +67,35 @@ const userSchema = Joi.object({
     .optional(),
 });
 
+const updateUserSchema = Joi.object({
+  name: Joi.string()
+    .min(2)
+    .max(50)
+    .optional()
+    .messages({
+      'string.min': 'Name must be at least 2 characters long',
+      'string.max': 'Name cannot exceed 50 characters',
+    }),
+
+  email: Joi.string()
+    .email()
+    .optional()
+    .messages({
+      'string.email': 'Invalid email format',
+    }),
+
+  profile_picture: Joi.string()
+    .optional(),
+
+  phone_number: Joi.string()
+    .optional(),
+
+  bio: Joi.string()
+    .optional(),
+});
+
 // Export the schema
 module.exports = {
   validateUser: (data) => userSchema.validate(data, { abortEarly: false }),
+  validateUpdateUser: (data) => updateUserSchema.validate(data, { abortEarly: false }),
 };

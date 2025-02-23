@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
-const { validateUser } = require('../validators/validators');
+const { validateUser, validateUpdateUser } = require('../validators/validators');
 
 const getAllUsers = async (req, res) => {
     await User.find()
@@ -110,9 +110,57 @@ const changePassword = async (req, res) => {
     }
 };
 
+const getLoggedUser = async (req, res, next) => {
+    req.params.id = req.user._id;
+    next();
+};
+
+const updateLoggedUserPassword = async (req, res, next) => {
+    const user = await User.findByIdAndUpdate(
+        req.user._id, 
+        { password: await bcrypt.hash(req.body.password, 10),
+         passwordChangedAt: Date.now() },
+        { new: true }
+    );
+
+    const token = jwt.sign(
+        { id: user._id },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRE_TIME }
+    );
+
+    res.json({ status: 'success' , message: 'Password updated successfully', token });
+    
+};
+
+const UpdateLoggeduserData = async (req, res) => {
+    try {
+        const { error, value } = validateUpdateUser(req.body);
+        if (error) {
+            return res.status(400).json({ errors: error.details.map(err => err.message) });
+        }
+
+        const user = await User.findByIdAndUpdate(
+            req.user._id,
+            { 
+                name: value.name, 
+                email: value.email, 
+                phone_number: value.phone_number, 
+                bio: value.bio, 
+                profile_picture: value.profile_picture 
+            },
+            { new: true }
+        );
+
+        res.json({ status: 'success', message: 'User updated successfully', user });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 
-module.exports = { getAllUsers, addUser, updateUser, getUserById, changePassword };
+
+module.exports = { getAllUsers, addUser, updateUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData };
 
 
 
