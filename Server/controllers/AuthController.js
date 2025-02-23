@@ -163,3 +163,30 @@ exports.verifyResetToken = async (req, res) => {
     res.status(200).json({ status: 'success', message: 'Token vérifié avec succès.' });
 
 };
+
+exports.resetPassword = async (req, res) => {
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) {
+        return res.status(404).json({ error: 'Utilisateur non trouvé.' });
+    }
+
+    if (!user.passwordResetVerified) {
+        return res.status(401).json({ error: 'Veuillez vérifier le token de réinitialisation.' });
+    }
+
+    user.password = await bcrypt.hash(req.body.newPassword, 10);
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    user.passwordResetVerified = false;
+    user.passwordChangedAt = Date.now();
+    await user.save();
+
+    const token = jwt.sign(
+        { id: user._id },
+        process.env.JWT_SECRET,
+        {expiresIn: process.env.JWT_EXPIRE_TIME}
+    );
+
+
+    res.status(200).json({ status: 'success', message: 'Mot de passe réinitialisé avec succès.', token });
+};
