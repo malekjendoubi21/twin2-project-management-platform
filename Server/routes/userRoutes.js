@@ -9,7 +9,7 @@ router.post('/addUser', protection, allowTo('admin'), addUser);
 router.put('/updateUser/:id', protection, allowTo('admin'), updateUser);
 router.get('/getUser/:id', protection, allowTo('admin'), getUserById);
 router.delete('/dropUser/:id', protection, allowTo('admin'), dropUser);
-router.put('/changePassword/:id', protection, changePassword);
+router.put('/changePassword/:id', protection, allowTo('admin'), changePassword);
 
 router.get('/getMe', protection, getLoggedUser, getUserById);
 router.put('/updateMyPassword', protection, updateLoggedUserPassword);
