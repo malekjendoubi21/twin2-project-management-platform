@@ -11,8 +11,10 @@ connectDB();
 
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
-app.use('/users', userRoutes);
-app.use('/auth', authRoutes);
+const projectRoutes = require('./routes/projectRoutes');
+app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/projects', projectRoutes);
 
 app.get('/', (req, res) => {
   res.send('Project Management Platform Backend');
