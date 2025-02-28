@@ -28,4 +28,5 @@ const projectSchema = Joi.object({
 
 module.exports = {
   validateProject: (data) => projectSchema.validate(data, { abortEarly: false })
+
 };
