@@ -1,29 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const ProjectController = require('../controllers/ProjectController');
-//const { authenticateToken } = require('../middleware/authMiddleware');
 
+const projectController = require('../controllers/ProjectController');
 
+router.post('/addProject', projectController.createProject);
+router.put('/updateProject/:id', projectController.updateProject);
+router.get('/', projectController.getAllProjects);
+router.get('/:id', projectController.getProjectById);
+router.delete('/:id', projectController.deleteProject);
 
-// Create a new project
-router.post('/createProject', ProjectController.createProject);
+module.exports = router;
 
-// Get all projects
-router.get('/', ProjectController.getAllProjects);
-
-// Get a single project by ID
-router.get('/:projectId', ProjectController.getProjectById);
-
-// Update a project
-router.put('/:projectId', ProjectController.updateProject);
-
-// Delete a project
-router.delete('/:projectId', ProjectController.deleteProject);
-
-// Add team member to project
-router.post('/:projectId/team', ProjectController.addTeamMember);
-
-// Remove team member from project
-router.delete('/:projectId/team/:userId', ProjectController.removeTeamMember);
-
-module.exports = router; 
