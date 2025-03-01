@@ -1,5 +1,5 @@
 const Project = require('../models/Project');
-const { validateProject } = require('../validators/ProjectValidator');
+const { validateProject } = require('../validators/validatorProject');
 
 exports.getAllProjects = async (req, res) => {
   try {
