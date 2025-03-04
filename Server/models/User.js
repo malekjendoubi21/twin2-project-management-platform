@@ -16,7 +16,9 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return this.authentication_method !== 'google';
+      },
     },
     passwordChangedAt: {  
       type: Date,
@@ -35,6 +37,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['local', 'google', 'github'], // Add more methods if needed
       default: 'local',
+    },
+    google_id: {
+      type: String,
+      unique: true,
     },
     role: {
       type: String,
