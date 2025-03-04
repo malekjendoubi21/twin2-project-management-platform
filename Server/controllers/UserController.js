@@ -55,6 +55,7 @@ const addUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
     try {
+     
 
         const { id } = req.params;
         const { error, value } = validateUser(req.body);
