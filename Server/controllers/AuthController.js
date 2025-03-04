@@ -4,6 +4,10 @@ const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const { validateUser } = require('../validators/validators');
 const sendEmail = require('../utils/sendEmail');
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const axios = require('axios');
+
 
 
 exports.login = async (req, res) => {
@@ -25,8 +29,23 @@ exports.login = async (req, res) => {
             process.env.JWT_SECRET,
             {expiresIn: process.env.JWT_EXPIRE_TIME}
         );
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            domain: process.env.COOKIE_DOMAIN || 'localhost',
+            path: '/',
+        }).json({ message: "Connexion réussie",
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                
+            }
+         });
 
-        res.json({ message: "Connexion réussie", token });
     } catch (error) {
         res.status(500).json({ error: "Erreur serveur", details: error });
     }
@@ -66,14 +85,29 @@ exports.register = async (req, res) => {
             {expiresIn: process.env.JWT_EXPIRE_TIME}
         );
 
-        res.status(201).json({ message: 'Utilisateur créé avec succès', user: newUser, token });
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            domain: process.env.COOKIE_DOMAIN || 'localhost',
+            path: '/',
+        }).status(201).json({ message: 'Utilisateur créé avec succès', user: newUser });
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
+exports.logout = (req, res) => {
+    res.clearCookie('token', {
+        domain: process.env.COOKIE_DOMAIN || 'localhost',
+        path: '/',
+    }).json({ message: 'Déconnexion réussie' });
+};
+
 exports.protection = async (req, res, next) => {
-    const token = req.header('Authorization');
+    const token = req.cookies.token;
     if (!token) {
         return res.status(401).json({ error: 'Non authentifié. Veuillez vous connecter.' });
     }
@@ -181,12 +215,77 @@ exports.resetPassword = async (req, res) => {
     user.passwordChangedAt = Date.now();
     await user.save();
 
-    const token = jwt.sign(
-        { id: user._id },
-        process.env.JWT_SECRET,
-        {expiresIn: process.env.JWT_EXPIRE_TIME}
-    );
+    res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        domain: process.env.COOKIE_DOMAIN || 'localhost',
+        path: '/',
+    }).status(200).json({ status: 'success', message: 'Mot de passe réinitialisé avec succès.' });
+}
 
+exports.initiateGoogleAuth = (req, res) => {
+    const params = new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        redirect_uri: `${process.env.BACKEND_URL}/api/auth/google/callback`,
+        response_type: 'code',
+        scope: 'profile email',
+        access_type: 'offline',
+        prompt: 'consent'
+    });
+    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+};
 
-    res.status(200).json({ status: 'success', message: 'Mot de passe réinitialisé avec succès.', token });
+exports.handleGoogleCallback = async (req, res) => {
+    try {
+        const { code } = req.query;
+        if (!code) return res.status(400).json({ error: 'Authorization code missing' });
+
+        // Exchange code for tokens
+        const { data: tokens } = await axios.post('https://oauth2.googleapis.com/token', {
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            code,
+            redirect_uri: `${process.env.BACKEND_URL}/api/auth/google/callback`,
+            grant_type: 'authorization_code'
+        });
+
+        // Get user info
+        const { data: profile } = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { Authorization: `Bearer ${tokens.access_token}` }
+        });
+
+        // Find or create user
+        let user = await User.findOne({ email: profile.email });
+        if (!user) {
+            user = new User({
+                google_id: profile.id,
+                email: profile.email,
+                name: profile.name,
+                authentication_method: 'google'
+            });
+            await user.save();
+        }
+
+        // Generate and set cookie
+        const token = jwt.sign(
+            { id: user._id, email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRE_TIME }
+        );
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            domain: process.env.COOKIE_DOMAIN,
+            path: '/',
+        }).redirect(process.env.CLIENT_URL + '/dashboard');
+
+    } catch (error) {
+        console.error('Google OAuth error:', error);
+        res.redirect(process.env.CLIENT_URL + '/login?error=google_auth_failed');
+    }
 };
