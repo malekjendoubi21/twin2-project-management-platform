@@ -21,12 +21,17 @@ const authRoutes = require('./routes/authRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const workspaceRoutes = require('./routes/WorkspaceRoutes');
+const certificationRoutes = require('./routes/certificationsRoutes');
+const skillsRoutes = require('./routes/skillsRoutes');
+
 
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/tasks', taskRoutes)
+app.use('/api/certifications', certificationRoutes);
+app.use('/api/skills', skillsRoutes);
 
 
 app.get('/', (req, res) => {
