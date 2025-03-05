@@ -25,6 +25,8 @@ const projectRoutes = require("./routes/projectRoutes");
 const workspaceRoutes = require("./routes/WorkspaceRoutes");
 const experienceRoutes = require("./routes/experienceRoutes");
 const ressourceRoutes = require("./routes/ressourceRoutes");
+const certificationRoutes = require('./routes/certificationsRoutes');
+const skillsRoutes = require('./routes/skillsRoutes');
 
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
@@ -33,7 +35,8 @@ app.use("/api/workspaces", workspaceRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/experiences", experienceRoutes);
 app.use("/api/ressources", ressourceRoutes);
-
+app.use('/api/certifications', certificationRoutes);
+app.use('/api/skills', skillsRoutes);
 
 app.get("/", (req, res) => {
   res.send("Project Management Platform Backend");
