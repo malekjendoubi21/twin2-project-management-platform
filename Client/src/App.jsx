@@ -5,6 +5,9 @@ import Register from './pages/Register';
 import Home from './pages/home';
 import ProtectedRoute from './pages/ProtectedRoute';
 import Acceuil from './pages/Acceuil';
+import UserDetails from "./dashboard/UserDetails.jsx";
+import Listusers from "./dashboard/Listusers.jsx";
+import Dashboard from "./dashboard/Dashboard.jsx";
 
 
 function App() {
@@ -22,6 +25,9 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/Register" element={<Register />} />
       <Route path="/home" element={<Home />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/dashboard/listusers" element={<Listusers />} />
+      <Route path="/dashboard/user/:id" element={<UserDetails />} />
       <Route path="/acceuil" element={
       <ProtectedRoute allowedRoles={['user']}>
         <Acceuil />
