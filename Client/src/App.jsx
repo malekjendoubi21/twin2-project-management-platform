@@ -8,6 +8,7 @@ import Acceuil from './pages/Acceuil';
 import UserDetails from "./dashboard/UserDetails.jsx";
 import Listusers from "./dashboard/Listusers.jsx";
 import Dashboard from "./dashboard/Dashboard.jsx";
+import ForgotPassword from './pages/forgotPassword';
 
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/Register" element={<Register />} />
+      <Route path="/forgotPassword" element={<ForgotPassword />} />
       <Route path="/home" element={<Home />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/dashboard/listusers" element={<Listusers />} />

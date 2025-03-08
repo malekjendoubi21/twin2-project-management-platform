@@ -199,31 +199,32 @@ exports.verifyResetToken = async (req, res) => {
 };
 
 exports.resetPassword = async (req, res) => {
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) {
-        return res.status(404).json({ error: 'Utilisateur non trouvé.' });
+    try {
+        const { email, newPassword, resetToken } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ error: "Utilisateur non trouvé." });
+        }
+
+        if (!user.passwordResetToken || user.passwordResetToken !== resetToken || Date.now() > user.passwordResetExpires) {
+            return res.status(401).json({ error: "Token invalide ou expiré." });
+        }
+
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.passwordResetToken = undefined;
+        user.passwordResetExpires = undefined;
+        user.passwordResetVerified = false;
+        user.passwordChangedAt = new Date();
+
+        await user.save();
+
+        res.status(200).json({ status: "success", message: "Mot de passe réinitialisé avec succès." });
+    } catch (error) {
+        res.status(500).json({ error: "Erreur serveur." });
     }
+};
 
-    if (!user.passwordResetVerified) {
-        return res.status(401).json({ error: 'Veuillez vérifier le token de réinitialisation.' });
-    }
-
-    user.password = await bcrypt.hash(req.body.newPassword, 10);
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
-    user.passwordResetVerified = false;
-    user.passwordChangedAt = Date.now();
-    await user.save();
-
-    res.cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        domain: process.env.COOKIE_DOMAIN || 'localhost',
-        path: '/',
-    }).status(200).json({ status: 'success', message: 'Mot de passe réinitialisé avec succès.' });
-}
 
 exports.initiateGoogleAuth = (req, res) => {
     const params = new URLSearchParams({
