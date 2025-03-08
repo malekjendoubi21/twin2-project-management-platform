@@ -151,7 +151,7 @@ const Login = () => {
 
               {/* Additional Links */}
               <div className="mt-8 text-center space-y-2">
-                <Link to="/forgot-password" className="link link-hover text-sm">
+                <Link to="/forgotPassword" className="link link-hover text-sm">
                   Forgot password?
                 </Link>
                 <div className="text-sm">

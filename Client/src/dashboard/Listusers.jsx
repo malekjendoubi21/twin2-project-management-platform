@@ -15,11 +15,14 @@ const Listusers = () => {
                 const response = await api.get('/api/users/getMe');
                 setUser(response.data);
             } catch (error) {
+                console.error("Erreur lors de la récupération de l'utilisateur:", error);
+
                 navigate('/login');
             } finally {
                 setLoading(false);
             }
         };
+
 
         const fetchUsers = async () => {
             try {
