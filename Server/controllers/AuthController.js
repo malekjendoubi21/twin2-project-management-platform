@@ -66,6 +66,10 @@ exports.register = async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Generate verification token (6-digit code)
+        const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+        const hashedVerificationToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
 
         const newUser = new User({
             name,
@@ -75,24 +79,26 @@ exports.register = async (req, res) => {
             role: role || 'user',
             phone_number: phone_number || '',
             bio: bio ? bio.trim() : '',
+            emailVerificationToken: hashedVerificationToken,
+            emailVerificationExpires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+            isVerified: false
         });
 
         await newUser.save();
 
-        const token = jwt.sign(
-            { id: newUser._id },
-            process.env.JWT_SECRET,
-            {expiresIn: process.env.JWT_EXPIRE_TIME}
-        );
+        // Send verification email
+        await sendEmail({
+            email: newUser.email,
+            name: newUser.name,
+            subject: '[Planify] Vérification de votre adresse email',
+            verificationToken: verificationToken,
+            type: 'verification'
+        });
 
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-            domain: process.env.COOKIE_DOMAIN || 'localhost',
-            path: '/',
-        }).status(201).json({ message: 'Utilisateur créé avec succès', user: newUser });
+        res.status(201).json({ 
+            message: 'Utilisateur créé avec succès. Veuillez vérifier votre adresse email pour activer votre compte.',
+            userId: newUser._id
+        });
 
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -288,5 +294,60 @@ exports.handleGoogleCallback = async (req, res) => {
     } catch (error) {
         console.error('Google OAuth error:', error);
         res.redirect(process.env.CLIENT_URL + '/login?error=google_auth_failed');
+    }
+};
+exports.verifyEmail = async (req, res) => {
+    try {
+        const { userId, verificationToken } = req.body;
+        
+        // Hash the token for comparison
+        const hashedToken = crypto
+            .createHash('sha256')
+            .update(verificationToken)
+            .digest('hex');
+        
+        // Find the user with this token and check expiration
+        const user = await User.findOne({
+            _id: userId,
+            emailVerificationToken: hashedToken,
+            emailVerificationExpires: { $gt: Date.now() }
+        });
+        
+        if (!user) {
+            return res.status(400).json({ error: 'Token invalide ou expiré.' });
+        }
+        
+        // Update the user
+        user.isVerified = true;
+        user.emailVerificationToken = undefined;
+        user.emailVerificationExpires = undefined;
+        await user.save();
+        
+        // Generate and set JWT token
+        const token = jwt.sign(
+            { id: user._id, email: user.email },
+            process.env.JWT_SECRET,
+            {expiresIn: process.env.JWT_EXPIRE_TIME}
+        );
+        
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            domain: process.env.COOKIE_DOMAIN || 'localhost',
+            path: '/',
+        }).status(200).json({
+            message: 'Adresse email vérifiée avec succès.',
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            }
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 };

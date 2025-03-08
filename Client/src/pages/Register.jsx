@@ -60,9 +60,15 @@ const Register = () => {
         password
       });
   
+      // Extract userId from the response
+      const { userId } = response.data;
+      
+      // Store userId in localStorage for the verification page
+      localStorage.setItem('userId', userId);
+
       setTimeout(() => {
         toast.dismiss(loadingToast);
-        toast.success('Account created successfully!', {
+        toast.success('Account created! Please verify your email.', {
           style: {
             background: '#4CAF50',
             fontFamily: 'Poppins',
@@ -71,7 +77,8 @@ const Register = () => {
             borderRadius: '0px'
           }
         });
-        navigate('/dashboard');
+        // Redirect to verification page instead of dashboard
+        navigate('/verify-email');
       }, 1000);
   
     } catch (error) {
