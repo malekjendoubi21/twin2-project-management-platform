@@ -207,17 +207,53 @@ exports.verifyResetToken = async (req, res) => {
 exports.resetPassword = async (req, res) => {
     try {
         const { email, newPassword, resetToken } = req.body;
-        const user = await User.findOne({ email });
+        
+        console.log("Request body:", { 
+            emailProvided: !!email, 
+            passwordProvided: !!newPassword, 
+            tokenProvided: !!resetToken 
+        });
+        
+        // Validate inputs
+        if (!email || !newPassword || !resetToken) {
+            return res.status(400).json({ 
+                error: "Tous les champs sont requis (email, newPassword, resetToken)." 
+            });
+        }
+        
+        // Hash the token for comparison
+        const hashedToken = crypto
+            .createHash('sha256')
+            .update(resetToken)
+            .digest('hex');
+            
+        const user = await User.findOne({ 
+            email,
+            passwordResetToken: hashedToken,
+            passwordResetExpires: { $gt: Date.now() }
+        });
 
         if (!user) {
-            return res.status(404).json({ error: "Utilisateur non trouvé." });
+            return res.status(404).json({ error: "Utilisateur non trouvé ou token invalide." });
         }
 
-        if (!user.passwordResetToken || user.passwordResetToken !== resetToken || Date.now() > user.passwordResetExpires) {
-            return res.status(401).json({ error: "Token invalide ou expiré." });
+        // Additional verification
+        if (!user.passwordResetVerified) {
+            return res.status(401).json({ error: "Le token n'a pas été vérifié." });
         }
 
-        user.password = await bcrypt.hash(newPassword, 10);
+        // Make sure password is valid before hashing
+        if (typeof newPassword !== 'string' || newPassword.length < 6) {
+            return res.status(400).json({ 
+                error: "Le nouveau mot de passe doit contenir au moins 6 caractères." 
+            });
+        }
+
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        
+        // Update user fields
+        user.password = hashedPassword;
         user.passwordResetToken = undefined;
         user.passwordResetExpires = undefined;
         user.passwordResetVerified = false;
@@ -227,7 +263,8 @@ exports.resetPassword = async (req, res) => {
 
         res.status(200).json({ status: "success", message: "Mot de passe réinitialisé avec succès." });
     } catch (error) {
-        res.status(500).json({ error: "Erreur serveur." });
+        console.error("Reset password error:", error);
+        res.status(500).json({ error: "Erreur lors de la réinitialisation du mot de passe." });
     }
 };
 

@@ -59,8 +59,11 @@ const ForgetPassword = () => {
         }
 
         try {
-            const response = await api.put("/api/auth/resetPassword", { email, newPassword, resetToken });
-
+            const response = await api.put("/api/auth/resetPassword", { 
+                email,
+                resetToken, 
+                newPassword  // Some APIs expect 'password' instead of 'newPassword'
+            });
             setMessage({ type: "success", text: response.data.message });
 
             // Rediriger après succès

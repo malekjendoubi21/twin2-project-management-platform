@@ -18,19 +18,23 @@ const EmailVerification = () => {
         setError('');
         
         try {
-            const response = await axios.post('/api/auth/verify-email', {
-                userId,
-                verificationToken: verificationCode
+            // Your verification API call
+            const response = await api.post('/api/auth/verify-email', {
+              code,
+              userId: localStorage.getItem('userId')
             });
             
-            // Clear stored userId if it was in localStorage
+            // On successful verification
+            toast.success('Email verified successfully!');
+            
+            // Clear any previous form data and state
             localStorage.removeItem('userId');
             
-            // Redirect to dashboard or login page
-            navigate('/dashboard');
-        } catch (err) {
-            setError(err.response?.data?.error || 'Une erreur est survenue');
-        } finally {
+            // Redirect to login with a success param
+            navigate('/login?verified=true');
+          } catch (error) {
+            toast.error('Verification failed. Please try again.');
+          }finally {
             setLoading(false);
         }
     };

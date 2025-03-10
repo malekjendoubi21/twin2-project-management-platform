@@ -1,23 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/Api';
 import { toast } from 'react-hot-toast';
+import Cookies from 'js-cookie';
 
 const VerifyEmail = () => {
   const [verificationCode, setVerificationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [hasCheckedCookie, setHasCheckedCookie] = useState(false);
   const navigate = useNavigate();
   
-  // Get userId from localStorage
-  const userId = localStorage.getItem('userId');
+  // Get userId from cookies
+  const userId = Cookies.get('userId');
   
   useEffect(() => {
-    // Seulement naviguer si le userId est null (pas défini du tout)
-    // et ajouter un délai pour éviter le problème de course
-    const checkUserId = setTimeout(() => {
-      if (userId === null) {
+    // Give the cookie time to be set before checking
+    const timer = setTimeout(() => {
+      const userId = Cookies.get('userId');
+      console.log('Delayed cookie check:', userId);
+      
+      if (!userId && !redirectAttempted.current) {
+        // Only redirect once
+        redirectAttempted.current = true;
+        console.log('No userId found, redirecting to register');
         navigate('/register');
         toast.error('Please register first', {
           style: {
@@ -25,26 +32,24 @@ const VerifyEmail = () => {
             color: '#fff',
             padding: '16px',
             borderRadius: '0px'
-          }
+          },
+          id: 'register-first', // Add an ID to prevent duplicate toasts
         });
       }
-    }, 300);
+      
+      setHasCheckedCookie(true);
+    }, 800); // Wait longer to ensure cookie is properly set
     
-    // Countdown timer for resend button
-    let interval = null;
-    if (countdown > 0) {
-      interval = setInterval(() => {
-        setCountdown(countdown - 1);
-      }, 1000);
-    }
-    
-    return () => {
-        clearInterval(interval);
-        clearTimeout(checkUserId);
-      };
-    }, [userId, navigate, countdown]);
+    return () => clearTimeout(timer);
+  }, [navigate]);
   
   const handleResendCode = async () => {
+    if (!userId) {
+      toast.error('Missing user information. Please register again.');
+      navigate('/register');
+      return;
+    }
+    
     setResendLoading(true);
     try {
       await api.post('/api/auth/resend-verification', { userId });
@@ -78,6 +83,12 @@ const VerifyEmail = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (!userId) {
+      toast.error('Missing user information. Please register again.');
+      navigate('/register');
+      return;
+    }
+    
     if (!verificationCode || verificationCode.length !== 6) {
       toast.error('Please enter a valid 6-digit verification code', {
         style: {
@@ -98,8 +109,8 @@ const VerifyEmail = () => {
         verificationToken: verificationCode
       });
       
-      // Clear userId from storage
-      localStorage.removeItem('userId');
+      // Clear userId from cookies - not localStorage
+      Cookies.remove('userId');
       
       toast.success('Email verified successfully!', {
         style: {
@@ -110,9 +121,8 @@ const VerifyEmail = () => {
         }
       });
       
-      // Attend un peu pour que le toast soit visible
+      // Wait for toast to be visible
       setTimeout(() => {
-        // Redirect to dashboard or home
         navigate('/acceuil');
       }, 1500);
       
@@ -130,7 +140,8 @@ const VerifyEmail = () => {
     }
   };
 
-  if (userId === null) {
+  // Show loading state if userId is undefined (not found)
+  if (!userId) {  // Changed from userId === null
     return (
       <div className="min-h-screen bg-base-200 font-poppins flex items-center justify-center">
         <div className="card flex-shrink-0 w-full max-w-md shadow-xl bg-base-100">
@@ -143,6 +154,18 @@ const VerifyEmail = () => {
       </div>
     );
   }  
+  if (!hasCheckedCookie) {
+    return (
+      <div className="min-h-screen bg-base-200 font-poppins flex items-center justify-center">
+        <div className="card flex-shrink-0 w-full max-w-md shadow-xl bg-base-100">
+          <div className="card-body p-6 lg:p-8 text-center">
+            <h2 className="text-2xl font-bold mb-6">Loading...</h2>
+            <div className="loading loading-spinner loading-lg"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-base-200 font-poppins flex items-center justify-center">
