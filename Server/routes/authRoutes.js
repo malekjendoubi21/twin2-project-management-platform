@@ -8,7 +8,8 @@ const {
     resetPassword,
     logout,
     initiateGoogleAuth,
-    handleGoogleCallback
+    handleGoogleCallback,
+    verifyEmail
 } = require('../controllers/AuthController');
 
 // Local authentication
@@ -18,6 +19,8 @@ router.post('/forgotPassword', forgotPassword);
 router.post('/verifyResetToken', verifyResetToken);
 router.put('/resetPassword', resetPassword);
 router.get('/logout', logout);
+router.post('/verify-email', verifyEmail);
+
 
 // Google authentication
 router.get('/google', initiateGoogleAuth);

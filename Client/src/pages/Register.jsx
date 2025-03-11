@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/Api';
 import { toast } from 'react-hot-toast';
+import Cookies from 'js-cookie'; // Add this import
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -11,110 +12,62 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validation checks
     if (!name || !email || !password || !confirmPassword) {
-      toast.error('Please fill all required fields', {
-        duration: 5000,
-        style: {
-          background: '#f44336',
-          color: '#fff',
-          padding: '16px',
-          borderRadius: '0px'
-        }
-      });
+      toast.error('Please fill all required fields');
       return;
     }
   
     if (password !== confirmPassword) {
-      toast.error('Passwords do not match!', {
-        duration: 5000,
-        style: {
-          background: '#f44336',
-          color: '#fff',
-          padding: '16px',
-          borderRadius: '0px'
-        }
-      });
+      toast.error('Passwords do not match!');
       return;
     }
   
     setIsLoading(true);
-    const loadingToast = toast.loading('Creating account...', {
-      duration: 500,
-      position: 'top-right',
-      style: {
-        background: '#4CAF50',
-        fontFamily: 'Poppins',
-        color: '#fff',
-        padding: '16px',
-        borderRadius: '0px'
-      }
-    });
+    const loadingToast = toast.loading('Creating account...');
   
     try {
+      console.log('Registering with:', { name, email });
+      
       const response = await api.post('/api/auth/register', {
         name,
         email,
         password
       });
   
+      console.log('Registration response:', response.data);
+      
+      // Extract userId from the response
+      const { userId } = response.data;
+      
+      if (!userId) {
+        console.error('No userId returned from server');
+        throw new Error('Registration failed: No user ID returned');
+      }
+      
+      // Set the cookie with the userId
+      Cookies.set('userId', userId, { expires: 1 });
+      console.log('userId cookie set:', userId);
+  
+      toast.dismiss(loadingToast);
+      toast.success('Account created! Please verify your email.');
+      
+      // Important: Wait a moment before navigating
       setTimeout(() => {
-        toast.dismiss(loadingToast);
-        toast.success('Account created successfully!', {
-          style: {
-            background: '#4CAF50',
-            fontFamily: 'Poppins',
-            color: '#fff',
-            padding: '16px',
-            borderRadius: '0px'
-          }
-        });
-        navigate('/dashboard');
+        console.log('Navigating to verify-email');
+        navigate('/verify-email');
       }, 1000);
   
     } catch (error) {
+      console.error('Registration error:', error);
       toast.dismiss(loadingToast);
       
-      // Handle validation errors
-      if (error.response?.status === 400) {
-        const errors = error.response.data?.errors || [error.response.data?.error];
-        
-        // Show all validation errors
-        errors.forEach(err => {
-          toast.error(err.message || err, {
-            duration: 5000,
-            style: {
-              fontFamily: 'Poppins',
-              background: '#f44336',
-              color: '#fff',
-              padding: '16px',
-              borderRadius: '0px'
-            }
-          });
-        });
-      } else if (error.response?.status === 409) {
-        toast.error('Email already exists', {
-          duration: 5000,
-          style: {
-            background: '#f44336',
-            color: '#fff',
-            padding: '16px',
-            borderRadius: '0px'
-          }
-        });
-      } else {
-        toast.error('Registration failed. Please try again.', {
-          duration: 5000,
-          style: {
-            background: '#f44336',
-            color: '#fff',
-            padding: '16px',
-            borderRadius: '0px'
-          }
-        });
-      }
+      // Error handling logic
+      toast.error(error.response?.data?.error || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }

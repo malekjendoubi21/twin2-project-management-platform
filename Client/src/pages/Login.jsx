@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
 import api from '../utils/Api';
 import { toast } from 'react-hot-toast';
@@ -63,7 +63,22 @@ const Login = () => {
     }
   };
 
-  
+  // In your Login component:
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('verified') === 'true') {
+    toast.success('Email verified! You can now log in.', {
+      style: {
+        background: '#4CAF50',
+        color: '#fff',
+        padding: '16px',
+        borderRadius: '0px'
+      }
+    });
+    // Clean up the URL
+    navigate('/login', { replace: true });
+  }
+}, []);
 
 
   return (
