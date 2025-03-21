@@ -89,7 +89,8 @@ useEffect(() => {
 
                 <div className="text-center lg:text-left lg:w-1/2">
                 <div className="hidden lg:block space-y-6">
-                  <h1 className="text-5xl font-bold text-primary">ProjectFlow</h1>
+                  <h1 className="text-5xl font-bold gradient-text">
+PlaniFy</h1>
                   <p className="py-6 text-xl text-base-content">
                   Enhance your productivity with our seamless project management tools.
                   </p>
@@ -180,6 +181,67 @@ useEffect(() => {
           </div>
         </div>
       </div>
+      <style>{`
+  .gradient-text {
+    background: linear-gradient(
+      to right,
+      #4f46e5, /* Indigo */
+      #8b5cf6, /* Violet */
+      #ec4899, /* Pink */
+      #3b82f6, /* Blue */
+      #4f46e5  /* Back to indigo */
+    );
+    background-size: 200% auto;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: shine 8s linear infinite;
+    transition: all 0.3s ease;
+  }
+
+  /* Animation keyframes */
+  @keyframes shine {
+    to {
+      background-position: 200% center;
+    }
+  }
+
+  /* Scroll interaction - changes animation speed when scrolling */
+  .gradient-text:hover {
+    animation-duration: 3s;
+  }
+
+  /* Add a subtle text shadow for depth */
+  .gradient-text {
+    text-shadow: 0 2px 10px rgba(79, 70, 229, 0.15);
+  }
+`}</style>
+
+{/* Add this script to make text respond to scroll */}
+<script>
+{`
+  document.addEventListener('DOMContentLoaded', function() {
+    const gradientText = document.querySelector('.gradient-text');
+    if (!gradientText) return;
+    
+    let scrolling = false;
+    
+    window.addEventListener('scroll', function() {
+      scrolling = true;
+      
+      if (scrolling) {
+        gradientText.style.animationDuration = '2s';
+        scrolling = false;
+        
+        clearTimeout(window.scrollFinished);
+        window.scrollFinished = setTimeout(function() {
+          gradientText.style.animationDuration = '8s';
+        }, 200);
+      }
+    });
+  });
+`}
+</script>
     </div>
   );
 };

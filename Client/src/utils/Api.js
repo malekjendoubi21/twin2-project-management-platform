@@ -30,7 +30,12 @@ api.interceptors.response.use(
     if (error.config.url.includes('/auth/login')) {
       return Promise.reject(error);
     }
-
+    if (axios.isCancel(error) || 
+        error.code === 'ERR_CANCELED' || 
+        (error.message && error.message.toLowerCase() === 'canceled')) {
+      // Return a resolved promise to prevent error cascading for cancellations
+      return Promise.resolve({ status: 'canceled', data: null });
+    }
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
