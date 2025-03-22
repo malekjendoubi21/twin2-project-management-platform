@@ -32,14 +32,20 @@ exports.getAllWorkspaces = async (req, res) => {
 // Get a single workspace by ID
 exports.getWorkspaceById = async (req, res) => {
   try {
-    const workspace = await Workspace.findById(req.params.id).populate('owner members.user projects');
+    const query = Workspace.findById(req.params.id);
+
+    if (req.query.populate === 'projects') {
+      query.populate('projects.createdBy', 'name email');
+    }
+
+    const workspace = await query.exec();
+    
     if (!workspace) return res.status(404).json({ message: 'Workspace not found' });
     res.status(200).json(workspace);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
-
 // Update a workspace
 exports.updateWorkspace = async (req, res) => {
   const { error } = validateWorkspace(req.body);
@@ -296,3 +302,49 @@ exports.getWorkspaceInvitations = async (req, res) => {
   }
 };
 
+// controllers/WorkspaceController.js
+exports.createProject = async (req, res) => {
+  try {
+    const workspace = await Workspace.findByIdAndUpdate(
+      req.params.workspaceId,
+      { $push: { projects: {
+        name: req.body.name,
+        description: req.body.description,
+        createdBy: req.user._id
+      }}},
+      { new: true, runValidators: true }
+    ).populate('projects.createdBy', 'name email');
+
+    const newProject = workspace.projects[workspace.projects.length - 1];
+    
+    res.status(201).json(newProject);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create project', details: err.message });
+  }
+};
+
+exports.getProjects = async (req, res) => {
+  try {
+      const workspace = await Workspace.findById(req.params.workspaceId)
+          .select('projects')
+          .lean();
+
+      if (!workspace) {
+          return res.status(404).json({ error: 'Workspace not found' });
+      }
+
+      res.json(workspace.projects.map(project => ({
+          _id: project._id,
+          name: project.name,
+          description: project.description,
+          createdAt: project.createdAt
+      })));
+
+  } catch (err) {
+      console.error('Error fetching projects:', err);
+      res.status(500).json({ 
+          error: 'Failed to fetch projects',
+          details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      });
+  }
+};

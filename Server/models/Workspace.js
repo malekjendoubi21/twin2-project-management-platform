@@ -29,12 +29,26 @@ const workspaceSchema = new mongoose.Schema(
         },
       },
     ],
-    projects: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Project',
+    projects: [{
+      name: {
+        type: String,
+        required: true,
+        trim: true
       },
-    ],
+      description: {
+        type: String,
+        trim: true
+      },
+      createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
   },
   { timestamps: true }
 );

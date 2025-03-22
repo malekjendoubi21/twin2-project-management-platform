@@ -1,12 +1,38 @@
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const { validateUser, validateUpdateUser } = require('../validators/validators');
+const { get } = require('mongoose');
 
 const getAllUsers = async (req, res) => {
     await User.find()
         .then(data => res.json(data))
         .catch(err => res.status(500).json({ error: "Failed to retrieve users", details: err }));
 };
+const getMe = async (req, res) => {
+    try {
+      // Make sure to populate workspaces field
+      const user = await User.findById(req.user._id)
+        .populate('workspaces')
+        .select('-password')
+        .exec(); 
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json(user);
+    } catch (err) {
+        console.error("getMe error details:", {
+          message: err.message,
+          stack: err.stack,
+          user: req.user
+        });
+        return res.status(500).json({ 
+          error: "Failed to retrieve user", 
+          details: err.message 
+        });
+      }
+    };
 const getUserById = async (req, res) => {
     const { id } = req.params;
 
@@ -184,7 +210,7 @@ const deleteLoggedUser = async (req, res) => {
 
 
 
-module.exports = { getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser };
+module.exports = { getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getMe };
 
 
 

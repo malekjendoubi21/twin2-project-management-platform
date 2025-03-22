@@ -81,7 +81,8 @@ const Register = () => {
           {/* Left Side - Branding */}
           <div className="text-center lg:text-left lg:w-1/2">
             <div className="hidden lg:block space-y-4">
-              <h1 className="text-4xl font-bold text-primary">ProjectFlow</h1>
+              <h1 className="text-4xl font-bold text-primary">
+PlaniFy</h1>
               <p className="py-4 text-lg text-base-content">
                 Streamline your team's workflow with our intuitive project management platform.
               </p>

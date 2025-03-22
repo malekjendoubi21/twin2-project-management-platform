@@ -52,7 +52,8 @@ const Listusers = () => {
         <div className="flex min-h-screen bg-gray-100 font-poppins">
             {/* Sidebar */}
             <aside className="w-64 bg-white shadow-md min-h-screen p-5">
-                <h2 className="text-2xl font-bold text-primary mb-6">ProjectFlow</h2>
+                <h2 className="text-2xl font-bold text-primary mb-6">
+PlaniFy</h2>
                 <ul className="space-y-3">
                     <li>
                         <Link to="/dashboard" className="flex items-center p-3 hover:bg-gray-200 rounded-md">

@@ -115,7 +115,7 @@ exports.logout = (req, res) => {
 exports.protection = async (req, res, next) => {
     const token = req.cookies.token;
     if (!token) {
-        return res.status(401).json({ error: 'Non authentifié. Veuillez vous connecter.' });
+        return res.status(401).json({ error: 'Non authentifiéee. Veuillez vous connecter.' });
     }
 
     try {
