@@ -16,6 +16,8 @@ import WorkspaceOverview from './pages/workspace/WorkspaceOverview.jsx';
 import InvitationResponse from './pages/workspace/InvitationResponse.jsx';
 import WorkspaceMembers from './pages/workspace/WorkspaceMembers.jsx';
 
+import CreateWorkspace from './pages/workspace/CreateWorkspace.jsx';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -58,10 +60,18 @@ function App() {
           <Route path="settings" element={<Settings />} /> */}
         </Route>
       
+
       <Route path="/acceuil" element={
       <ProtectedRoute allowedRoles={['user']}>
         <Acceuil />
       </ProtectedRoute>} /> 
+      <Route path="/profile" element={
+          <ProtectedRoute allowedRoles={['user', 'admin']}>
+            <Profile />
+          </ProtectedRoute>
+        } />
+        
+      
     </Routes>
     </>
   );
