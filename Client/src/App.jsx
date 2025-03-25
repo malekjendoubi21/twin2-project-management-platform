@@ -13,7 +13,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import WorkspaceLayout from './pages/Workspace';
 import Projects from './pages/workspace/Projects';
 import CreateWorkspace from './pages/workspace/CreateWorkspace.jsx';
-
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -60,10 +60,18 @@ function App() {
           <Route path="settings" element={<Settings />} /> */}
         </Route>
       
+
       <Route path="/acceuil" element={
       <ProtectedRoute allowedRoles={['user']}>
         <Acceuil />
       </ProtectedRoute>} /> 
+      <Route path="/profile" element={
+          <ProtectedRoute allowedRoles={['user', 'admin']}>
+            <Profile />
+          </ProtectedRoute>
+        } />
+        
+      
     </Routes>
     </>
   );
