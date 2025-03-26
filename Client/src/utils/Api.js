@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
@@ -30,6 +30,12 @@ api.interceptors.response.use(
     if (error.config.url.includes('/auth/login')) {
       return Promise.reject(error);
     }
+        // Skip handling for "already invited" errors
+        if (error.response?.status === 400 && 
+          error.config.url.includes('/invite') && 
+          error.response?.data?.message === 'An invitation has already been sent to this email') {
+        return Promise.reject(error);
+      }
     if (axios.isCancel(error) || 
         error.code === 'ERR_CANCELED' || 
         (error.message && error.message.toLowerCase() === 'canceled')) {

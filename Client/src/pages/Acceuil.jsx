@@ -15,7 +15,8 @@ const Acceuil = () => {
    const [newWorkspaceName, setNewWorkspaceName] = useState('');
    const [newWorkspaceDescription, setNewWorkspaceDescription] = useState('');
    const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
-   
+   const [allWorkspaces, setAllWorkspaces] = useState([]);
+   const [isLoadingWorkspaces, setIsLoadingWorkspaces] = useState(false);
    // Function to handle workspace creation - same logic as CreateWorkspace.jsx
    const handleCreateWorkspace = async (e) => {
      e.preventDefault();
@@ -117,6 +118,7 @@ const Acceuil = () => {
       setIsRefreshing(true);
       try {
         await refreshUser();
+        fetchAllAccessibleWorkspaces();
         hasLoadedDataRef.current = true;
       } catch (error) {
         console.error("Failed to refresh user data:", error);
@@ -146,15 +148,6 @@ const Acceuil = () => {
       window.addEventListener(event, handleUserActivity);
     });
     
-    // // Handle window/tab close
-    // const handleWindowClose = (e) => {
-    //   logout();
-    //   e.preventDefault();
-    //   e.returnValue = '';
-    // };
-    
-    // window.addEventListener('beforeunload', handleWindowClose);
-
     const initialTimerSetup = setTimeout(() => {
       resetInactivityTimer();
     }, 1000);
@@ -181,6 +174,21 @@ const Acceuil = () => {
       }
     };
   }, [isAuthenticated, showInactivityAlert, logout]);  // Added showInactivityAlert as dependency
+
+
+  const fetchAllAccessibleWorkspaces = async () => {
+    setIsLoadingWorkspaces(true);
+    try {
+      // Get workspaces where user is a member
+      const response = await api.get('/api/workspaces/user/workspaces');
+      setAllWorkspaces(response.data);
+    } catch (error) {
+      console.error('Error fetching workspaces:', error);
+      toast.error('Failed to load all workspaces');
+    } finally {
+      setIsLoadingWorkspaces(false);
+    }
+  };
 
   if (loading || isRefreshing) return <div className="text-center p-8">Loading...</div>;
   if (!isAuthenticated) return null;
@@ -292,7 +300,7 @@ PlaniFy</Link>
                 {user.profile_picture ? 
                   <img src={user.profile_picture} alt="Profile"/> : 
                   <div className="bg-primary text-white flex items-center justify-center h-full">
-                    {user.name.charAt(0)}
+                    {user.name.charAt(0).toUpperCase() || 'U'}
                   </div>
                 }
               </div>
@@ -382,40 +390,45 @@ PlaniFy</Link>
                       </button>
                     </div>
             
-            {user && user.workspaces && user.workspaces.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Map through user workspaces */}
-                {user.workspaces.map((workspace) => (
-                  <div key={workspace._id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all hover:translate-y-[-5px]">
-                    <div className="card-body">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xl">
-                          {workspace.name.charAt(0)}
-                        </div>
-                        <h3 className="card-title text-primary">{workspace.name}</h3>
-                      </div>
-                      
-                      <p className="text-base-content mb-4">
-                        {workspace.description || 'No description'}
-                      </p>
-                      
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        <span className="badge badge-outline">
-                          {workspace.projects ? `${workspace.projects.length} Projects` : '0 Projects'}
-                        </span>
-                        <span className="badge badge-outline">
-                          {workspace.members ? `${workspace.members.length} Members` : '1 Member'}
-                        </span>
-                      </div>
-                      
-                      <div className="card-actions justify-end mt-auto">
-                        <Link to={`/workspace/${workspace._id}`} className="btn btn-primary btn-block">
-                          Open Workspace
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+{/* Check both owned workspaces and all accessible workspaces */}
+{(allWorkspaces && allWorkspaces.length > 0) ? (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {/* Map through all accessible workspaces */}
+    {allWorkspaces.map((workspace) => (
+      <div key={workspace._id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all hover:translate-y-[-5px]">
+        <div className="card-body">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xl">
+              {workspace.name.charAt(0).toUpperCase()}
+            </div>
+            <h3 className="card-title text-primary">{workspace.name}</h3>
+            {/* Show badge if user is a member but not owner */}
+            {workspace.owner !== user._id && 
+              <span className="badge badge-sm badge-outline">Member</span>
+            }
+          </div>
+          
+          <p className="text-base-content mb-4">
+            {workspace.description || 'No description'}
+          </p>
+          
+          <div className="flex flex-wrap gap-2 mb-4">
+            <span className="badge badge-outline">
+              {workspace.projects ? `${workspace.projects.length} Projects` : '0 Projects'}
+            </span>
+            <span className="badge badge-outline">
+              {workspace.members ? `${workspace.members.length} Members` : '1 Member'}
+            </span>
+          </div>
+          
+          <div className="card-actions justify-end mt-auto">
+            <Link to={`/workspace/${workspace._id}`} className="btn btn-primary btn-block">
+              Open Workspace
+            </Link>
+          </div>
+        </div>
+      </div>
+    ))}
                 
                 {/* Create New Workspace Card */}
                 <div className="card bg-base-100 shadow-lg border-2 border-dashed border-base-300 hover:border-primary transition-all">
