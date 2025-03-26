@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import { Toaster } from 'react-hot-toast';
 import Register from './pages/Register';
@@ -12,7 +12,9 @@ import ForgotPassword from './pages/forgotPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import WorkspaceLayout from './pages/Workspace';
 import Projects from './pages/workspace/Projects';
-import CreateWorkspace from './pages/workspace/CreateWorkspace.jsx';
+import WorkspaceOverview from './pages/workspace/WorkspaceOverview.jsx';
+import InvitationResponse from './pages/workspace/InvitationResponse.jsx';
+import WorkspaceMembers from './pages/workspace/WorkspaceMembers.jsx';
 
 
 function App() {
@@ -35,14 +37,8 @@ function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/dashboard/listusers" element={<Listusers />} />
       <Route path="/dashboard/user/:id" element={<UserDetails />} />
-      <Route 
-          path="/create-workspace" 
-          element={
-            <ProtectedRoute allowedRoles={['user']}>
-              <CreateWorkspace />
-    </ProtectedRoute>
-  }
-/>
+      <Route path="/invitations/:token/accept" element={<InvitationResponse />} />
+
 
         {/* Workspace Routes */}
         <Route 
@@ -53,8 +49,10 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<div>Workspace Overview</div>} />
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="overview" element={<WorkspaceOverview />}  />
           <Route path="projects" element={<Projects />} />
+          <Route path="members" element={<WorkspaceMembers />} />
           {/* <Route path="tasks" element={<Tasks />} />
           <Route path="members" element={<Members />} />
           <Route path="settings" element={<Settings />} /> */}

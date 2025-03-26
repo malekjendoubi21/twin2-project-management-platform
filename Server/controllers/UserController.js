@@ -206,11 +206,29 @@ const deleteLoggedUser = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+const getBasicUserInfo = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = await User.findById(id)
+        .select('name email profile_picture')
+        .exec();
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json(user);
+    } catch (err) {
+      return res.status(500).json({ 
+        error: "Failed to retrieve user", 
+        details: err.message 
+      });
+    }
+  };
 
 
 
-
-module.exports = { getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getMe };
+module.exports = { getBasicUserInfo, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getMe };
 
 
 

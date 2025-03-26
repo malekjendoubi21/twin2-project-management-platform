@@ -33,6 +33,7 @@ exports.getAllWorkspaces = async (req, res) => {
 exports.getWorkspaceById = async (req, res) => {
   try {
     const query = Workspace.findById(req.params.id);
+    query.populate('owner', 'name email profile_picture');
 
     if (req.query.populate === 'projects') {
       query.populate('projects.createdBy', 'name email');
@@ -150,8 +151,9 @@ exports.inviteToWorkspace = async (req, res) => {
     const sender = await User.findById(req.user.id);
     
     // Invitation URL (adjust based on your frontend setup)
-    const invitationUrl = `http://yourdomain.com/invitations/${token}/respond`;
-    
+// Use the CLIENT_URL from environment for your frontend
+const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+const invitationUrl = `${clientUrl}/invitations/${token}/accept`;    
     // Email options
     let mailOptions = {
       from: `Planify <${process.env.SMTP_EMAIL}>`,
@@ -198,8 +200,8 @@ exports.respondToInvitation = async (req, res) => {
   }
   
   try {
-    // Find the invitation by token
-    const invitation = await Invitation.findOne({ token }).populate('workspace');
+    // Find the invitation by token - REMOVED populate('workspace') here
+    const invitation = await Invitation.findOne({ token });
     
     if (!invitation) {
       return res.status(404).json({ message: 'Invitation not found' });
@@ -232,7 +234,6 @@ exports.respondToInvitation = async (req, res) => {
     // If user doesn't exist, check if registration data was provided
     if (!user && userData) {
       // Create a new user with the provided data
-      // Make sure to validate and hash password if needed
       user = new User({
         email: invitation.recipient_email,
         name: userData.name,
@@ -248,29 +249,38 @@ exports.respondToInvitation = async (req, res) => {
       });
     }
     
-    // Add user to workspace members
-    const workspace = invitation.workspace;
+    // THIS IS THE FIX: We directly use invitation.workspace as the ID
+    const workspace = await Workspace.findById(invitation.workspace);
+    
+    if (!workspace) {
+      return res.status(404).json({ message: 'Workspace no longer exists' });
+    }
+    
+    // Check if user is already a member
     const isAlreadyMember = workspace.members.some(member => 
-      member.user.toString() === user._id.toString()
+      member.user && member.user.toString() === user._id.toString()
     );
     
+    console.log('User:', user._id, 'Is already member:', isAlreadyMember);
+    
     if (!isAlreadyMember) {
+      // Add user as member with viewer role
       workspace.members.push({
         user: user._id,
-        role: 'viewer' // Default role for invited members
+        role: 'viewer'
       });
       
+      // Save changes to workspace
       await workspace.save();
+      console.log('User added to workspace members');
     }
     
     res.status(200).json({ 
       message: 'Invitation accepted successfully',
-      workspace: {
-        id: workspace._id,
-        name: workspace.name
-      }
+      workspace: workspace._id // Send just the ID, not the whole object
     });
   } catch (err) {
+    console.error('Error responding to invitation:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
@@ -346,5 +356,182 @@ exports.getProjects = async (req, res) => {
           error: 'Failed to fetch projects',
           details: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
+  }
+};
+exports.verifyInvitation = async (req, res) => {
+  const { token } = req.params;
+  
+  try {
+    // Find the invitation
+    const invitation = await Invitation.findOne({ token })
+      .populate('workspace', 'name description')
+      .populate('sender', 'name email');
+      
+    if (!invitation) {
+      return res.status(404).json({ message: 'Invitation not found' });
+    }
+    
+    // Check if expired
+    if (invitation.expires_at < new Date()) {
+      return res.status(400).json({ message: 'This invitation has expired' });
+    }
+    
+    // Check if already used
+    if (invitation.status !== 'pending') {
+      return res.status(400).json({ message: `This invitation has already been ${invitation.status}` });
+    }
+    
+    // Return invitation details
+    res.json({
+      workspace: {
+        id: invitation.workspace._id,
+        name: invitation.workspace.name,
+        description: invitation.workspace.description
+      },
+      sender: invitation.sender,
+      email: invitation.recipient_email,
+      expiresAt: invitation.expires_at
+    });
+  } catch (error) {
+    console.error('Error verifying invitation:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+// Get all workspaces for which the user has access
+exports.getUserWorkspaces = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Find workspaces where user is either the owner OR a member
+    const workspaces = await Workspace.find({
+      $or: [
+        { owner: userId },
+        { 'members.user': userId }
+      ]
+    }).populate('owner', 'name email');
+    
+    console.log(`Found ${workspaces.length} workspaces for user ${userId}`);
+    
+    res.status(200).json(workspaces);
+  } catch (err) {
+    console.error('Error fetching user workspaces:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+exports.getWorkspaceMembers = async (req, res) => {
+  try {
+    const { id: workspaceId } = req.params;
+    
+    // Find workspace and populate member details
+    const workspace = await Workspace.findById(workspaceId)
+      .populate('members.user', 'name email');
+    
+    if (!workspace) {
+      return res.status(404).json({ message: 'Workspace not found' });
+    }
+    
+    // Also get the owner's details
+    const owner = await User.findById(workspace.owner).select('name email');
+    
+    // Format the response to include the owner and all members with their roles
+    const allMembers = [
+      {
+        ...owner.toObject(),
+        _id: owner._id.toString(),
+        role: 'owner',
+        isOwner: true
+      },
+      ...workspace.members.map(member => ({
+        ...member.user.toObject(),
+        _id: member.user._id.toString(),
+        role: member.role
+      }))
+    ];
+    
+    res.status(200).json(allMembers);
+    
+  } catch (err) {
+    console.error('Error fetching workspace members:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// Update a member's role
+exports.updateMemberRole = async (req, res) => {
+  try {
+    const { id: workspaceId, memberId } = req.params;
+    const { role } = req.body;
+    
+    if (!['admin', 'editor', 'viewer'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role. Must be admin, editor, or viewer' });
+    }
+    
+    const workspace = await Workspace.findById(workspaceId);
+    
+    if (!workspace) {
+      return res.status(404).json({ message: 'Workspace not found' });
+    }
+    
+    // Check if the current user is the owner or an admin
+    const isOwner = workspace.owner.toString() === req.user.id;
+    const currentUserMember = workspace.members.find(m => m.user.toString() === req.user.id);
+    const isAdmin = currentUserMember && currentUserMember.role === 'admin';
+    
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: 'You do not have permission to update member roles' });
+    }
+    
+    // Find the member and update their role
+    const memberIndex = workspace.members.findIndex(m => m.user.toString() === memberId);
+    
+    if (memberIndex === -1) {
+      return res.status(404).json({ message: 'Member not found in this workspace' });
+    }
+    
+    workspace.members[memberIndex].role = role;
+    await workspace.save();
+    
+    res.status(200).json({ message: 'Member role updated successfully' });
+    
+  } catch (err) {
+    console.error('Error updating member role:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// Remove a member from workspace
+exports.removeMember = async (req, res) => {
+  try {
+    const { id: workspaceId, memberId } = req.params;
+    
+    const workspace = await Workspace.findById(workspaceId);
+    
+    if (!workspace) {
+      return res.status(404).json({ message: 'Workspace not found' });
+    }
+    
+    // Check if the current user is the owner or an admin
+    const isOwner = workspace.owner.toString() === req.user.id;
+    const currentUserMember = workspace.members.find(m => m.user.toString() === req.user.id);
+    const isAdmin = currentUserMember && currentUserMember.role === 'admin';
+    
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: 'You do not have permission to remove members' });
+    }
+    
+    // Cannot remove the workspace owner
+    if (workspace.owner.toString() === memberId) {
+      return res.status(400).json({ message: 'Cannot remove the workspace owner' });
+    }
+    
+    // Filter out the member
+    workspace.members = workspace.members.filter(m => m.user.toString() !== memberId);
+    await workspace.save();
+    
+    res.status(200).json({ message: 'Member removed successfully' });
+    
+  } catch (err) {
+    console.error('Error removing workspace member:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };

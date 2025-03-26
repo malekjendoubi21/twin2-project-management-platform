@@ -12,6 +12,15 @@ const WorkspaceLayout = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  const refreshWorkspace = async () => {
+    try {
+      const response = await api.get(`/api/workspaces/${id}?populate=projects`);
+      setWorkspace(response.data);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to refresh workspace');
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
   
@@ -68,10 +77,12 @@ PlaniFy
     {user?.profile_picture ? (
       <img src={user.profile_picture} alt="Profile" className="w-full h-full object-cover" />
     ) : (
-      <div className="h-full w-full flex items-center justify-center" style={{ transform: 'translateY(0px)' }}>
-        <span className="text-lg font-normal">
-          {user?.name?.charAt(0) || 'U'}
+      <div className="avatar">
+      <div className="w-10 rounded-full">
+        <span className="bg-primary text-white flex items-center justify-center h-full">
+          {user?.name?.charAt(0).toUpperCase() || 'U'}
         </span>
+      </div>
       </div>
     )}
   </div>
@@ -79,7 +90,6 @@ PlaniFy
             <ul tabIndex={0} className="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
               <li className="px-4 py-2 border-b">
                 <span className="font-bold">{user?.name}</span>
-                <span className="text-sm text-base-content">{user?.email}</span>
               </li>
               <li><Link to="/profile">Profile Settings</Link></li>
               <li><Link to="/acceuil">Back to Dashboard</Link></li>
@@ -140,19 +150,19 @@ PlaniFy
               Tasks
             </NavLink>
 
-            <NavLink 
+                      <NavLink 
               to={`/workspace/${id}/members`}
               className={({ isActive }) => 
                 `flex items-center p-3 rounded-lg transition-colors ${
                   isActive ? 'bg-primary text-white' : 'hover:bg-base-300'
                 }`
               }
-            >
+          >
               <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
               Members
-            </NavLink>
+          </NavLink>
 
             {workspace?.owner?._id === user?._id && (
               <NavLink 
@@ -175,8 +185,10 @@ PlaniFy
           <div className="mt-auto pt-4 border-t border-base-300">
             <div className="flex items-center space-x-3">
               <div className="avatar">
-                <div className="w-10 rounded-full bg-primary text-white flex items-center justify-center">
-                  {workspace?.owner?.name?.charAt(0) || 'O'}
+              <div className="w-10 rounded-full">
+                <span className="bg-primary text-white flex items-center justify-center h-full">
+                  {workspace?.owner?.name?.charAt(0).toUpperCase() || 'O'}
+                </span>
                 </div>
               </div>
               <div>
@@ -190,7 +202,7 @@ PlaniFy
         {/* Main Content */}
         <div className="flex-1 p-8 bg-base-100">
           <div className="max-w-6xl mx-auto">
-            <Outlet context={{ workspace, setWorkspace }} />
+            <Outlet context={{ workspace, setWorkspace, refreshWorkspace }} />
           </div>
         </div>
       </div>
