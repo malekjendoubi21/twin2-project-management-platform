@@ -17,8 +17,8 @@ import InvitationResponse from './pages/workspace/InvitationResponse.jsx';
 import WorkspaceMembers from './pages/workspace/WorkspaceMembers.jsx';
 import WorkspaceSettings from './pages/workspace/WorkspaceSettings.jsx';
 
-import CreateWorkspace from './pages/workspace/CreateWorkspace.jsx';
 import Profile from './pages/Profile';
+import NotFound from './pages/NotFound.jsx';
 
 function App() {
   return (
@@ -70,7 +70,8 @@ function App() {
           </ProtectedRoute>
         } />
         
-      
+        <Route path="*" element={<NotFound />} />
+
     </Routes>
     </>
   );

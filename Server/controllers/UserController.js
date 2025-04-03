@@ -226,9 +226,42 @@ const getBasicUserInfo = async (req, res) => {
     }
   };
 
+  const profilePictureUpload = async (req, res) => {
+    try {
+        if (!req.files || !req.files.profileImage) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+        
+        const file = req.files.profileImage;
+        
+        // Upload to local storage or cloud service like AWS S3, Cloudinary, etc.
+        // For example, with cloudinary:
+        const result = await cloudinary.uploader.upload(file.tempFilePath, {
+            folder: 'profile_pictures',
+            public_id: `user_${req.user._id}`
+        });
+        
+        // Update user profile in database
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user._id, 
+            { profile_picture: result.secure_url },
+            { new: true }
+        );
+        
+        res.json({ 
+            success: true, 
+            profileUrl: result.secure_url,
+            user: updatedUser
+        });
+    } catch (error) {
+        console.error('Profile picture upload error:', error);
+        res.status(500).json({ message: 'Error uploading profile picture' });
+    }
+};
 
 
-module.exports = { getBasicUserInfo, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getMe };
+
+module.exports = { profilePictureUpload, getBasicUserInfo, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getMe };
 
 
 

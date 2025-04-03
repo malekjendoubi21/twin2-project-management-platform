@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getBasicUserInfo, getMe, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser} = require('../controllers/UserController');
+const {profilePictureUpload, getBasicUserInfo, getMe, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser} = require('../controllers/UserController');
 const { protection, allowTo } =require('../controllers/AuthController');
 const User = require('../models/User');
 
@@ -13,6 +13,7 @@ router.delete('/dropUser/:id', protection, allowTo('admin'), dropUser);
 router.put('/changePassword/:id', protection, allowTo('admin'), changePassword);
 
 // user
+router.post('/upload-profile-picture', protection, profilePictureUpload);
 router.get('/basic/:id', protection, getBasicUserInfo);
 router.get('/getMe',protection, getMe );
 router.put('/updateMyPassword', protection, updateLoggedUserPassword);
