@@ -87,10 +87,12 @@ const updateUserSchema = Joi.object({
   profile_picture: Joi.string()
     .optional(),
 
-  phone_number: Joi.string()
-    .optional(),
+  phone_number: Joi.number()
+    .optional()
+    .allow(''),
 
   bio: Joi.string()
+    .allow('')
     .optional(),
 });
 

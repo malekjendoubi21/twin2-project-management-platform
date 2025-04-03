@@ -410,8 +410,7 @@ exports.getUserWorkspaces = async (req, res) => {
       ]
     }).populate('owner', 'name email');
     
-    console.log(`Found ${workspaces.length} workspaces for user ${userId}`);
-    
+   
     res.status(200).json(workspaces);
   } catch (err) {
     console.error('Error fetching user workspaces:', err);
@@ -424,14 +423,14 @@ exports.getWorkspaceMembers = async (req, res) => {
     
     // Find workspace and populate member details
     const workspace = await Workspace.findById(workspaceId)
-      .populate('members.user', 'name email');
+      .populate('members.user', 'name email profile_picture');
     
     if (!workspace) {
       return res.status(404).json({ message: 'Workspace not found' });
     }
     
     // Also get the owner's details
-    const owner = await User.findById(workspace.owner).select('name email');
+    const owner = await User.findById(workspace.owner).select('name email profile_picture');
     
     // Format the response to include the owner and all members with their roles
     const allMembers = [

@@ -5,6 +5,9 @@ const app = express();
 require("dotenv").config();
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
+const fileUpload = require('express-fileupload');
+app.use(express.json({ limit: '50mb' })); // Increase from default ~1MB to 50MB
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 app.use(
   cors({
@@ -12,9 +15,14 @@ app.use(
     credentials: true,
     methods: ["GET", "POST",'PATCH', "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+  fileUpload({
+    useTempFiles: true,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 5 MB limit
+    responseOnLimit: 'File size limit has been reached',
   })
+
 );
-app.use(express.json());
 
 connectDB();
 

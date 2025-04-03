@@ -549,9 +549,11 @@ const WorkspaceOverview = () => {
                         <>
                           <div className="avatar">
                             <div className="w-10 rounded-full">
+                              {owner.profile_picture ? 
+                              <img src={owner.profile_picture} alt="Owner"/>:
                               <span className="bg-primary text-white flex items-center justify-center h-full">
                                 {owner.name?.charAt(0).toUpperCase() || owner.email?.charAt(0) || 'O'}
-                              </span>
+                              </span>}
                             </div>
                           </div>
                           <span className="text-base-content">{owner.name || owner.email}</span>

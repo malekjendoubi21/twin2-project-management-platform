@@ -186,9 +186,12 @@ PlaniFy
             <div className="flex items-center space-x-3">
               <div className="avatar">
               <div className="w-10 rounded-full">
+                {workspace?.owner?.profile_picture ? 
+                  <img src={workspace.owner.profile_picture} alt="Profile" className="w-full h-full object-cover" />
+                  : 
                 <span className="bg-primary text-white flex items-center justify-center h-full">
                   {workspace?.owner?.name?.charAt(0).toUpperCase() || 'O'}
-                </span>
+                </span> }
                 </div>
               </div>
               <div>

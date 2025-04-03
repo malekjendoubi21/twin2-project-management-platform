@@ -15,9 +15,10 @@ import Projects from './pages/workspace/Projects';
 import WorkspaceOverview from './pages/workspace/WorkspaceOverview.jsx';
 import InvitationResponse from './pages/workspace/InvitationResponse.jsx';
 import WorkspaceMembers from './pages/workspace/WorkspaceMembers.jsx';
+import WorkspaceSettings from './pages/workspace/WorkspaceSettings.jsx';
 
-import CreateWorkspace from './pages/workspace/CreateWorkspace.jsx';
 import Profile from './pages/Profile';
+import NotFound from './pages/NotFound.jsx';
 
 function App() {
   return (
@@ -55,9 +56,7 @@ function App() {
           <Route path="overview" element={<WorkspaceOverview />}  />
           <Route path="projects" element={<Projects />} />
           <Route path="members" element={<WorkspaceMembers />} />
-          {/* <Route path="tasks" element={<Tasks />} />
-          <Route path="members" element={<Members />} />
-          <Route path="settings" element={<Settings />} /> */}
+          <Route path="settings" element={<WorkspaceSettings />} />
         </Route>
       
 
@@ -71,7 +70,8 @@ function App() {
           </ProtectedRoute>
         } />
         
-      
+        <Route path="*" element={<NotFound />} />
+
     </Routes>
     </>
   );

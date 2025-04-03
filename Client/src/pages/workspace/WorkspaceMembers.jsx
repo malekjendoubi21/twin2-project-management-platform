@@ -126,9 +126,12 @@ const WorkspaceMembers = () => {
                         <div className="flex items-center gap-3">
                           <div className="avatar">
                           <div className="w-10 rounded-full">
+                            {member.profile_picture ? 
+                              <img src={member.profile_picture} alt="Profile"/>
+                              :
                 <span className="bg-primary text-white flex items-center justify-center h-full">
                   {member.name?.charAt(0).toUpperCase() || member.email?.charAt(0).toUpperCase() || '?'}
-                  </span>
+                  </span>}
                   </div>
                           </div>
                           <div>

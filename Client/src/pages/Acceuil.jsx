@@ -308,9 +308,6 @@ PlaniFy</Link>
             <ul tabIndex={0} className="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-64">
               <li className="px-4 py-2">
                 <span className="font-bold">{user.name}</span><br/>
-                <span className="text-sm text-gray-600 truncate block max-w-full overflow-hidden">
-                  {user.email}
-                </span>
               </li>
               <li><Link to="/profile">Profile Settings</Link></li>
               <li><button onClick={logout}>Logout</button></li>
