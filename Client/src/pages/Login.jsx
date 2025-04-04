@@ -3,17 +3,60 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/Api';
 import { toast } from 'react-hot-toast';
 
-
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // New state variables for login attempts and lockout
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockoutTimer, setLockoutTimer] = useState(0);
+  const maxLoginAttempts = 3; // Maximum allowed failed attempts
+  const lockoutDuration = 60; // Lockout duration in seconds (1 minute)
+  
   const navigate = useNavigate(); 
   
+  // Function to handle the lockout countdown
+  useEffect(() => {
+    let interval = null;
+    
+    if (isLocked && lockoutTimer > 0) {
+      interval = setInterval(() => {
+        setLockoutTimer(prevTimer => {
+          if (prevTimer <= 1) {
+            clearInterval(interval);
+            setIsLocked(false);
+            setLoginAttempts(0);
+            return 0;
+          }
+          return prevTimer - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isLocked, lockoutTimer]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Check if account is locked
+    if (isLocked) {
+      toast.error(`Account temporarily locked. Try again in ${lockoutTimer} seconds.`, {
+        duration: 3000,
+        style: {
+          background: '#f44336',
+          color: '#fff',
+          padding: '16px',
+          borderRadius: '0px'
+        }
+      });
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -44,6 +87,9 @@ const Login = () => {
           }
         });
         
+        // Reset login attempts on successful login
+        setLoginAttempts(0);
+        
         // Check for redirect URL from invitation flow
         const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
         if (redirectUrl) {
@@ -57,16 +103,37 @@ const Login = () => {
       }, 1000);
       
     } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Erreur de connexion';
-      toast.error(errorMessage, {
-        duration: 5000,
-        style: {
-          background: '#f44336',
-          color: '#fff',
-          padding: '16px',
-          borderRadius: '0px'
-        }
-      });
+      // Increment failed login attempts
+      const newAttempts = loginAttempts + 1;
+      setLoginAttempts(newAttempts);
+      
+      // Check if max attempts reached
+      if (newAttempts >= maxLoginAttempts) {
+        setIsLocked(true);
+        setLockoutTimer(lockoutDuration);
+        
+        toast.error(`Too many failed attempts. Account locked for ${lockoutDuration} seconds.`, {
+          duration: 5000,
+          style: {
+            background: '#f44336',
+            color: '#fff',
+            padding: '16px',
+            borderRadius: '0px'
+          }
+        });
+      } else {
+        const attemptsLeft = maxLoginAttempts - newAttempts;
+        const errorMessage = error.response?.data?.error || 'Erreur de connexion';
+        toast.error(`${errorMessage}. ${attemptsLeft} attempts left before lockout.`, {
+          duration: 5000,
+          style: {
+            background: '#f44336',
+            color: '#fff',
+            padding: '16px',
+            borderRadius: '0px'
+          }
+        });
+      }
       
     } finally {
       setIsLoading(false);
@@ -74,48 +141,65 @@ const Login = () => {
   };
 
   // In your Login component:
-useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('verified') === 'true') {
-    toast.success('Email verified! You can now log in.', {
-      style: {
-        background: '#4CAF50',
-        color: '#fff',
-        padding: '16px',
-        borderRadius: '0px'
-      }
-    });
-    // Clean up the URL
-    navigate('/login', { replace: true });
-  }
-}, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('verified') === 'true') {
+      toast.success('Email verified! You can now log in.', {
+        style: {
+          background: '#4CAF50',
+          color: '#fff',
+          padding: '16px',
+          borderRadius: '0px'
+        }
+      });
+      // Clean up the URL
+      navigate('/login', { replace: true });
+    }
+  }, []);
 
+  // Format the lockout timer as MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
 
   return (
     <div className="min-h-screen bg-base-200 font-poppins">
       <div className="hero min-h-screen">
         <div className="hero-content flex-col lg:flex-row-reverse lg:gap-16">
           
-
-                <div className="text-center lg:text-left lg:w-1/2">
-                <div className="hidden lg:block space-y-6">
-                  <h1 className="text-5xl font-bold gradient-text">
-PlaniFy</h1>
-                  <p className="py-6 text-xl text-base-content">
-                  Enhance your productivity with our seamless project management tools.
-                  </p>
-                  <div className="mockup-window bg-base-300">
-                  <div className="flex justify-center px-4 py-16 bg-base-200">
-                    <div className="animate-pulse">🚀 Explore with us </div>
-                  </div>
-                  </div>
+          <div className="text-center lg:text-left lg:w-1/2">
+            <div className="hidden lg:block space-y-6">
+              <h1 className="text-5xl font-bold gradient-text">PlaniFy</h1>
+              <p className="py-6 text-xl text-base-content">
+                Enhance your productivity with our seamless project management tools.
+              </p>
+              
+              <div className="mockup-window bg-base-300">
+                <div className="flex justify-center px-4 py-16 bg-base-200">
+                  <div className="animate-pulse">🚀 Explore with us </div>
                 </div>
-                </div>
+              </div>
+            </div>
+          </div>
 
-                {/* Right Side - Login Form */}
+          {/* Right Side - Login Form */}
           <div className="card flex-shrink-0 w-full max-w-xl shadow-2xl bg-base-100">
             <div className="card-body p-8 lg:p-12">
               <h2 className="text-3xl font-bold text-center mb-8">Welcome Back</h2>
+              
+              {isLocked && (
+                <div className="alert alert-error mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <h3 className="font-bold">Account temporarily locked!</h3>
+                    <div className="text-xs">Try again in {formatTime(lockoutTimer)} seconds</div>
+                  </div>
+                </div>
+              )}
               
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Email Input */}
@@ -129,6 +213,7 @@ PlaniFy</h1>
                     className="input input-bordered input-lg w-full"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLocked || isLoading}
                   />
                 </div>
 
@@ -144,11 +229,13 @@ PlaniFy</h1>
                       className="input input-bordered input-lg w-full pr-10"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLocked || isLoading}
                     />
                     <button 
                       type="button"
                       className="absolute right-3 top-1/2 transform -translate-y-1/2"
                       onClick={() => setShowPassword(!showPassword)}
+                      disabled={isLocked || isLoading}
                     >
                       {showPassword ? (
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -170,9 +257,9 @@ PlaniFy</h1>
                   className={`btn btn-primary btn-lg w-full mt-8 ${
                     isLoading ? 'loading' : ''
                   }`}
-                  disabled={isLoading}
+                  disabled={isLocked || isLoading}
                 >
-                  {isLoading ? 'Logging in...' : 'Login'}
+                  {isLoading ? 'Logging in...' : isLocked ? `Locked (${formatTime(lockoutTimer)})` : 'Login'}
                 </button>
               </form>
 
@@ -181,7 +268,7 @@ PlaniFy</h1>
               {/* Social Login */}
               <div className="flex flex-col space-y-3">
                 <a href="http://localhost:3000/api/auth/google" >
-                <button className="btn btn-outline btn-md gap-2 w-full">
+                <button className="btn btn-outline btn-md gap-2 w-full" disabled={isLocked}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 48 48">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
                     <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
@@ -209,67 +296,69 @@ PlaniFy</h1>
           </div>
         </div>
       </div>
-      <style>{`
-  .gradient-text {
-    background: linear-gradient(
-      to right,
-      #4f46e5, /* Indigo */
-      #8b5cf6, /* Violet */
-      #ec4899, /* Pink */
-      #3b82f6, /* Blue */
-      #4f46e5  /* Back to indigo */
-    );
-    background-size: 200% auto;
-    color: transparent;
-    -webkit-background-clip: text;
-    background-clip: text;
-    animation: shine 8s linear infinite;
-    transition: all 0.3s ease;
-  }
-
-  /* Animation keyframes */
-  @keyframes shine {
-    to {
-      background-position: 200% center;
-    }
-  }
-
-  /* Scroll interaction - changes animation speed when scrolling */
-  .gradient-text:hover {
-    animation-duration: 3s;
-  }
-
-  /* Add a subtle text shadow for depth */
-  .gradient-text {
-    text-shadow: 0 2px 10px rgba(79, 70, 229, 0.15);
-  }
-`}</style>
-
-{/* Add this script to make text respond to scroll */}
-<script>
-{`
-  document.addEventListener('DOMContentLoaded', function() {
-    const gradientText = document.querySelector('.gradient-text');
-    if (!gradientText) return;
-    
-    let scrolling = false;
-    
-    window.addEventListener('scroll', function() {
-      scrolling = true;
       
-      if (scrolling) {
-        gradientText.style.animationDuration = '2s';
-        scrolling = false;
-        
-        clearTimeout(window.scrollFinished);
-        window.scrollFinished = setTimeout(function() {
-          gradientText.style.animationDuration = '8s';
-        }, 200);
-      }
-    });
-  });
-`}
-</script>
+      {/* Existing styles remain unchanged */}
+      <style>{`
+        .gradient-text {
+          background: linear-gradient(
+            to right,
+            #4f46e5, /* Indigo */
+            #8b5cf6, /* Violet */
+            #ec4899, /* Pink */
+            #3b82f6, /* Blue */
+            #4f46e5  /* Back to indigo */
+          );
+          background-size: 200% auto;
+          color: transparent;
+          -webkit-background-clip: text;
+          background-clip: text;
+          animation: shine 8s linear infinite;
+          transition: all 0.3s ease;
+        }
+
+        /* Animation keyframes */
+        @keyframes shine {
+          to {
+            background-position: 200% center;
+          }
+        }
+
+        /* Scroll interaction - changes animation speed when scrolling */
+        .gradient-text:hover {
+          animation-duration: 3s;
+        }
+
+        /* Add a subtle text shadow for depth */
+        .gradient-text {
+          text-shadow: 0 2px 10px rgba(79, 70, 229, 0.15);
+        }
+      `}</style>
+
+      {/* Existing script remains unchanged */}
+      <script>
+      {`
+        document.addEventListener('DOMContentLoaded', function() {
+          const gradientText = document.querySelector('.gradient-text');
+          if (!gradientText) return;
+          
+          let scrolling = false;
+          
+          window.addEventListener('scroll', function() {
+            scrolling = true;
+            
+            if (scrolling) {
+              gradientText.style.animationDuration = '2s';
+              scrolling = false;
+              
+              clearTimeout(window.scrollFinished);
+              window.scrollFinished = setTimeout(function() {
+                gradientText.style.animationDuration = '8s';
+              }, 200);
+            }
+          });
+        });
+      `}
+      </script>
     </div>
   );
 };

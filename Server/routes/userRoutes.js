@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {profilePictureUpload, getBasicUserInfo, getMe, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser} = require('../controllers/UserController');
+const {profilePictureUpload, getBasicUserInfo, getMe, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getUserProfile} = require('../controllers/UserController');
 const { protection, allowTo } =require('../controllers/AuthController');
 const User = require('../models/User');
 
@@ -39,4 +39,6 @@ router.patch('/:id/add-workspace',protection, async (req, res) => {
     res.status(500).json({ error: 'Failed to update user' });
   }
 });
+router.get('/:userId/profile', protection, getUserProfile);
+
 module.exports = router

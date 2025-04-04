@@ -25,4 +25,5 @@ router.post('/invitations/respond/:invitationId', protection, workspaceControlle
 router.get('/:id/members', protection, workspaceController.getWorkspaceMembers);
 router.put('/:id/members/:memberId', protection,workspaceController.updateMemberRole);
 router.delete('/:id/members/:memberId', protection,workspaceController.removeMember);
+router.get('/:workspaceId/members/:userId/stats', protection, workspaceController.getUserWorkspaceStats);
 module.exports = router;

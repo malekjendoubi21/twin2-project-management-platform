@@ -11,6 +11,10 @@ const Acceuil = () => {
   const hasLoadedDataRef = useRef(false);
   const [showInactivityAlert, setShowInactivityAlert] = useState(false);
   const [countdown, setCountdown] = useState(60);
+  const countdownStartTimeRef = useRef(null);
+  const inactivityTimerRef = useRef(null);
+  const confirmTimeoutRef = useRef(null);
+  const countdownIntervalRef = useRef(null);
    // New states for the workspace creation modal
    const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
    const [newWorkspaceName, setNewWorkspaceName] = useState('');
@@ -19,6 +23,36 @@ const Acceuil = () => {
    const [allWorkspaces, setAllWorkspaces] = useState([]);
    const [isLoadingWorkspaces, setIsLoadingWorkspaces] = useState(false);
    // Function to handle workspace creation - same logic as CreateWorkspace.jsx
+   const toastStyle = {
+    success: {
+      style: {
+        background: '#4CAF50',
+        fontFamily: 'Poppins',
+        color: '#fff',
+        padding: '16px',
+        borderRadius: '0px'
+      }
+    },
+    error: {
+      style: {
+        background: '#f44336',
+        fontFamily: 'Poppins',
+        color: '#fff',
+        padding: '16px',
+        borderRadius: '0px'
+      }
+    },
+    loading: {
+      style: {
+        background: '#3498db',
+        fontFamily: 'Poppins',
+        color: '#fff',
+        padding: '16px',
+        borderRadius: '0px'
+      }
+    }
+  };
+   
    const handleCreateWorkspace = async (e) => {
      e.preventDefault();
      setIsCreatingWorkspace(true);
@@ -40,9 +74,11 @@ const Acceuil = () => {
        
        // 3. Force a full refresh of user data
        await refreshUser();
+       setAllWorkspaces(prevWorkspaces => [newWorkspace, ...prevWorkspaces]);
+
    
        // 4. Show success message
-       toast.success('Workspace created successfully!');
+       toast.success('Workspace created successfully!',toastStyle.success);
        
        // 5. Reset form and close modal instead of navigating
        setNewWorkspaceName('');
@@ -57,65 +93,49 @@ const Acceuil = () => {
      }
    };
   
-  // Refs to store the timers
-  const inactivityTimerRef = useRef(null);
-  const confirmTimeoutRef = useRef(null);
-  const countdownIntervalRef = useRef(null);
-  
-  // Function to reset inactivity timer
+   const startCountdown = () => {
+    countdownStartTimeRef.current = Date.now();
+    const duration = 60 * 1000;
+    countdownIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - countdownStartTimeRef.current;
+      const remainingSeconds = Math.max(0, Math.ceil((duration - elapsed) / 1000));
+      setCountdown(remainingSeconds);
+      if (remainingSeconds <= 0) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+        console.log("Countdown finished. Logging out...");
+        logout();
+      }
+    }, 1000);
+  };
+
   const resetInactivityTimer = () => {
-    // Clear the existing timer
-    if (inactivityTimerRef.current) {
-      clearTimeout(inactivityTimerRef.current);
-    }
-    
-    // Only clear confirmation timeout if we're not showing the alert
-    if (!showInactivityAlert && confirmTimeoutRef.current) {
-      clearTimeout(confirmTimeoutRef.current);
-    }
-    
-    // Set new timer - 10 minutes (600000 milliseconds) or 1 minute (60000) for testing
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (!showInactivityAlert && confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+
     inactivityTimerRef.current = setTimeout(() => {
-      // Show confirmation dialog instead of logging out immediately
       setShowInactivityAlert(true);
       setCountdown(60);
-      
-      // Start countdown
-      countdownIntervalRef.current = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(countdownIntervalRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      
-      // If no interaction after 1 minute, log out
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      startCountdown();
       confirmTimeoutRef.current = setTimeout(() => {
-        console.log("No response to inactivity alert, logging out");
+        console.log("Backup timeout triggered. Logging out.");
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
         logout();
-      }, 60000); // 1 minute to respond
-    }, 600000); // 10 minutes (600000) or 1 minute (60000) for testing
+      }, 61000);
+    }, 30000);
   };
-  
-  // Function to handle staying signed in
+
   const staySignedIn = () => {
     setShowInactivityAlert(false);
-    if (confirmTimeoutRef.current) {
-      clearTimeout(confirmTimeoutRef.current);
-    }
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-    }
+    if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     resetInactivityTimer();
   };
 
   useEffect(() => {
-    // Only load data once when the component mounts
     const loadUserData = async () => {
       if (hasLoadedDataRef.current) return;
-      
       setIsRefreshing(true);
       try {
         await refreshUser();
@@ -127,60 +147,30 @@ const Acceuil = () => {
         setIsRefreshing(false);
       }
     };
-    
+
     if (isAuthenticated && !hasLoadedDataRef.current) {
       loadUserData();
     }
-    
-    
-    // Define activity events to monitor
-    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    
-    // Activity handler function
-    const handleUserActivity = () => {
-      // Only reset the timer if the inactivity alert is NOT showing
-      if (!showInactivityAlert) {
-        resetInactivityTimer();
-      }
-    };
-    
-    // Add event listeners for user activity
-    activityEvents.forEach(event => {
-      window.addEventListener(event, handleUserActivity);
-    });
-    
-    const initialTimerSetup = setTimeout(() => {
-      resetInactivityTimer();
-    }, 1000);
-    // Cleanup function
-    return () => {
-      activityEvents.forEach(event => {
-        window.removeEventListener(event, handleUserActivity);
-      });
-      
-      // window.removeEventListener('beforeunload', handleWindowClose);
-      
-      if (initialTimerSetup) {
-        clearTimeout(initialTimerSetup);
-      }
-      
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-      }
-      if (confirmTimeoutRef.current) {
-        clearTimeout(confirmTimeoutRef.current);
-      }
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-      }
-    };
-  }, [isAuthenticated, showInactivityAlert, logout]);  // Added showInactivityAlert as dependency
 
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    const handleUserActivity = () => {
+      if (!showInactivityAlert) resetInactivityTimer();
+    };
+
+    activityEvents.forEach(event => window.addEventListener(event, handleUserActivity));
+    resetInactivityTimer();
+
+    return () => {
+      activityEvents.forEach(event => window.removeEventListener(event, handleUserActivity));
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, [isAuthenticated]);
 
   const fetchAllAccessibleWorkspaces = async () => {
     setIsLoadingWorkspaces(true);
     try {
-      // Get workspaces where user is a member
       const response = await api.get('/api/workspaces/user/workspaces');
       setAllWorkspaces(response.data);
     } catch (error) {
