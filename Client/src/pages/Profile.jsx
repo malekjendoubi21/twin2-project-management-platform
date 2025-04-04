@@ -5,6 +5,47 @@ import { toast } from 'react-hot-toast';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 
+// Composant pour le cercle de progression
+const ProgressCircle = ({ percentage, size = 80, strokeWidth = 8 }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  let strokeColor;
+  if (percentage < 30) strokeColor = '#ef4444'; // red
+  else if (percentage < 70) strokeColor = '#f59e0b'; // amber
+  else strokeColor = '#10b981'; // emerald
+
+  return (
+    <div className="relative inline-flex items-center justify-center">
+      <svg height={size} width={size} className="transform -rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="transparent"
+          stroke="#e5e7eb" // couleur de fond
+          strokeWidth={strokeWidth}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="transparent"
+          stroke={strokeColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+        />
+      </svg>
+      <span className="absolute text-lg font-bold" style={{ color: strokeColor }}>
+        {percentage}%
+      </span>
+    </div>
+  );
+};
+
 const Profile = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
@@ -14,11 +55,8 @@ const Profile = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [imagePreview, setImagePreview] = useState(null);
     const fileInputRef = useRef(null);
-    const [theme, setTheme] = useState(() => {
-        // Get saved theme from localStorage or default to 'system'
-        return localStorage.getItem('theme') || 'system';
-    });
-    
+    const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'system');
+
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -30,6 +68,23 @@ const Profile = () => {
         password: '',
         newPassword: '',
         confirmPassword: '',
+    });
+
+    // États pour les compétences
+    const [skills, setSkills] = useState([]);
+    const [showSkillForm, setShowSkillForm] = useState(false);
+    const [newSkill, setNewSkill] = useState({ 
+        name: '', 
+        description: '', 
+        category: 'Technical', 
+        tags: 50 // Nouveau champ pour le pourcentage de maîtrise
+    });
+    const [editingSkillId, setEditingSkillId] = useState(null);
+    const [editSkillData, setEditSkillData] = useState({ 
+        name: '', 
+        description: '', 
+        category: 'Technical', 
+        tags: 50 
     });
 
     useEffect(() => {
@@ -53,109 +108,79 @@ const Profile = () => {
                     setImagePreview(response.data.profile_picture);
                 }
             } catch (error) {
+                console.error('Error fetching user:', error.response?.data || error.message);
                 toast.error('Failed to load profile');
                 navigate('/login');
             } finally {
                 setLoading(false);
             }
         };
+
+        const fetchSkills = async () => {
+            try {
+                const response = await api.get('/api/skills');
+                setSkills(response.data);
+            } catch (error) {
+                console.error('Error fetching skills:', error.response?.data || error.message);
+                toast.error('Failed to load skills');
+            }
+        };
+
         fetchUser();
+        fetchSkills();
     }, [navigate]);
 
+
     useEffect(() => {
-        // Apply the theme to the document's data-theme attribute
         if (theme === 'system') {
-            // Check system preference
             const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             document.documentElement.setAttribute('data-theme', systemTheme);
-            
-            // Add listener for system theme changes
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-            const handleChange = (e) => {
-                document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-            };
+            const handleChange = (e) => document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
             mediaQuery.addEventListener('change', handleChange);
             return () => mediaQuery.removeEventListener('change', handleChange);
         } else {
             document.documentElement.setAttribute('data-theme', theme);
         }
-        
-        // Save the theme preference to localStorage
         localStorage.setItem('theme', theme);
     }, [theme]);
 
     useEffect(() => {
-        // Add transition styles to document root
         const style = document.createElement('style');
         style.textContent = `
-          :root {
-            /* Add transition to all color-related properties */
-            transition: background-color 0.3s ease,
-                        color 0.3s ease,
-                        border-color 0.3s ease,
-                        fill 0.3s ease,
-                        stroke 0.3s ease,
-                        outline-color 0.3s ease,
-                        box-shadow 0.3s ease;
-          }
-          
-          /* Apply transitions to common elements */
-          button, input, select, textarea, .btn, .badge, .card,
-          .navbar, .dropdown, .modal, .alert, .tab, .menu {
-            transition: background-color 0.3s ease,
-                        color 0.3s ease,
-                        border-color 0.3s ease,
-                        box-shadow 0.3s ease;
-          }
-          
-          /* Smooth transition for all SVG elements */
-          svg {
-            transition: fill 0.3s ease, stroke 0.3s ease;
-          }
+          :root { transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease, stroke 0.3s ease, outline-color 0.3s ease, box-shadow 0.3s ease; }
+          button, input, select, textarea, .btn, .badge, .card, .navbar, .dropdown, .modal, .alert, .tab, .menu { transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; }
+          svg { transition: fill 0.3s ease, stroke 0.3s ease; }
         `;
-        
         document.head.appendChild(style);
-        
-        // Clean up function to remove the style when component unmounts
-        return () => {
-          document.head.removeChild(style);
-        }
-      }, []); // Empty dependency array means this runs once on mount
+        return () => document.head.removeChild(style);
+    }, []);
 
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        
         if (file.size > 5 * 1024 * 1024) {
             toast.error('File size should be less than 5MB');
             return;
         }
-        
         const reader = new FileReader();
-        reader.onload = (e) => {
-            setImagePreview(e.target.result);
-        };
+        reader.onload = (e) => setImagePreview(e.target.result);
         reader.readAsDataURL(file);
     };
-    
+
     const handleUploadImage = async () => {
         if (!imagePreview || imagePreview === user.profile_picture) return;
-        
         setIsSaving(true);
         try {
-            // Use only the base64 approach which already works
-            const response = await api.put('/api/users/updateMe', {
-                profile_picture: imagePreview
-            });
-            
+            const response = await api.put('/api/users/updateMe', { profile_picture: imagePreview });
             if (response.data.user) {
                 setUser(response.data.user);
                 toast.success('Profile picture updated successfully');
             } else {
-                throw new Error("Failed to update profile picture");
+                throw new Error('Failed to update profile picture');
             }
         } catch (error) {
-            console.error('Upload error:', error);
+            console.error('Upload error:', error.response?.data || error.message);
             toast.error(error.response?.data?.message || 'Failed to upload profile picture');
         } finally {
             setIsSaving(false);
@@ -165,76 +190,118 @@ const Profile = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSaving(true);
-        
         try {
             const response = await api.put('/api/users/updateMe', {
                 name: formData.name,
                 phone_number: formData.phone_number,
                 bio: formData.bio,
-                profile_picture: imagePreview || formData.profile_picture
+                profile_picture: imagePreview || formData.profile_picture,
             });
-    
             if (response.data.user) {
                 setUser(response.data.user);
                 setIsEditing(false);
                 toast.success('Profile updated successfully');
             }
         } catch (error) {
-            console.error('Update error:', error);
-            const errorMessage = error.response?.data?.error || 'Failed to update profile';
-            toast.error(errorMessage);
+            console.error('Update error:', error.response?.data || error.message);
+            toast.error(error.response?.data?.error || 'Failed to update profile');
         } finally {
             setIsSaving(false);
         }
     };
-    
+
     const handlePasswordChange = async (e) => {
         e.preventDefault();
-        
         if (formData.newPassword !== formData.confirmPassword) {
             toast.error('New passwords do not match');
             return;
         }
-        
         setIsSaving(true);
         try {
             await api.put('/api/users/change-password', {
                 currentPassword: formData.password,
-                newPassword: formData.newPassword
+                newPassword: formData.newPassword,
             });
-            
             toast.success('Password changed successfully');
-            setFormData(prev => ({
+            setFormData((prev) => ({
                 ...prev,
                 password: '',
                 newPassword: '',
-                confirmPassword: ''
+                confirmPassword: '',
             }));
         } catch (error) {
-            console.error('Password change error:', error);
+            console.error('Password change error:', error.response?.data || error.message);
             toast.error(error.response?.data?.message || 'Failed to change password');
         } finally {
             setIsSaving(false);
         }
     };
+
     const formatPhoneDisplay = (number) => {
         if (!number) return 'Not provided';
-
-        if (number.length === 8 && !number.startsWith('+')) {
-            return `+216 ${number.slice(0, 2)} ${number.slice(2, 5)} ${number.slice(5)}`;
-        } else if (number.startsWith('216')) {
-            return `+216 ${number.slice(3, 5)} ${number.slice(5, 8)} ${number.slice(8)}`;
-        } else if (number.startsWith('33')) {
-            return `+33 ${number.slice(2, 3)} ${number.slice(3, 5)} ${number.slice(5, 7)} ${number.slice(7)}`;
-        } else if (number.startsWith('1')) {
-            return `+1 (${number.slice(1, 4)}) ${number.slice(4, 7)}-${number.slice(7)}`;
-        }
+        if (number.length === 8 && !number.startsWith('+')) return `+216 ${number.slice(0, 2)} ${number.slice(2, 5)} ${number.slice(5)}`;
+        if (number.startsWith('216')) return `+216 ${number.slice(3, 5)} ${number.slice(5, 8)} ${number.slice(8)}`;
+        if (number.startsWith('33')) return `+33 ${number.slice(2, 3)} ${number.slice(3, 5)} ${number.slice(5, 7)} ${number.slice(7)}`;
+        if (number.startsWith('1')) return `+1 (${number.slice(1, 4)}) ${number.slice(4, 7)}-${number.slice(7)}`;
         return `+${number}`;
     };
-    
-    const handleThemeChange = (newTheme) => {
-        setTheme(newTheme);
+
+    const handleThemeChange = (newTheme) => setTheme(newTheme);
+
+    // Gestion des compétences
+    const handleAddSkill = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await api.post('/api/skills/add', newSkill);
+            setSkills([...skills, response.data]);
+            setNewSkill({ name: '', description: '', category: 'Technical', tags: 50 });
+            setShowSkillForm(false);
+            toast.success('Compétence ajoutée avec succès');
+        } catch (error) {
+            console.error('Error adding skill:', error.response?.data || error.message);
+            toast.error(`Échec de l'ajout: ${error.response?.data?.message || error.message}`);
+        }
     };
+
+    const handleEditSkill = (skill) => {
+        setEditingSkillId(skill._id);
+        setEditSkillData({ 
+            name: skill.name, 
+            description: skill.description, 
+            category: skill.category, 
+            tags: skill.tags 
+        });
+        setShowSkillForm(true);
+    };
+
+    const handleUpdateSkill = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await api.put(`/api/skills/update/${editingSkillId}`, editSkillData);
+            setSkills(skills.map((skill) => (skill._id === editingSkillId ? response.data : skill)));
+            setEditingSkillId(null);
+            setEditSkillData({ name: '', description: '', category: 'Technical', tags: 50 });
+            setShowSkillForm(false);
+            toast.success('Compétence mise à jour avec succès');
+        } catch (error) {
+            console.error('Error updating skill:', error.response?.data || error.message);
+            toast.error(`Échec de la mise à jour: ${error.response?.data?.message || error.message}`);
+        }
+    };
+
+    const handleDeleteSkill = async (skillId) => {
+        
+            try {
+                await api.delete(`/api/skills/${skillId}`);
+                setSkills(skills.filter((skill) => skill._id !== skillId));
+                toast.success('Compétence supprimée avec succès');
+            } catch (error) {
+                console.error('Error deleting skill:', error.response?.data || error.message);
+                toast.error(`Échec de la suppression: ${error.response?.data?.message || error.message}`);
+            }
+        
+    };
+
 
     if (loading) return (
         <div className="min-h-screen bg-base-200 flex items-center justify-center">
@@ -247,7 +314,6 @@ const Profile = () => {
 
     return (
         <div className="min-h-screen bg-base-200 font-poppins">
-            {/* Navbar */}
             <nav className="navbar bg-base-100 shadow-lg px-4 lg:px-8">
                 <div className="flex-1">
                     <Link to="/acceuil" className="btn btn-ghost text-xl text-primary">
@@ -257,17 +323,12 @@ const Profile = () => {
                         PlaniFy
                     </Link>
                 </div>
-                
                 <div className="flex-none gap-4">
                     <div className="dropdown dropdown-end">
                         <div tabIndex={0} className="btn btn-ghost btn-circle avatar">
                             {user.profile_picture ? (
                                 <div className="w-10 h-10 rounded-full overflow-hidden">
-                                    <img 
-                                        src={user.profile_picture} 
-                                        alt={`${user.name}'s profile`} 
-                                        className="w-full h-full object-cover"
-                                    />
+                                    <img src={user.profile_picture} alt={`${user.name}'s profile`} className="w-full h-full object-cover" />
                                 </div>
                             ) : (
                                 <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center">
@@ -286,76 +347,64 @@ const Profile = () => {
                 </div>
             </nav>
 
-            {/* Profile Content */}
             <div className="container mx-auto px-4 py-8">
                 <div className="max-w-5xl mx-auto">
-                    {/* Profile Header */}
                     <div className="bg-base-100 shadow-xl rounded-t-lg overflow-hidden">
                         <div className="h-40 bg-gradient-to-r from-primary to-secondary opacity-80"></div>
                         <div className="px-8 pb-6 relative">
-                        <div className="absolute -top-16 left-8 group">
-    <div className="w-32 h-32 rounded-full border-4 border-base-100 overflow-hidden bg-base-200 shadow-lg relative">
-        {imagePreview ? (
-            <img 
-                src={imagePreview} 
-                alt="Profile" 
-                className="w-full h-full object-cover"
-            />
-        ) : (
-            <div className="w-full h-full flex items-center justify-center bg-primary text-white text-4xl font-bold">
-                {user.name.charAt(0).toUpperCase()}
-            </div>
-        )}
-        
-        {/* Make overlay only cover the circle - moved inside the picture div */}
-        <div 
-            className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-            onClick={() => fileInputRef.current.click()}
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-        </div>
-    </div>
-    
-    <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={handleFileSelect}
-        className="hidden" 
-        accept="image/*"
-    />
-    
-    {/* Moved outside the profile picture div for better visibility */}
-    {imagePreview && imagePreview !== user.profile_picture && (
-        <div className="mt-4 flex justify-center">
-            <button 
-                onClick={handleUploadImage}
-                className="btn btn-sm btn-primary"
-                disabled={isSaving}
-            >
-                {isSaving ? (
-                    <>
-                        <span className="loading loading-spinner loading-xs"></span>
-                        Uploading...
-                    </>
-                ) : "Save Photo"}
-            </button>
-            <button 
-                onClick={() => {
-                    setImagePreview(user.profile_picture);
-                    fileInputRef.current.value = null;
-                }}
-                className="btn btn-sm btn-outline ml-2"
-                disabled={isSaving}
-            >
-                Cancel
-            </button>
-        </div>
-    )}
-</div>
-                            
+                            <div className="absolute -top-16 left-8 group">
+                                <div className="w-32 h-32 rounded-full border-4 border-base-100 overflow-hidden bg-base-200 shadow-lg relative">
+                                    {imagePreview ? (
+                                        <img src={imagePreview} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-primary text-white text-4xl font-bold">
+                                            {user.name.charAt(0).toUpperCase()}
+                                        </div>
+                                    )}
+                                    <div
+                                        className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                        onClick={() => fileInputRef.current.click()}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileSelect}
+                                    className="hidden"
+                                    accept="image/*"
+                                />
+                                {imagePreview && imagePreview !== user.profile_picture && (
+                                    <div className="mt-4 flex justify-center">
+                                        <button
+                                            onClick={handleUploadImage}
+                                            className="btn btn-sm btn-primary"
+                                            disabled={isSaving}
+                                        >
+                                            {isSaving ? (
+                                                <>
+                                                    <span className="loading loading-spinner loading-xs"></span>
+                                                    Uploading...
+                                                </>
+                                            ) : 'Save Photo'}
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setImagePreview(user.profile_picture);
+                                                fileInputRef.current.value = null;
+                                            }}
+                                            className="btn btn-sm btn-outline ml-2"
+                                            disabled={isSaving}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                             <div className="pt-16 sm:ml-36 sm:pt-0">
                                 <div className="flex flex-wrap items-center justify-between gap-4">
                                     <div>
@@ -366,7 +415,7 @@ const Profile = () => {
                                         </p>
                                     </div>
                                     {!isEditing && (
-                                        <button 
+                                        <button
                                             onClick={() => setIsEditing(true)}
                                             className="btn btn-primary"
                                         >
@@ -377,7 +426,6 @@ const Profile = () => {
                                         </button>
                                     )}
                                 </div>
-                                
                                 {user.bio && (
                                     <div className="mt-4 text-base-content opacity-90">
                                         <p>{user.bio}</p>
@@ -385,30 +433,46 @@ const Profile = () => {
                                 )}
                             </div>
                         </div>
-                        
                         <div className="tabs tabs-boxed bg-base-200 px-6">
-                            <button 
+                            <button
                                 className={`tab ${activeTab === 'profile' ? 'tab-active' : ''}`}
                                 onClick={() => setActiveTab('profile')}
                             >
                                 Profile
                             </button>
-                            <button 
+                            <button
                                 className={`tab ${activeTab === 'security' ? 'tab-active' : ''}`}
                                 onClick={() => setActiveTab('security')}
                             >
                                 Security
                             </button>
-                            <button 
+                            <button
                                 className={`tab ${activeTab === 'preferences' ? 'tab-active' : ''}`}
                                 onClick={() => setActiveTab('preferences')}
                             >
                                 Preferences
                             </button>
+                            <button
+                                className={`tab ${activeTab === 'Skills' ? 'tab-active' : ''}`}
+                                onClick={() => setActiveTab('Skills')}
+                            >
+                                Skills
+                            </button>
+                            <button
+                                className={`tab ${activeTab === 'Certifications' ? 'tab-active' : ''}`}
+                                onClick={() => setActiveTab('Certifications')}
+                            >
+                                Certifications
+                            </button>
+                            <button
+                                className={`tab ${activeTab === 'Experience' ? 'tab-active' : ''}`}
+                                onClick={() => setActiveTab('Experience')}
+                            >
+                                Experience
+                            </button>
                         </div>
                     </div>
-                    
-                    {/* Profile Content Tabs */}
+
                     <div className="bg-base-100 shadow-xl rounded-b-lg p-6">
                         {activeTab === 'profile' && (
                             <div>
@@ -422,12 +486,11 @@ const Profile = () => {
                                                 <input
                                                     type="text"
                                                     value={formData.name}
-                                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                                     className="input input-bordered"
                                                     required
                                                 />
                                             </div>
-
                                             <div className="form-control">
                                                 <label className="label">
                                                     <span className="label-text font-medium">Email Address</span>
@@ -441,21 +504,19 @@ const Profile = () => {
                                                 />
                                             </div>
                                         </div>
-
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="form-control">
-    <label className="label">
-        <span className="label-text font-medium">Phone Number</span>
-    </label>
-    <input
-        type="text"
-        value={formData.phone_number}
-        onChange={(e) => setFormData({...formData, phone_number: e.target.value})}
-        className="input input-bordered"
-        placeholder="e.g. +216 12 345 6789"
-    />
-</div>
-
+                                            <div className="form-control">
+                                                <label className="label">
+                                                    <span className="label-text font-medium">Phone Number</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.phone_number}
+                                                    onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                                                    className="input input-bordered"
+                                                    placeholder="e.g. +216 12 345 6789"
+                                                />
+                                            </div>
                                             <div className="form-control">
                                                 <label className="label">
                                                     <span className="label-text font-medium">Role</span>
@@ -468,22 +529,20 @@ const Profile = () => {
                                                 />
                                             </div>
                                         </div>
-
                                         <div className="form-control">
                                             <label className="label">
                                                 <span className="label-text font-medium">Bio</span>
                                             </label>
                                             <textarea
                                                 value={formData.bio}
-                                                onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                                                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                                                 className="textarea textarea-bordered h-24"
                                                 placeholder="Tell us about yourself"
                                             />
                                         </div>
-
                                         <div className="flex gap-4">
-                                            <button 
-                                                type="submit" 
+                                            <button
+                                                type="submit"
                                                 className="btn btn-primary flex-1"
                                                 disabled={isSaving}
                                             >
@@ -492,10 +551,10 @@ const Profile = () => {
                                                         <span className="loading loading-spinner loading-xs"></span>
                                                         Saving...
                                                     </>
-                                                ) : "Save Changes"}
+                                                ) : 'Save Changes'}
                                             </button>
-                                            <button 
-                                                type="button" 
+                                            <button
+                                                type="button"
                                                 onClick={() => setIsEditing(false)}
                                                 className="btn btn-outline flex-1"
                                                 disabled={isSaving}
@@ -524,7 +583,6 @@ const Profile = () => {
                                                     </div>
                                                 </div>
                                             </div>
-
                                             <div>
                                                 <h3 className="text-sm font-semibold text-base-content/60 uppercase">Account Details</h3>
                                                 <div className="mt-3 space-y-4">
@@ -542,14 +600,13 @@ const Profile = () => {
                                                     </div>
                                                     <div className="flex items-center">
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                                         </svg>
                                                         <span>2FA: {user.two_factor_enabled ? 'Enabled' : 'Disabled'}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-
                                         <div className="mt-8">
                                             <h3 className="text-sm font-semibold text-base-content/60 uppercase">Biography</h3>
                                             <div className="mt-3 p-4 bg-base-200 rounded-lg">
@@ -573,12 +630,11 @@ const Profile = () => {
                                             <input
                                                 type="password"
                                                 value={formData.password}
-                                                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                                 className="input input-bordered"
                                                 required
                                             />
                                         </div>
-
                                         <div className="form-control">
                                             <label className="label">
                                                 <span className="label-text">New Password</span>
@@ -586,13 +642,12 @@ const Profile = () => {
                                             <input
                                                 type="password"
                                                 value={formData.newPassword}
-                                                onChange={(e) => setFormData({...formData, newPassword: e.target.value})}
+                                                onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
                                                 className="input input-bordered"
                                                 required
                                                 minLength={8}
                                             />
                                         </div>
-
                                         <div className="form-control">
                                             <label className="label">
                                                 <span className="label-text">Confirm New Password</span>
@@ -600,14 +655,13 @@ const Profile = () => {
                                             <input
                                                 type="password"
                                                 value={formData.confirmPassword}
-                                                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                                                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                                                 className="input input-bordered"
                                                 required
                                             />
                                         </div>
-
-                                        <button 
-                                            type="submit" 
+                                        <button
+                                            type="submit"
                                             className="btn btn-primary"
                                             disabled={isSaving || !formData.password || !formData.newPassword || formData.newPassword !== formData.confirmPassword}
                                         >
@@ -616,13 +670,11 @@ const Profile = () => {
                                                     <span className="loading loading-spinner loading-xs"></span>
                                                     Changing Password...
                                                 </>
-                                            ) : "Change Password"}
+                                            ) : 'Change Password'}
                                         </button>
                                     </form>
                                 </div>
-                                
                                 <div className="divider"></div>
-                                
                                 <div>
                                     <h3 className="text-xl font-bold mb-4">Two-Factor Authentication</h3>
                                     <div className="flex items-center justify-between bg-base-200 p-4 rounded-lg">
@@ -632,9 +684,9 @@ const Profile = () => {
                                         </div>
                                         <div className="form-control">
                                             <label className="cursor-pointer label">
-                                                <input 
-                                                    type="checkbox" 
-                                                    className="toggle toggle-primary" 
+                                                <input
+                                                    type="checkbox"
+                                                    className="toggle toggle-primary"
                                                     checked={formData.two_factor_enabled}
                                                     readOnly
                                                 />
@@ -645,9 +697,7 @@ const Profile = () => {
                                         {formData.two_factor_enabled ? 'Disable' : 'Enable'} Two-Factor Authentication
                                     </button>
                                 </div>
-                                
                                 <div className="divider"></div>
-                                
                                 <div>
                                     <h3 className="text-xl font-bold mb-4">Sessions</h3>
                                     <div className="bg-base-200 p-4 rounded-lg">
@@ -665,13 +715,13 @@ const Profile = () => {
                                 </div>
                             </div>
                         )}
-                        
+
                         {activeTab === 'preferences' && (
                             <div className="space-y-8">
                                 <div>
                                     <h3 className="text-xl font-bold mb-4">Theme Settings</h3>
                                     <div className="flex gap-4">
-                                        <button 
+                                        <button
                                             className={`btn ${theme === 'light' ? 'btn-primary' : 'btn-outline'}`}
                                             onClick={() => handleThemeChange('light')}
                                         >
@@ -680,7 +730,7 @@ const Profile = () => {
                                             </svg>
                                             Light
                                         </button>
-                                        <button 
+                                        <button
                                             className={`btn ${theme === 'dark' ? 'btn-primary' : 'btn-outline'}`}
                                             onClick={() => handleThemeChange('dark')}
                                         >
@@ -689,7 +739,7 @@ const Profile = () => {
                                             </svg>
                                             Dark
                                         </button>
-                                        <button 
+                                        <button
                                             className={`btn ${theme === 'system' ? 'btn-primary' : 'btn-outline'}`}
                                             onClick={() => handleThemeChange('system')}
                                         >
@@ -700,9 +750,7 @@ const Profile = () => {
                                         </button>
                                     </div>
                                 </div>
-                                
                                 <div className="divider"></div>
-                                
                                 <div>
                                     <h3 className="text-xl font-bold mb-4">Email Preferences</h3>
                                     <div className="space-y-4">
@@ -726,9 +774,7 @@ const Profile = () => {
                                         </div>
                                     </div>
                                 </div>
-                                
                                 <div className="divider"></div>
-                                
                                 <div>
                                     <h3 className="text-xl font-bold mb-4">Language</h3>
                                     <select className="select select-bordered w-full max-w-xs">
@@ -737,6 +783,208 @@ const Profile = () => {
                                         <option value="ar">العربية</option>
                                     </select>
                                 </div>
+                            </div>
+                        )}
+
+{activeTab === 'Skills' && (
+    <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
+        <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-primary">my skills</h2>
+            <button
+                onClick={() => {
+                    setShowSkillForm(true);
+                    setEditingSkillId(null);
+                }}
+                className="btn btn-primary gap-2"
+                disabled={showSkillForm}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                Add Skills
+            </button>
+        </div>
+
+        {showSkillForm && (
+            <div className="card bg-base-200 shadow-lg mb-8">
+                <div className="card-body">
+                    <h3 className="card-title text-lg mb-4">
+                        {editingSkillId ? 'Modifier la compétence' : 'Nouvelle compétence'}
+                    </h3>
+                    
+                    <form onSubmit={editingSkillId ? handleUpdateSkill : handleAddSkill} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">Nom*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editingSkillId ? editSkillData.name : newSkill.name}
+                                    onChange={(e) => editingSkillId 
+                                        ? setEditSkillData({...editSkillData, name: e.target.value})
+                                        : setNewSkill({...newSkill, name: e.target.value})}
+                                    className="input input-bordered"
+                                    placeholder="Ex: React, Gestion de projet"
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">Catégorie*</span>
+                                </label>
+                                <select
+                                    value={editingSkillId ? editSkillData.category : newSkill.category}
+                                    onChange={(e) => editingSkillId
+                                        ? setEditSkillData({...editSkillData, category: e.target.value})
+                                        : setNewSkill({...newSkill, category: e.target.value})}
+                                    className="select select-bordered"
+                                    required
+                                >
+                                    <option value="Technical">Technique</option>
+                                    <option value="Soft Skill">Soft Skill</option>
+                                    <option value="Management">Management</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Description*</span>
+                            </label>
+                            <textarea
+                                value={editingSkillId ? editSkillData.description : newSkill.description}
+                                onChange={(e) => editingSkillId
+                                    ? setEditSkillData({...editSkillData, description: e.target.value})
+                                    : setNewSkill({...newSkill, description: e.target.value})}
+                                className="textarea textarea-bordered h-24"
+                                placeholder="Décrivez votre compétence..."
+                                required
+                            />
+                        </div>
+
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Niveau de maîtrise (0-100)</span>
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={editingSkillId ? editSkillData.tags : newSkill.tags}
+                                onChange={(e) => {
+                                    const value = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                                    editingSkillId
+                                        ? setEditSkillData({...editSkillData, tags: value})
+                                        : setNewSkill({...newSkill, tags: value});
+                                }}
+                                className="input input-bordered"
+                                placeholder="Entrez un pourcentage entre 0 et 100"
+                                required
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowSkillForm(false);
+                                    setEditingSkillId(null);
+                                }}
+                                className="btn btn-ghost"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                className="btn btn-primary"
+                            >
+                                {editingSkillId ? 'Enregistrer' : 'Ajouter'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )}
+
+        {skills.length === 0 && !showSkillForm ? (
+            <div className="text-center py-12">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                <h3 className="mt-4 text-lg font-medium text-gray-500">Aucune compétence enregistrée</h3>
+                <p className="mt-1 text-gray-400">Ajoutez vos compétences pour les afficher ici</p>
+                <button
+                    onClick={() => setShowSkillForm(true)}
+                    className="btn btn-primary mt-6"
+                >
+                    Ajouter une compétence
+                </button>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {skills.map((skill) => (
+                    <div key={skill._id} className="card bg-base-100 border border-base-300 hover:border-primary transition-colors">
+                        <div className="card-body">
+                            <div className="flex justify-between items-start gap-4">
+                                <div className="flex-1">
+                                    <h3 className="card-title text-lg">
+                                        {skill.name}
+                                        <span className="badge badge-outline badge-sm ml-2 capitalize">
+                                            {skill.category}
+                                        </span>
+                                    </h3>
+                                    {skill.description && (
+                                        <p className="mt-2 text-base-content/80 line-clamp-2">
+                                            {skill.description}
+                                        </p>
+                                    )}
+                                </div>
+                                
+                                <div className="flex flex-col items-center">
+                                    <ProgressCircle percentage={skill.tags} size={70} strokeWidth={6} />
+                                    <div className="mt-2 flex gap-2">
+                                        <button
+                                            onClick={() => handleEditSkill(skill)}
+                                            className="btn btn-square btn-xs btn-ghost"
+                                            title="Modifier"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteSkill(skill._id)}
+                                            className="btn btn-square btn-xs btn-ghost text-error"
+                                            title="Supprimer"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        )}
+    </div>
+)}
+
+                        {activeTab === 'Certifications' && (
+                            <div className="mt-4 p-6 bg-base-100 shadow-xl rounded-lg">
+                                <h2 className="text-2xl font-bold mb-4">Certifications</h2>
+                                <p>No certifications added yet.</p>
+                            </div>
+                        )}
+
+                        {activeTab === 'Experience' && (
+                            <div className="mt-4 p-6 bg-base-100 shadow-xl rounded-lg">
+                                <h2 className="text-2xl font-bold mb-4">Experience</h2>
+                                <p>No experience added yet.</p>
                             </div>
                         )}
                     </div>
