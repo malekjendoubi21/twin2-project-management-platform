@@ -4,6 +4,7 @@ const Invitation = require('../models/Invitation');
 const { validateWorkspace } = require('../validators/WorkspaceValidator');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const notificationController = require('./notificationController');
 
 // Create a new workspace
 exports.addWorkspace = async (req, res) => {
@@ -136,6 +137,26 @@ exports.inviteToWorkspace = async (req, res) => {
     
     await invitation.save();
     
+    // Add notification if the user already exists in the system
+    if (existingUser) {
+      console.log(`User with email ${email} found. Creating notification.`);
+      
+      const notificationData = {
+        recipient: existingUser._id,
+        type: 'invitation',
+        message: `You've been invited to join the workspace "${workspace.name}"`,
+        workspaceId: workspace._id,
+        invitationId: invitation._id,
+        actionLink: '/invitations',
+        workspaceName: workspace.name
+      };
+      
+      const notification = await notificationController.createNotification(notificationData);
+      console.log('Notification created:', notification ? 'SUCCESS' : 'FAILED');
+    } else {
+      console.log(`No existing user found for email ${email}. Skipping notification.`);
+    }
+    
     // Create a Nodemailer transporter
     let transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -183,7 +204,8 @@ const invitationUrl = `${clientUrl}/invitations/${token}/accept`;
         workspace: workspaceId,
         token,
         expires_at: expiresAt
-      }
+      },
+      userId: existingUser ? existingUser._id : null
     });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -532,5 +554,95 @@ exports.removeMember = async (req, res) => {
   } catch (err) {
     console.error('Error removing workspace member:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+exports.getUserInvitations = async (req, res) => {
+  try {
+    // Find pending invitations for the current user's email
+    const invitations = await Invitation.find({
+      recipient_email: req.user.email,
+      status: 'pending'
+    })
+    .populate('workspace', 'name description')
+    .populate('sender', 'name email');
+    
+    res.json(invitations);
+  } catch (error) {
+    console.error('Error fetching user invitations:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+exports.respondToInvitationById = async (req, res) => {
+  const { invitationId } = req.params;
+  const { action } = req.body;
+  
+  if (!action || !['accept', 'decline'].includes(action)) {
+    return res.status(400).json({ message: 'Invalid action. Must be "accept" or "decline"' });
+  }
+  
+  try {
+    // Find the invitation by ID
+    const invitation = await Invitation.findById(invitationId);
+    
+    if (!invitation) {
+      return res.status(404).json({ message: 'Invitation not found' });
+    }
+    
+    // Verify the invitation is for the authenticated user
+    if (invitation.recipient_email !== req.user.email) {
+      return res.status(403).json({ message: 'This invitation is not for you' });
+    }
+    
+    // Check if invitation has expired
+    if (invitation.expires_at < new Date()) {
+      return res.status(400).json({ message: 'Invitation has expired' });
+    }
+    
+    // Check if invitation is still pending
+    if (invitation.status !== 'pending') {
+      return res.status(400).json({ message: `Invitation has already been ${invitation.status}` });
+    }
+    
+    if (action === 'decline') {
+      // Update invitation status to declined
+      invitation.status = 'declined';
+      await invitation.save();
+      return res.status(200).json({ message: 'Invitation declined successfully' });
+    }
+    
+    // Handle acceptance
+    invitation.status = 'accepted';
+    await invitation.save();
+    
+    // Add user to workspace
+    const workspace = await Workspace.findById(invitation.workspace);
+    
+    if (!workspace) {
+      return res.status(404).json({ message: 'Workspace no longer exists' });
+    }
+    
+    // Check if user is already a member
+    const isAlreadyMember = workspace.members.some(member => 
+      member.user && member.user.toString() === req.user.id
+    );
+    
+    if (!isAlreadyMember) {
+      // Add user as member with viewer role
+      workspace.members.push({
+        user: req.user.id,
+        role: 'viewer'
+      });
+      
+      // Save changes to workspace
+      await workspace.save();
+    }
+    
+    res.status(200).json({ 
+      message: 'Invitation accepted successfully',
+      workspace: workspace._id
+    });
+  } catch (error) {
+    console.error('Error responding to invitation:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
