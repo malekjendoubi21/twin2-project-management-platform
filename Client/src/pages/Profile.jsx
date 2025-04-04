@@ -7,43 +7,43 @@ import 'react-phone-input-2/lib/style.css';
 
 // Composant pour le cercle de progression
 const ProgressCircle = ({ percentage, size = 80, strokeWidth = 8 }) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
-  let strokeColor;
-  if (percentage < 30) strokeColor = '#ef4444'; // red
-  else if (percentage < 70) strokeColor = '#f59e0b'; // amber
-  else strokeColor = '#10b981'; // emerald
+    let strokeColor;
+    if (percentage < 30) strokeColor = '#ef4444'; // red
+    else if (percentage < 70) strokeColor = '#f59e0b'; // amber
+    else strokeColor = '#10b981'; // emerald
 
-  return (
-    <div className="relative inline-flex items-center justify-center">
-      <svg height={size} width={size} className="transform -rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="transparent"
-          stroke="#e5e7eb" // couleur de fond
-          strokeWidth={strokeWidth}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="transparent"
-          stroke={strokeColor}
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-        />
-      </svg>
-      <span className="absolute text-lg font-bold" style={{ color: strokeColor }}>
-        {percentage}%
-      </span>
-    </div>
-  );
+    return (
+        <div className="relative inline-flex items-center justify-center">
+            <svg height={size} width={size} className="transform -rotate-90">
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill="transparent"
+                    stroke="#e5e7eb" // couleur de fond
+                    strokeWidth={strokeWidth}
+                />
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill="transparent"
+                    stroke={strokeColor}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                />
+            </svg>
+            <span className="absolute text-lg font-bold" style={{ color: strokeColor }}>
+                {percentage}%
+            </span>
+        </div>
+    );
 };
 
 const Profile = () => {
@@ -73,40 +73,59 @@ const Profile = () => {
     // États pour les compétences
     const [skills, setSkills] = useState([]);
     const [showSkillForm, setShowSkillForm] = useState(false);
-    const [newSkill, setNewSkill] = useState({ 
-        name: '', 
-        description: '', 
-        category: 'Technical', 
+    const [newSkill, setNewSkill] = useState({
+        name: '',
+        description: '',
+        category: 'Technical',
         tags: 50 // Nouveau champ pour le pourcentage de maîtrise
     });
     const [editingSkillId, setEditingSkillId] = useState(null);
-    const [editSkillData, setEditSkillData] = useState({ 
-        name: '', 
-        description: '', 
-        category: 'Technical', 
-        tags: 50 
+    const [editSkillData, setEditSkillData] = useState({
+        name: '',
+        description: '',
+        category: 'Technical',
+        tags: 50
     });
+
+    // États pour les certifications
+    const [certifications, setCertifications] = useState([]);
+    const [showCertificationForm, setShowCertificationForm] = useState(false);
+    const [newCertification, setNewCertification] = useState({
+        certifications_name: '',
+        issued_by: '',
+        obtained_date: '',
+        description: '',
+        image: null,
+    });
+    const [editingCertificationId, setEditingCertificationId] = useState(null);
+    const [editCertificationData, setEditCertificationData] = useState({
+        certifications_name: '',
+        issued_by: '',
+        obtained_date: '',
+        description: '',
+        image: null,
+    });
+    const [certificationImagePreview, setCertificationImagePreview] = useState(null);
+    const certificationFileInputRef = useRef(null);
 
     useEffect(() => {
         const fetchUser = async () => {
             try {
                 const response = await api.get('/api/users/getMe');
-                setUser(response.data);
+                setUser(response.data || {});
                 setFormData({
-                    name: response.data.name,
-                    email: response.data.email,
-                    phone_number: response.data.phone_number || '',
-                    bio: response.data.bio || '',
-                    role: response.data.role || 'user',
-                    two_factor_enabled: response.data.two_factor_enabled || false,
-                    profile_picture: response.data.profile_picture || '',
+                    name: response.data?.name || '',
+                    email: response.data?.email || '',
+                    phone_number: response.data?.phone_number || '',
+                    bio: response.data?.bio || '',
+                    role: response.data?.role || 'user',
+                    two_factor_enabled: response.data?.two_factor_enabled || false,
+                    profile_picture: response.data?.profile_picture || '',
                     password: '',
                     newPassword: '',
                     confirmPassword: '',
                 });
-                if (response.data.profile_picture) {
-                    setImagePreview(response.data.profile_picture);
-                }
+                setImagePreview(response.data?.profile_picture || null);
             } catch (error) {
                 console.error('Error fetching user:', error.response?.data || error.message);
                 toast.error('Failed to load profile');
@@ -119,17 +138,38 @@ const Profile = () => {
         const fetchSkills = async () => {
             try {
                 const response = await api.get('/api/skills');
-                setSkills(response.data);
+                setSkills(response.data || []);
             } catch (error) {
                 console.error('Error fetching skills:', error.response?.data || error.message);
                 toast.error('Failed to load skills');
             }
         };
 
+        const fetchCertifications = async () => {
+            try {
+                const response = await api.get('/api/certifications');
+                const validCertifications = Array.isArray(response.data)
+                    ? response.data.map(cert => ({
+                        _id: cert._id || '',
+                        certifications_name: cert.certifications_name || 'Unnamed Certification',
+                        issued_by: cert.issued_by || 'Unknown Issuer',
+                        obtained_date: cert.obtained_date || new Date().toISOString().split('T')[0],
+                        description: cert.description || '',
+                        image: cert.image || null,
+                    }))
+                    : [];
+                setCertifications(validCertifications);
+            } catch (error) {
+                console.error('Error fetching certifications:', error.response?.data || error.message);
+                toast.error('Failed to load certifications');
+                setCertifications([]);
+            }
+        };
+
         fetchUser();
         fetchSkills();
+        fetchCertifications();
     }, [navigate]);
-
 
     useEffect(() => {
         if (theme === 'system') {
@@ -169,12 +209,14 @@ const Profile = () => {
     };
 
     const handleUploadImage = async () => {
-        if (!imagePreview || imagePreview === user.profile_picture) return;
+        if (!imagePreview || imagePreview === user?.profile_picture) return;
         setIsSaving(true);
         try {
             const response = await api.put('/api/users/updateMe', { profile_picture: imagePreview });
-            if (response.data.user) {
+            if (response.data?.user) {
                 setUser(response.data.user);
+                setFormData(prev => ({ ...prev, profile_picture: response.data.user.profile_picture }));
+                setImagePreview(response.data.user.profile_picture);
                 toast.success('Profile picture updated successfully');
             } else {
                 throw new Error('Failed to update profile picture');
@@ -197,8 +239,15 @@ const Profile = () => {
                 bio: formData.bio,
                 profile_picture: imagePreview || formData.profile_picture,
             });
-            if (response.data.user) {
+            if (response.data?.user) {
                 setUser(response.data.user);
+                setFormData(prev => ({
+                    ...prev,
+                    name: response.data.user.name,
+                    phone_number: response.data.user.phone_number,
+                    bio: response.data.user.bio,
+                    profile_picture: response.data.user.profile_picture,
+                }));
                 setIsEditing(false);
                 toast.success('Profile updated successfully');
             }
@@ -265,11 +314,11 @@ const Profile = () => {
 
     const handleEditSkill = (skill) => {
         setEditingSkillId(skill._id);
-        setEditSkillData({ 
-            name: skill.name, 
-            description: skill.description, 
-            category: skill.category, 
-            tags: skill.tags 
+        setEditSkillData({
+            name: skill.name,
+            description: skill.description,
+            category: skill.category,
+            tags: skill.tags
         });
         setShowSkillForm(true);
     };
@@ -290,35 +339,191 @@ const Profile = () => {
     };
 
     const handleDeleteSkill = async (skillId) => {
-        
-            try {
-                await api.delete(`/api/skills/${skillId}`);
-                setSkills(skills.filter((skill) => skill._id !== skillId));
-                toast.success('Compétence supprimée avec succès');
-            } catch (error) {
-                console.error('Error deleting skill:', error.response?.data || error.message);
-                toast.error(`Échec de la suppression: ${error.response?.data?.message || error.message}`);
-            }
-        
+        try {
+            await api.delete(`/api/skills/${skillId}`);
+            setSkills(skills.filter((skill) => skill._id !== skillId));
+            toast.success('Compétence supprimée avec succès');
+        } catch (error) {
+            console.error('Error deleting skill:', error.response?.data || error.message);
+            toast.error(`Échec de la suppression: ${error.response?.data?.message || error.message}`);
+        }
     };
 
+    // Gestion des certifications
+    const handleCertificationImageSelect = (e, isEditing = false) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-    if (loading) return (
-        <div className="min-h-screen bg-base-200 flex items-center justify-center">
-            <div className="text-center">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
-                <p className="mt-4 text-lg">Loading profile...</p>
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('File size should be less than 5MB');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const imageData = event.target.result;
+            if (isEditing) {
+                setEditCertificationData(prev => ({ ...prev, image: imageData }));
+            } else {
+                setNewCertification(prev => ({ ...prev, image: imageData }));
+            }
+            setCertificationImagePreview(imageData);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleAddCertification = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            const formData = new FormData();
+            formData.append('certifications_name', newCertification.certifications_name);
+            formData.append('issued_by', newCertification.issued_by);
+            formData.append('obtained_date', newCertification.obtained_date);
+            formData.append('description', newCertification.description);
+
+            if (newCertification.image && newCertification.image.startsWith('data:')) {
+                const blob = await fetch(newCertification.image).then(res => res.blob());
+                formData.append('image', blob, 'certification.jpg');
+            }
+
+            const response = await api.post('/api/certifications/addCertification', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+
+            setCertifications([...certifications, response.data]);
+            setNewCertification({
+                certifications_name: '',
+                issued_by: '',
+                obtained_date: '',
+                description: '',
+                image: null,
+            });
+            setCertificationImagePreview(null);
+            setShowCertificationForm(false);
+            if (certificationFileInputRef.current) certificationFileInputRef.current.value = null;
+            toast.success('Certification added successfully');
+        } catch (error) {
+            console.error('Error adding certification:', error.response?.data || error.message);
+            toast.error(error.response?.data?.message || 'Failed to add certification');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleEditCertification = (certification) => {
+        setEditingCertificationId(certification._id);
+        setEditCertificationData({
+            certifications_name: certification.certifications_name || '',
+            issued_by: certification.issued_by || '',
+            obtained_date: certification.obtained_date ? certification.obtained_date.split('T')[0] : '',
+            description: certification.description || '',
+            image: certification.image || null,
+        });
+        setCertificationImagePreview(certification.image || null);
+        setShowCertificationForm(true);
+    };
+
+    const handleUpdateCertification = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            const formData = new FormData();
+            formData.append('certifications_name', editCertificationData.certifications_name);
+            formData.append('issued_by', editCertificationData.issued_by);
+            formData.append('obtained_date', editCertificationData.obtained_date);
+            formData.append('description', editCertificationData.description);
+
+            if (editCertificationData.image && editCertificationData.image.startsWith('data:')) {
+                const blob = await fetch(editCertificationData.image).then(res => res.blob());
+                formData.append('image', blob, 'certification.jpg');
+            } else if (editCertificationData.image) {
+                formData.append('image', editCertificationData.image); // Conserver l'URL existante
+            }
+
+            const response = await api.put(`/api/certifications/updateCertification/${editingCertificationId}`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+
+            setCertifications(certifications.map(cert => (cert._id === editingCertificationId ? response.data : cert)));
+            setEditingCertificationId(null);
+            setEditCertificationData({
+                certifications_name: '',
+                issued_by: '',
+                obtained_date: '',
+                description: '',
+                image: null,
+            });
+            setCertificationImagePreview(null);
+            setShowCertificationForm(false);
+            if (certificationFileInputRef.current) certificationFileInputRef.current.value = null;
+            toast.success('Certification updated successfully');
+        } catch (error) {
+            console.error('Error updating certification:', error.response?.data || error.message);
+            toast.error(error.response?.data?.message || 'Failed to update certification');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDeleteCertification = async (certificationId) => {
+        try {
+            await api.delete(`/api/certifications/${certificationId}`);
+            setCertifications(certifications.filter(cert => cert._id !== certificationId));
+            toast.success('Certification deleted successfully');
+        } catch (error) {
+            console.error('Error deleting certification:', error.response?.data || error.message);
+            toast.error(error.response?.data?.message || 'Failed to delete certification');
+        }
+    };
+
+    const handleCancelCertificationImage = () => {
+        if (editingCertificationId) {
+            const existingCert = certifications.find(cert => cert._id === editingCertificationId);
+            setEditCertificationData(prev => ({
+                ...prev,
+                image: existingCert?.image || null,
+            }));
+            setCertificationImagePreview(existingCert?.image || null);
+        } else {
+            setNewCertification(prev => ({
+                ...prev,
+                image: null,
+            }));
+            setCertificationImagePreview(null);
+        }
+        if (certificationFileInputRef.current) certificationFileInputRef.current.value = null;
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-base-200 flex items-center justify-center">
+                <div className="text-center">
+                    <span className="loading loading-spinner loading-lg text-primary"></span>
+                    <p className="mt-4 text-lg">Loading profile...</p>
+                </div>
             </div>
-        </div>
-    );
+        );
+    }
 
     return (
         <div className="min-h-screen bg-base-200 font-poppins">
             <nav className="navbar bg-base-100 shadow-lg px-4 lg:px-8">
                 <div className="flex-1">
                     <Link to="/acceuil" className="btn btn-ghost text-xl text-primary">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-6 w-6 mr-2"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                            />
                         </svg>
                         PlaniFy
                     </Link>
@@ -326,22 +531,31 @@ const Profile = () => {
                 <div className="flex-none gap-4">
                     <div className="dropdown dropdown-end">
                         <div tabIndex={0} className="btn btn-ghost btn-circle avatar">
-                            {user.profile_picture ? (
+                            {user?.profile_picture ? (
                                 <div className="w-10 h-10 rounded-full overflow-hidden">
-                                    <img src={user.profile_picture} alt={`${user.name}'s profile`} className="w-full h-full object-cover" />
+                                    <img
+                                        src={user.profile_picture}
+                                        alt={`${user.name}'s profile`}
+                                        className="w-full h-full object-cover"
+                                    />
                                 </div>
                             ) : (
                                 <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center">
-                                    {user.name.charAt(0).toUpperCase()}
+                                    {user?.name?.charAt(0).toUpperCase() || 'U'}
                                 </div>
                             )}
                         </div>
-                        <ul tabIndex={0} className="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
+                        <ul
+                            tabIndex={0}
+                            className="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
+                        >
                             <li className="px-4 py-2 border-b">
-                                <span className="font-bold">{user.name}</span>
-                                <span className="text-sm block opacity-70">{user.email}</span>
+                                <span className="font-bold">{user?.name || 'User'}</span>
+                                <span className="text-sm block opacity-70">{user?.email || 'user@example.com'}</span>
                             </li>
-                            <li><Link to="/acceuil">Dashboard</Link></li>
+                            <li>
+                                <Link to="/acceuil">Dashboard</Link>
+                            </li>
                         </ul>
                     </div>
                 </div>
@@ -358,16 +572,32 @@ const Profile = () => {
                                         <img src={imagePreview} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center bg-primary text-white text-4xl font-bold">
-                                            {user.name.charAt(0).toUpperCase()}
+                                            {user?.name?.charAt(0).toUpperCase() || 'U'}
                                         </div>
                                     )}
                                     <div
                                         className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                        onClick={() => fileInputRef.current.click()}
+                                        onClick={() => fileInputRef.current?.click()}
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-8 w-8 text-white"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="2"
+                                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                                            />
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="2"
+                                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                                            />
                                         </svg>
                                     </div>
                                 </div>
@@ -378,7 +608,7 @@ const Profile = () => {
                                     className="hidden"
                                     accept="image/*"
                                 />
-                                {imagePreview && imagePreview !== user.profile_picture && (
+                                {imagePreview && imagePreview !== user?.profile_picture && (
                                     <div className="mt-4 flex justify-center">
                                         <button
                                             onClick={handleUploadImage}
@@ -394,8 +624,8 @@ const Profile = () => {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                setImagePreview(user.profile_picture);
-                                                fileInputRef.current.value = null;
+                                                setImagePreview(user?.profile_picture || null);
+                                                if (fileInputRef.current) fileInputRef.current.value = null;
                                             }}
                                             className="btn btn-sm btn-outline ml-2"
                                             disabled={isSaving}
@@ -408,10 +638,10 @@ const Profile = () => {
                             <div className="pt-16 sm:ml-36 sm:pt-0">
                                 <div className="flex flex-wrap items-center justify-between gap-4">
                                     <div>
-                                        <h1 className="text-3xl font-bold">{user.name}</h1>
-                                        <p className="text-base-content opacity-75">{user.email}</p>
+                                        <h1 className="text-3xl font-bold">{user?.name || 'User'}</h1>
+                                        <p className="text-base-content opacity-75">{user?.email || 'user@example.com'}</p>
                                         <p className="mt-1">
-                                            <span className="badge badge-primary">{user.role}</span>
+                                            <span className="badge badge-primary">{user?.role || 'user'}</span>
                                         </p>
                                     </div>
                                     {!isEditing && (
@@ -419,14 +649,25 @@ const Profile = () => {
                                             onClick={() => setIsEditing(true)}
                                             className="btn btn-primary"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-5 w-5 mr-2"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth="2"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                />
                                             </svg>
                                             Edit Profile
                                         </button>
                                     )}
                                 </div>
-                                {user.bio && (
+                                {user?.bio && (
                                     <div className="mt-4 text-base-content opacity-90">
                                         <p>{user.bio}</p>
                                     </div>
@@ -570,16 +811,38 @@ const Profile = () => {
                                                 <h3 className="text-sm font-semibold text-base-content/60 uppercase">Contact Information</h3>
                                                 <div className="mt-3 space-y-4">
                                                     <div className="flex items-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            className="h-5 w-5 text-primary mr-3"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth="2"
+                                                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                                            />
                                                         </svg>
-                                                        <span>{user.email}</span>
+                                                        <span>{user?.email || 'user@example.com'}</span>
                                                     </div>
                                                     <div className="flex items-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            className="h-5 w-5 text-primary mr-3"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth="2"
+                                                                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                                                            />
                                                         </svg>
-                                                        <span>{formatPhoneDisplay(user.phone_number)}</span>
+                                                        <span>{formatPhoneDisplay(user?.phone_number)}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -587,22 +850,55 @@ const Profile = () => {
                                                 <h3 className="text-sm font-semibold text-base-content/60 uppercase">Account Details</h3>
                                                 <div className="mt-3 space-y-4">
                                                     <div className="flex items-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            className="h-5 w-5 text-primary mr-3"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth="2"
+                                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                                            />
                                                         </svg>
-                                                        <span>{user.name}</span>
+                                                        <span>{user?.name || 'User'}</span>
                                                     </div>
                                                     <div className="flex items-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            className="h-5 w-5 text-primary mr-3"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth="2"
+                                                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                                            />
                                                         </svg>
-                                                        <span className="capitalize">{user.role}</span>
+                                                        <span className="capitalize">{user?.role || 'user'}</span>
                                                     </div>
                                                     <div className="flex items-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            className="h-5 w-5 text-primary mr-3"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth="2"
+                                                                d="M12 15v2m-6 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                                            />
                                                         </svg>
-                                                        <span>2FA: {user.two_factor_enabled ? 'Enabled' : 'Disabled'}</span>
+                                                        <span>2FA: {user?.two_factor_enabled ? 'Enabled' : 'Disabled'}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -610,7 +906,7 @@ const Profile = () => {
                                         <div className="mt-8">
                                             <h3 className="text-sm font-semibold text-base-content/60 uppercase">Biography</h3>
                                             <div className="mt-3 p-4 bg-base-200 rounded-lg">
-                                                <p>{user.bio || 'No bio provided yet. Click Edit Profile to add one!'}</p>
+                                                <p>{user?.bio || 'No bio provided yet. Click Edit Profile to add one!'}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -786,186 +1082,548 @@ const Profile = () => {
                             </div>
                         )}
 
-{activeTab === 'Skills' && (
-    <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
+                        {activeTab === 'Skills' && (
+                            <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-bold text-primary">My Skills</h2>
+                                    <button
+                                        onClick={() => {
+                                            setShowSkillForm(true);
+                                            setEditingSkillId(null);
+                                            setNewSkill({ name: '', description: '', category: 'Technical', tags: 50 });
+                                        }}
+                                        className="btn btn-primary gap-2"
+                                        disabled={showSkillForm}
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-5 w-5"
+                                            viewBox="0 0 20 20"
+                                            fill="currentColor"
+                                        >
+                                            <path
+                                                fillRule="evenodd"
+                                                d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                clipRule="evenodd"
+                                            />
+                                        </svg>
+                                        Add Skill
+                                    </button>
+                                </div>
+
+                                {showSkillForm && (
+                                    <div className="card bg-base-200 shadow-lg mb-8">
+                                        <div className="card-body">
+                                            <h3 className="card-title text-lg mb-4">
+                                                {editingSkillId ? 'Edit Skill' : 'New Skill'}
+                                            </h3>
+                                            <form
+                                                onSubmit={editingSkillId ? handleUpdateSkill : handleAddSkill}
+                                                className="space-y-4"
+                                            >
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="form-control">
+                                                        <label className="label">
+                                                            <span className="label-text">Name*</span>
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            value={editingSkillId ? editSkillData.name : newSkill.name}
+                                                            onChange={(e) =>
+                                                                editingSkillId
+                                                                    ? setEditSkillData({
+                                                                        ...editSkillData,
+                                                                        name: e.target.value,
+                                                                    })
+                                                                    : setNewSkill({
+                                                                        ...newSkill,
+                                                                        name: e.target.value,
+                                                                    })
+                                                            }
+                                                            className="input input-bordered"
+                                                            placeholder="Ex: React, Project Management"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="form-control">
+                                                        <label className="label">
+                                                            <span className="label-text">Category*</span>
+                                                        </label>
+                                                        <select
+                                                            value={editingSkillId ? editSkillData.category : newSkill.category}
+                                                            onChange={(e) =>
+                                                                editingSkillId
+                                                                    ? setEditSkillData({
+                                                                        ...editSkillData,
+                                                                        category: e.target.value,
+                                                                    })
+                                                                    : setNewSkill({
+                                                                        ...newSkill,
+                                                                        category: e.target.value,
+                                                                    })
+                                                            }
+                                                            className="select select-bordered"
+                                                            required
+                                                        >
+                                                            <option value="Technical">Technical</option>
+                                                            <option value="Soft Skill">Soft Skill</option>
+                                                            <option value="Management">Management</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div className="form-control">
+                                                    <label className="label">
+                                                        <span className="label-text">Description*</span>
+                                                    </label>
+                                                    <textarea
+                                                        value={editingSkillId ? editSkillData.description : newSkill.description}
+                                                        onChange={(e) =>
+                                                            editingSkillId
+                                                                ? setEditSkillData({
+                                                                    ...editSkillData,
+                                                                    description: e.target.value,
+                                                                })
+                                                                : setNewSkill({
+                                                                    ...newSkill,
+                                                                    description: e.target.value,
+                                                                })
+                                                        }
+                                                        className="textarea textarea-bordered h-24"
+                                                        placeholder="Describe your skill..."
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="form-control">
+                                                    <label className="label">
+                                                        <span className="label-text">Proficiency Level (0-100)*</span>
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max="100"
+                                                        value={editingSkillId ? editSkillData.tags : newSkill.tags}
+                                                        onChange={(e) => {
+                                                            const value = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                                                            editingSkillId
+                                                                ? setEditSkillData({ ...editSkillData, tags: value })
+                                                                : setNewSkill({ ...newSkill, tags: value });
+                                                        }}
+                                                        className="input input-bordered"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="flex justify-end gap-3 mt-6">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setShowSkillForm(false);
+                                                            setEditingSkillId(null);
+                                                            setEditSkillData({ name: '', description: '', category: 'Technical', tags: 50 });
+                                                        }}
+                                                        className="btn btn-ghost"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button type="submit" className="btn btn-primary">
+                                                        {editingSkillId ? 'Update' : 'Add'}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {skills.length === 0 && !showSkillForm ? (
+                                    <div className="text-center py-12">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-12 w-12 mx-auto text-gray-400"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={1.5}
+                                                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                                            />
+                                        </svg>
+                                        <h3 className="mt-4 text-lg font-medium text-gray-500">No skills added yet</h3>
+                                        <p className="mt-1 text-gray-400">Add your skills to display them here</p>
+                                        <button
+                                            onClick={() => setShowSkillForm(true)}
+                                            className="btn btn-primary mt-6"
+                                        >
+                                            Add Skill
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {skills.map((skill) => (
+                                            <div
+                                                key={skill._id}
+                                                className="card bg-base-100 border border-base-300 hover:border-primary transition-colors"
+                                            >
+                                                <div className="card-body">
+                                                    <div className="flex justify-between items-start gap-4">
+                                                        <div className="flex-1">
+                                                            <h3 className="card-title text-lg">
+                                                                {skill.name}
+                                                                <span className="badge badge-outline badge-sm ml-2 capitalize">
+                                                                    {skill.category}
+                                                                </span>
+                                                            </h3>
+                                                            {skill.description && (
+                                                                <p className="mt-2 text-base-content/80 line-clamp-2">
+                                                                    {skill.description}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-col items-center">
+                                                            <ProgressCircle percentage={skill.tags} size={70} strokeWidth={6} />
+                                                            <div className="mt-2 flex gap-2">
+                                                                <button
+                                                                    onClick={() => handleEditSkill(skill)}
+                                                                    className="btn btn-square btn-xs btn-ghost"
+                                                                    title="Edit"
+                                                                >
+                                                                    <svg
+                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                        className="h-4 w-4"
+                                                                        fill="none"
+                                                                        viewBox="0 0 24 24"
+                                                                        stroke="currentColor"
+                                                                    >
+                                                                        <path
+                                                                            strokeLinecap="round"
+                                                                            strokeLinejoin="round"
+                                                                            strokeWidth={2}
+                                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                                        />
+                                                                    </svg>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteSkill(skill._id)}
+                                                                    className="btn btn-square btn-xs btn-ghost text-error"
+                                                                    title="Delete"
+                                                                >
+                                                                    <svg
+                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                        className="h-4 w-4"
+                                                                        fill="none"
+                                                                        viewBox="0 0 24 24"
+                                                                        stroke="currentColor"
+                                                                    >
+                                                                        <path
+                                                                            strokeLinecap="round"
+                                                                            strokeLinejoin="round"
+                                                                            strokeWidth={2}
+                                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                        />
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+{activeTab === 'Certifications' && (
+    <div className="mt-4 p-6 bg-base-100 text-base-content rounded-lg border border-base-300 shadow-lg">
         <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-primary">my skills</h2>
+            <h2 className="text-2xl font-bold text-primary">Mes Certifications</h2>
             <button
                 onClick={() => {
-                    setShowSkillForm(true);
-                    setEditingSkillId(null);
+                    setShowCertificationForm(true);
+                    setEditingCertificationId(null);
+                    setNewCertification({
+                        certifications_name: '',
+                        issued_by: '',
+                        obtained_date: '',
+                        description: '',
+                        image: null,
+                    });
+                    setCertificationImagePreview(null);
+                    if (certificationFileInputRef.current) certificationFileInputRef.current.value = '';
                 }}
-                className="btn btn-primary gap-2"
-                disabled={showSkillForm}
+                className="btn btn-primary gap-2 hover:bg-primary-focus transition-colors mb-4"
+                disabled={showCertificationForm}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 text-white"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                >
+                    <path
+                        fillRule="evenodd"
+                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                        clipRule="evenodd"
+                    />
                 </svg>
-                Add Skills
+                Ajouter une Certification
             </button>
         </div>
 
-        {showSkillForm && (
-            <div className="card bg-base-200 shadow-lg mb-8">
-                <div className="card-body">
-                    <h3 className="card-title text-lg mb-4">
-                        {editingSkillId ? 'Modifier la compétence' : 'Nouvelle compétence'}
-                    </h3>
-                    
-                    <form onSubmit={editingSkillId ? handleUpdateSkill : handleAddSkill} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">Nom*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editingSkillId ? editSkillData.name : newSkill.name}
-                                    onChange={(e) => editingSkillId 
-                                        ? setEditSkillData({...editSkillData, name: e.target.value})
-                                        : setNewSkill({...newSkill, name: e.target.value})}
-                                    className="input input-bordered"
-                                    placeholder="Ex: React, Gestion de projet"
-                                    required
-                                />
-                            </div>
-
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">Catégorie*</span>
-                                </label>
-                                <select
-                                    value={editingSkillId ? editSkillData.category : newSkill.category}
-                                    onChange={(e) => editingSkillId
-                                        ? setEditSkillData({...editSkillData, category: e.target.value})
-                                        : setNewSkill({...newSkill, category: e.target.value})}
-                                    className="select select-bordered"
-                                    required
-                                >
-                                    <option value="Technical">Technique</option>
-                                    <option value="Soft Skill">Soft Skill</option>
-                                    <option value="Management">Management</option>
-                                </select>
-                            </div>
-                        </div>
-
+        {showCertificationForm && (
+            <div className="bg-base-200 p-6 rounded-lg mb-8 shadow-sm">
+                <h3 className="text-lg font-semibold mb-4">
+                    {editingCertificationId ? 'Modifier la Certification' : 'Nouvelle Certification'}
+                </h3>
+                <form
+                    onSubmit={editingCertificationId ? handleUpdateCertification : handleAddCertification}
+                    className="space-y-4"
+                >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">Description*</span>
-                            </label>
-                            <textarea
-                                value={editingSkillId ? editSkillData.description : newSkill.description}
-                                onChange={(e) => editingSkillId
-                                    ? setEditSkillData({...editSkillData, description: e.target.value})
-                                    : setNewSkill({...newSkill, description: e.target.value})}
-                                className="textarea textarea-bordered h-24"
-                                placeholder="Décrivez votre compétence..."
-                                required
-                            />
-                        </div>
-
-                        <div className="form-control">
-                            <label className="label">
-                                <span className="label-text">Niveau de maîtrise (0-100)</span>
+                                <span className="label-text">Nom*</span>
                             </label>
                             <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={editingSkillId ? editSkillData.tags : newSkill.tags}
-                                onChange={(e) => {
-                                    const value = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
-                                    editingSkillId
-                                        ? setEditSkillData({...editSkillData, tags: value})
-                                        : setNewSkill({...newSkill, tags: value});
-                                }}
+                                type="text"
+                                value={editingCertificationId ? editCertificationData.certifications_name : newCertification.certifications_name}
+                                onChange={(e) =>
+                                    editingCertificationId
+                                        ? setEditCertificationData(prev => ({ ...prev, certifications_name: e.target.value }))
+                                        : setNewCertification(prev => ({ ...prev, certifications_name: e.target.value }))
+                                }
                                 className="input input-bordered"
-                                placeholder="Entrez un pourcentage entre 0 et 100"
+                                placeholder="Ex: AWS Certified Developer"
                                 required
                             />
                         </div>
-
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowSkillForm(false);
-                                    setEditingSkillId(null);
-                                }}
-                                className="btn btn-ghost"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                type="submit"
-                                className="btn btn-primary"
-                            >
-                                {editingSkillId ? 'Enregistrer' : 'Ajouter'}
-                            </button>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Délivré par*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={editingCertificationId ? editCertificationData.issued_by : newCertification.issued_by}
+                                onChange={(e) =>
+                                    editingCertificationId
+                                        ? setEditCertificationData(prev => ({ ...prev, issued_by: e.target.value }))
+                                        : setNewCertification(prev => ({ ...prev, issued_by: e.target.value }))
+                                }
+                                className="input input-bordered"
+                                placeholder="Ex: Amazon Web Services"
+                                required
+                            />
                         </div>
-                    </form>
-                </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Date d'obtention *</span>
+                            </label>
+                            <input
+                                type="date"
+                                value={editingCertificationId ? editCertificationData.obtained_date : newCertification.obtained_date}
+                                onChange={(e) =>
+                                    editingCertificationId
+                                        ? setEditCertificationData(prev => ({ ...prev, obtained_date: e.target.value }))
+                                        : setNewCertification(prev => ({ ...prev, obtained_date: e.target.value }))
+                                }
+                                className="input input-bordered"
+                                max={new Date().toISOString().split('T')[0]}
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Description</span>
+                        </label>
+                        <textarea
+                            value={editingCertificationId ? editCertificationData.description : newCertification.description}
+                            onChange={(e) =>
+                                editingCertificationId
+                                    ? setEditCertificationData(prev => ({ ...prev, description: e.target.value }))
+                                    : setNewCertification(prev => ({ ...prev, description: e.target.value }))
+                            }
+                            className="textarea textarea-bordered h-24"
+                            placeholder="Décrivez cette certification..."
+                        />
+                    </div>
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Image</span>
+                        </label>
+                        <input
+                            type="file"
+                            ref={certificationFileInputRef}
+                            onChange={(e) => handleCertificationImageSelect(e, !!editingCertificationId)}
+                            className="file-input file-input-bordered"
+                            accept="image/jpeg,image/png,image/gif"
+                        />
+                    </div>
+                    {certificationImagePreview && (
+                        <div className="mt-4">
+                            <label className="label">
+                                <span className="label-text">Aperçu</span>
+                            </label>
+                            <div className="w-40 h-40 border-2 border-base-300 rounded-lg overflow-hidden bg-base-200 flex items-center justify-center">
+                                <img src={certificationImagePreview} alt="Aperçu" className="w-full h-full object-contain" />
+                            </div>
+                            <div className="mt-2 flex justify-center">
+                                <button
+                                    type="button"
+                                    onClick={handleCancelCertificationImage}
+                                    className="btn btn-sm btn-error btn-outline"
+                                >
+                                    Annuler
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    <div className="flex justify-end gap-3 mt-6">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowCertificationForm(false);
+                                setEditingCertificationId(null);
+                                setNewCertification({ certifications_name: '', issued_by: '', obtained_date: '', description: '', image: null });
+                                setEditCertificationData({ certifications_name: '', issued_by: '', obtained_date: '', description: '', image: null });
+                                setCertificationImagePreview(null);
+                                if (certificationFileInputRef.current) certificationFileInputRef.current.value = '';
+                            }}
+                            className="btn btn-ghost hover:bg-base-300 transition-colors"
+                        >
+                            Annuler
+                        </button>
+                        <button type="submit" className="btn btn-primary hover:bg-primary-focus transition-colors">
+                            {editingCertificationId ? 'Sauvegarder' : 'Ajouter Certification'}
+                        </button>
+                    </div>
+                </form>
             </div>
         )}
 
-        {skills.length === 0 && !showSkillForm ? (
-            <div className="text-center py-12">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                <h3 className="mt-4 text-lg font-medium text-gray-500">Aucune compétence enregistrée</h3>
-                <p className="mt-1 text-gray-400">Ajoutez vos compétences pour les afficher ici</p>
-                <button
-                    onClick={() => setShowSkillForm(true)}
-                    className="btn btn-primary mt-6"
+        {certifications.length === 0 && !showCertificationForm && (
+            <div className="text-center py-12 bg-base-200 rounded-lg shadow-sm">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-12 w-12 mx-auto text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                 >
-                    Ajouter une compétence
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                    />
+                </svg>
+                <h3 className="mt-4 text-lg font-medium text-gray-500">Aucune certification ajoutée</h3>
+                <p className="mt-1 text-gray-400">Ajoutez vos certifications pour les afficher ici</p>
+                <button
+                    onClick={() => setShowCertificationForm(true)}
+                    className="btn btn-primary mt-6 hover:bg-primary-focus transition-colors"
+                >
+                    Ajouter une Certification
                 </button>
             </div>
-        ) : (
+        )}
+
+        {certifications.length > 0 && !showCertificationForm && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {skills.map((skill) => (
-                    <div key={skill._id} className="card bg-base-100 border border-base-300 hover:border-primary transition-colors">
-                        <div className="card-body">
-                            <div className="flex justify-between items-start gap-4">
-                                <div className="flex-1">
-                                    <h3 className="card-title text-lg">
-                                        {skill.name}
-                                        <span className="badge badge-outline badge-sm ml-2 capitalize">
-                                            {skill.category}
-                                        </span>
-                                    </h3>
-                                    {skill.description && (
-                                        <p className="mt-2 text-base-content/80 line-clamp-2">
-                                            {skill.description}
-                                        </p>
-                                    )}
-                                </div>
-                                
-                                <div className="flex flex-col items-center">
-                                    <ProgressCircle percentage={skill.tags} size={70} strokeWidth={6} />
-                                    <div className="mt-2 flex gap-2">
-                                        <button
-                                            onClick={() => handleEditSkill(skill)}
-                                            className="btn btn-square btn-xs btn-ghost"
-                                            title="Modifier"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteSkill(skill._id)}
-                                            className="btn btn-square btn-xs btn-ghost text-error"
-                                            title="Supprimer"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
+                {certifications.map((certification) => (
+                    <div
+                        key={certification._id}
+                        className="bg-base-100 border border-base-300 hover:border-primary transition-colors p-4 rounded-lg shadow-sm"
+                    >
+                        <div className="flex justify-between items-start gap-4">
+                            <div className="flex-1">
+                                <h3 className="text-lg font-semibold">
+                                    {certification.certifications_name || 'Sans nom'}
+                                </h3>
+                                {certification.description && (
+                                    <p className="mt-2 text-base-content/80 line-clamp-2">
+                                        {certification.description}
+                                    </p>
+                                )}
+                                <p className="text-sm text-base-content/70 mt-1">
+                                    Délivré par : {certification.issued_by || 'Inconnu'}
+                                </p>
+                                <p>Obtenu le : {new Date(certification.obtained_date).toLocaleDateString('fr-FR')}</p>
                             </div>
+                            {certification.image ? (
+                                <div className="w-20 h-20 border border-base-300 rounded-lg overflow-hidden bg-base-200">
+                                    <img
+                                        src={certification.image.startsWith('data:') ? certification.image : `/uploads/${certification.image}`}
+                                        alt={certification.certifications_name}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            e.target.src = 'https://via.placeholder.com/80?text=Pas+d%27image';
+                                            e.target.alt = 'Image non disponible';
+                                        }}
+                                    />
+                                </div>
+                            ) : null}
+                        </div>
+                        <div className="flex justify-end mt-4 gap-2">
+                            {!certification.image && (
+                                <button
+                                    onClick={() => {
+                                        setEditingCertificationId(certification._id);
+                                        setEditCertificationData({
+                                            ...certification,
+                                            obtained_date: certification.obtained_date.split('T')[0],
+                                        });
+                                        setCertificationImagePreview(certification.image || null);
+                                        setShowCertificationForm(true);
+                                    }}
+                                    className="btn btn-sm bg-base-200 hover:bg-base-300 text-base-content transition-colors"
+                                >
+                                    Ajouter une photo
+                                </button>
+                            )}
+                            <button
+                                onClick={() => handleEditCertification(certification)}
+                                className="btn btn-square btn-xs btn-ghost hover:bg-base-300 transition-colors"
+                                title="Modifier"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                </svg>
+                            </button>
+                            <button
+                                onClick={() => handleDeleteCertification(certification._id)}
+                                className="btn btn-square btn-xs btn-ghost text-error hover:bg-error/20 transition-colors"
+                                title="Supprimer"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 ))}
@@ -974,12 +1632,8 @@ const Profile = () => {
     </div>
 )}
 
-                        {activeTab === 'Certifications' && (
-                            <div className="mt-4 p-6 bg-base-100 shadow-xl rounded-lg">
-                                <h2 className="text-2xl font-bold mb-4">Certifications</h2>
-                                <p>No certifications added yet.</p>
-                            </div>
-                        )}
+
+
 
                         {activeTab === 'Experience' && (
                             <div className="mt-4 p-6 bg-base-100 shadow-xl rounded-lg">
