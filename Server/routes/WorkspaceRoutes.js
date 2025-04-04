@@ -18,6 +18,8 @@ router.post('/:id/invite',protection, workspaceController.inviteToWorkspace);
 router.get('/:id/invitations',protection,  workspaceController.getWorkspaceInvitations);
 router.post('/invitations/:token/respond',  workspaceController.respondToInvitation);
 router.get('/invitations/:token/verify', workspaceController.verifyInvitation);
+router.get('/invitations/user', protection, workspaceController.getUserInvitations);
+router.post('/invitations/respond/:invitationId', protection, workspaceController.respondToInvitationById);
 
 // Member management routes
 router.get('/:id/members', protection, workspaceController.getWorkspaceMembers);

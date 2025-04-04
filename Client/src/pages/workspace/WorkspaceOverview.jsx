@@ -290,30 +290,24 @@ const WorkspaceOverview = () => {
   setIsInviting(true);
   
   try {
-    await api.post(`/api/workspaces/${workspace._id}/invite`, { 
+    const response = await api.post(`/api/workspaces/${workspace._id}/invite`, { 
       email: emailValue 
     });
     
     toast.success(`Invitation sent to ${emailValue}`);
     emailInputRef.current.value = '';
     fetchPendingInvitations();
+    
+    // If the response includes the user ID of the invited user, we could use it here
+    if (response.data && response.data.userId) {
+      // This is handled by the server now
+      console.log('Invitation sent to user:', response.data.userId);
+    }
   } catch (error) {
     if (error.response?.status === 400) {
-      toast.error(error.response.data.message || 'This user has already been invited', {
-        position: "top-center",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-      });
+      toast.error(error.response.data.message || 'This user has already been invited');
     } else {
-      toast.error(error.response?.data?.message || 'Failed to send invitation', {
-        position: "top-center",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-      });
+      toast.error(error.response?.data?.message || 'Failed to send invitation');
     }
   } finally {
     setIsInviting(false);

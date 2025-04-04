@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import Login from './pages/Login';
 import { Toaster } from 'react-hot-toast';
 import Register from './pages/Register';
@@ -16,11 +17,26 @@ import WorkspaceOverview from './pages/workspace/WorkspaceOverview.jsx';
 import InvitationResponse from './pages/workspace/InvitationResponse.jsx';
 import WorkspaceMembers from './pages/workspace/WorkspaceMembers.jsx';
 import WorkspaceSettings from './pages/workspace/WorkspaceSettings.jsx';
-
+import Invitations from './pages/Invitations';
+import { SocketProvider } from './contexts/SocketContext';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound.jsx';
+import socketService from './utils/SocketService';
+import useSession from './hooks/useSession';
 
 function App() {
+  const { user } = useSession();
+  
+  // Initialize socket service when user is available
+  useEffect(() => {
+    if (user && user._id) {
+      socketService.initialize(user._id);
+    }
+    
+    // No need to disconnect on unmount
+    // The socket will persist throughout the application lifecycle
+  }, [user]);
+
   return (
     <>
     <Toaster
@@ -29,50 +45,50 @@ function App() {
         duration: 5000,
       }}
     />
-    <Routes>
+      <SocketProvider>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/Register" element={<Register />} />
+          <Route path="/forgotPassword" element={<ForgotPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard/listusers" element={<Listusers />} />
+          <Route path="/dashboard/user/:id" element={<UserDetails />} />
+          <Route path="/invitations/:token/accept" element={<InvitationResponse />} />
+          <Route path="/invitations" element={<Invitations />} />
 
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/Register" element={<Register />} />
-      <Route path="/forgotPassword" element={<ForgotPassword />} />
-      <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route path="/home" element={<Home />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/dashboard/listusers" element={<Listusers />} />
-      <Route path="/dashboard/user/:id" element={<UserDetails />} />
-      <Route path="/invitations/:token/accept" element={<InvitationResponse />} />
-
-
-        {/* Workspace Routes */}
-        <Route 
-          path="/workspace/:id" 
-          element={
-            <ProtectedRoute allowedRoles={['user', 'admin']}>
-              <WorkspaceLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Navigate to="overview" replace />} />
-          <Route path="overview" element={<WorkspaceOverview />}  />
-          <Route path="projects" element={<Projects />} />
-          <Route path="members" element={<WorkspaceMembers />} />
-          <Route path="settings" element={<WorkspaceSettings />} />
-        </Route>
-      
-
-      <Route path="/acceuil" element={
-      <ProtectedRoute allowedRoles={['user']}>
-        <Acceuil />
-      </ProtectedRoute>} /> 
-      <Route path="/profile" element={
-          <ProtectedRoute allowedRoles={['user', 'admin']}>
-            <Profile />
-          </ProtectedRoute>
-        } />
+          {/* Workspace Routes */}
+          <Route 
+            path="/workspace/:id" 
+            element={
+              <ProtectedRoute allowedRoles={['user', 'admin']}>
+                <WorkspaceLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={<WorkspaceOverview />}  />
+            <Route path="projects" element={<Projects />} />
+            <Route path="members" element={<WorkspaceMembers />} />
+            <Route path="settings" element={<WorkspaceSettings />} />
+          </Route>
         
-        <Route path="*" element={<NotFound />} />
-
-    </Routes>
+          <Route path="/acceuil" element={
+            <ProtectedRoute allowedRoles={['user']}>
+              <Acceuil />
+            </ProtectedRoute>} 
+          /> 
+          <Route path="/profile" element={
+            <ProtectedRoute allowedRoles={['user', 'admin']}>
+              <Profile />
+            </ProtectedRoute>
+          } />
+            
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </SocketProvider>
     </>
   );
 }
