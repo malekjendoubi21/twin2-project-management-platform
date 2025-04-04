@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import useSession from '../hooks/useSession';
 import api from '../utils/Api';
 import { toast } from 'react-hot-toast';
+import NotificationSystem from '../utils/NotificationSystem';
 
 const Acceuil = () => {
   const { user, loading, logout, refreshUser, isAuthenticated } = useSession();
@@ -293,7 +294,9 @@ const Acceuil = () => {
           <Link to="/acceuil" className="btn btn-ghost text-xl text-primary">
 PlaniFy</Link>
         </div>
-        <div className="flex-none gap-4">
+        <div className="relative overflow-visible">
+  <NotificationSystem />
+</div>        <div className="flex-none gap-4">
           <div className="dropdown dropdown-end">
             <div tabIndex={0} className="btn btn-ghost btn-circle avatar">
               <div className="w-10 rounded-full">

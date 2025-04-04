@@ -35,6 +35,7 @@ const experienceRoutes = require("./routes/experienceRoutes");
 const ressourceRoutes = require("./routes/ressourceRoutes");
 const certificationRoutes = require('./routes/certificationsRoutes');
 const skillsRoutes = require('./routes/skillsRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
@@ -45,12 +46,20 @@ app.use("/api/experiences", experienceRoutes);
 app.use("/api/ressources", ressourceRoutes);
 app.use('/api/certifications', certificationRoutes);
 app.use('/api/skills', skillsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get("/", (req, res) => {
   res.send("Project Management Platform Backend");
 });
 
+const http = require('http');
+const { initializeSocket } = require('./Socket');
+
+const server = http.createServer(app);
+
+initializeSocket(server);
+
 const PORT = process.env.PORT || 3002;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
