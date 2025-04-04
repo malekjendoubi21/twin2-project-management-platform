@@ -108,6 +108,26 @@ const Profile = () => {
     const [certificationImagePreview, setCertificationImagePreview] = useState(null);
     const certificationFileInputRef = useRef(null);
 
+
+   // États pour les expériences
+    const [experiences, setExperiences] = useState([]);
+    const [showExperienceForm, setShowExperienceForm] = useState(false);
+    const [newExperience, setNewExperience] = useState({
+        job_title: '',
+        company: '',
+        start_date: '',
+        end_date: '',
+        description: '',
+    });
+    const [editingExperienceId, setEditingExperienceId] = useState(null);
+    const [editExperienceData, setEditExperienceData] = useState({
+        job_title: '',
+        company: '',
+        start_date: '',
+        end_date: '',
+        description: '',
+    });
+
     useEffect(() => {
         const fetchUser = async () => {
             try {
@@ -165,10 +185,20 @@ const Profile = () => {
                 setCertifications([]);
             }
         };
+        const fetchExperiences = async () => {
+            try {
+                const response = await api.get('/api/experiences');
+                setExperiences(response.data || []);
+            } catch (error) {
+                console.error('Error fetching experiences:', error.response?.data || error.message);
+                toast.error('Failed to load experiences');
+            }
+        };
 
         fetchUser();
         fetchSkills();
         fetchCertifications();
+        fetchExperiences();
     }, [navigate]);
 
     useEffect(() => {
@@ -494,6 +524,98 @@ const Profile = () => {
         }
         if (certificationFileInputRef.current) certificationFileInputRef.current.value = null;
     };
+
+// Gestion des expériences
+const handleAddExperience = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+        const response = await api.post('/api/experiences/addExperience', {
+            job_title: newExperience.job_title,
+            company: newExperience.company,
+            start_date: newExperience.start_date,
+            end_date: newExperience.end_date,
+            description: newExperience.description
+        });
+        
+        setExperiences([...experiences, response.data]);
+        setNewExperience({
+            job_title: '',
+            company: '',
+            start_date: '',
+            end_date: '',
+            description: ''
+        });
+        setShowExperienceForm(false);
+        toast.success('Expérience ajoutée avec succès');
+    } catch (error) {
+        console.error('Error adding experience:', error.response?.data || error.message);
+        toast.error(`Échec de l'ajout: ${error.response?.data?.message || error.message}`);
+    } finally {
+        setIsSaving(false);
+    }
+};
+
+const handleEditExperience = (experience) => {
+    setEditingExperienceId(experience._id);
+    setEditExperienceData({
+        job_title: experience.job_title || '',
+        company: experience.company || '',
+        start_date: experience.start_date?.split('T')[0] || '',
+        end_date: experience.end_date?.split('T')[0] || '',
+        description: experience.description || ''
+    });
+    setShowExperienceForm(true);
+};
+
+const handleUpdateExperience = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+        const response = await api.put(
+            `/api/experiences/updateExperience/${editingExperienceId}`,
+            {
+                job_title: editExperienceData.job_title,
+                company: editExperienceData.company,
+                start_date: editExperienceData.start_date,
+                end_date: editExperienceData.end_date,
+                description: editExperienceData.description
+            }
+        );
+        
+        setExperiences(experiences.map(exp => 
+            exp._id === editingExperienceId ? response.data : exp
+        ));
+        
+        // Réinitialisation
+        setEditingExperienceId(null);
+        setEditExperienceData({
+            job_title: '',
+            company: '',
+            start_date: '',
+            end_date: '',
+            description: ''
+        });
+        setShowExperienceForm(false);
+        toast.success('Expérience mise à jour avec succès');
+    } catch (error) {
+        console.error('Error updating experience:', error);
+        toast.error(`Échec de la mise à jour: ${error.response?.data?.message || error.message}`);
+    } finally {
+        setIsSaving(false);
+    }
+};
+
+const handleDeleteExperience = async (experienceId) => {
+    try {
+        await api.delete(`/api/experiences/${experienceId}`);
+        setExperiences(experiences.filter(exp => exp._id !== experienceId));
+        toast.success('Expérience supprimée avec succès');
+    } catch (error) {
+        console.error('Error deleting experience:', error);
+        toast.error(`Échec de la suppression: ${error.response?.data?.message || error.message}`);
+    }
+};
 
     if (loading) {
         return (
@@ -1634,13 +1756,310 @@ const Profile = () => {
 
 
 
+{activeTab === 'Experience' && (
+    <div className="mt-4 p-6 bg-base-100 shadow-xl rounded-lg">
+        <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-primary">Expérience Professionnelle </h2>
+            <button
+                onClick={() => {
+                    setShowExperienceForm(true);
+                    setEditingExperienceId(null);
+                    setNewExperience({
+                        job_title: '',
+                        company: '',
+                        start_date: '',
+                        end_date: '',
+                        description: '',
+                    });
+                }}
+                className="btn btn-primary gap-2 animate-bounce"
+                disabled={showExperienceForm}
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                >
+                    <path
+                        fillRule="evenodd"
+                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                        clipRule="evenodd"
+                    />
+                </svg>
+                Ajouter une Expérience 🎉
+            </button>
+        </div>
 
-                        {activeTab === 'Experience' && (
-                            <div className="mt-4 p-6 bg-base-100 shadow-xl rounded-lg">
-                                <h2 className="text-2xl font-bold mb-4">Experience</h2>
-                                <p>No experience added yet.</p>
+        {showExperienceForm && (
+            <div className="card bg-gradient-to-br from-primary/5 to-secondary/5 shadow-lg mb-8 border border-primary/20">
+                <div className="card-body">
+                    <h3 className="card-title text-lg mb-4 text-primary">
+                        {editingExperienceId ? 'Modifier l\'Expérience' : 'Nouvelle Expérience'}
+                    </h3>
+                    <form
+                        onSubmit={editingExperienceId ? handleUpdateExperience : handleAddExperience}
+                        className="space-y-4"
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text text-gray-700 font-medium">Poste*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editingExperienceId ? editExperienceData.job_title : newExperience.job_title}
+                                    onChange={(e) =>
+                                        editingExperienceId
+                                            ? setEditExperienceData({ ...editExperienceData, job_title: e.target.value })
+                                            : setNewExperience({ ...newExperience, job_title: e.target.value })
+                                    }
+                                    className="input input-bordered focus:ring-2 focus:ring-primary"
+                                    placeholder="Ex: Full Stack Developer"
+                                    required
+                                />
                             </div>
-                        )}
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text text-gray-700 font-medium">Entreprise*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editingExperienceId ? editExperienceData.company : newExperience.company}
+                                    onChange={(e) =>
+                                        editingExperienceId
+                                            ? setEditExperienceData({ ...editExperienceData, company: e.target.value })
+                                            : setNewExperience({ ...newExperience, company: e.target.value })
+                                    }
+                                    className="input input-bordered focus:ring-2 focus:ring-primary"
+                                    placeholder="Ex: Innovative Solutions"
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text text-gray-700 font-medium">Date de début*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
+                                    onChange={(e) =>
+                                        editingExperienceId
+                                            ? setEditExperienceData({ ...editExperienceData, start_date: e.target.value })
+                                            : setNewExperience({ ...newExperience, start_date: e.target.value })
+                                    }
+                                    className="input input-bordered focus:ring-2 focus:ring-primary"
+                                    max={new Date().toISOString().split('T')[0]}
+                                    required
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text text-gray-700 font-medium">Date de fin*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={editingExperienceId ? editExperienceData.end_date : newExperience.end_date}
+                                    onChange={(e) =>
+                                        editingExperienceId
+                                            ? setEditExperienceData({ ...editExperienceData, end_date: e.target.value })
+                                            : setNewExperience({ ...newExperience, end_date: e.target.value })
+                                    }
+                                    className="input input-bordered focus:ring-2 focus:ring-primary"
+                                    min={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
+                                    max={new Date().toISOString().split('T')[0]}
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text text-gray-700 font-medium">Description*</span>
+                            </label>
+                            <textarea
+                                value={editingExperienceId ? editExperienceData.description : newExperience.description}
+                                onChange={(e) =>
+                                    editingExperienceId
+                                        ? setEditExperienceData({ ...editExperienceData, description: e.target.value })
+                                        : setNewExperience({ ...newExperience, description: e.target.value })
+                                }
+                                className="textarea textarea-bordered h-24 focus:ring-2 focus:ring-primary"
+                                placeholder="Décrivez votre expérience..."
+                                required
+                            />
+                        </div>
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowExperienceForm(false);
+                                    setEditingExperienceId(null);
+                                    setEditExperienceData({
+                                        job_title: '',
+                                        company: '',
+                                        start_date: '',
+                                        end_date: '',
+                                        description: ''
+                                    });
+                                }}
+                                className="btn btn-ghost hover:bg-gray-100"
+                            >
+                                Annuler
+                            </button>
+                            <button 
+                                type="submit" 
+                                className="btn btn-primary hover:bg-primary-focus"
+                            >
+                                {editingExperienceId ? 'Mettre à jour' : 'Ajouter'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )}
+
+        {experiences.length === 0 && !showExperienceForm && (
+            <div className="text-center py-12 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg border-2 border-dashed border-primary/30 transition-all hover:border-primary/50">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-12 w-12 mx-auto text-primary/50"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                    />
+                </svg>
+                <h3 className="mt-4 text-lg font-medium text-gray-700">Aucune expérience ajoutée</h3>
+                <p className="mt-1 text-gray-500">Ajoutez vos expériences pour les afficher ici</p>
+                <button
+                    onClick={() => setShowExperienceForm(true)}
+                    className="btn btn-primary mt-6 hover:bg-primary-focus"
+                >
+                    Ajouter une Expérience
+                </button>
+            </div>
+        )}
+
+        {experiences.length > 0 && !showExperienceForm && (
+            <div className="relative">
+                <div className="absolute left-1/2 transform -translate-x-1/2 h-full border-l-2 border-primary/20"></div>
+                {experiences.map((exp, index) => {
+                    // Couleurs alternées basées sur l'index
+                    const colorClasses = [
+                        'bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500',
+                        'bg-gradient-to-r from-purple-50 to-purple-100 border-l-4 border-purple-500',
+                        'bg-gradient-to-r from-emerald-50 to-emerald-100 border-l-4 border-emerald-500',
+                        'bg-gradient-to-r from-amber-50 to-amber-100 border-l-4 border-amber-500'
+                    ];
+                    const indicatorColors = [
+                        'bg-blue-500', 
+                        'bg-purple-500', 
+                        'bg-emerald-500', 
+                        'bg-amber-500'
+                    ];
+                    const colorIndex = index % colorClasses.length;
+                    
+                    return (
+                        <div
+                            key={exp._id}
+                            className={`mb-8 flex justify-between items-center w-full ${
+                                index % 2 === 0 ? 'flex-row' : 'flex-row-reverse'
+                            } group`}
+                        >
+                            <div className="order-1 w-5/12"></div>
+                            <div className={`z-10 flex items-center order-1 shadow-lg w-8 h-8 rounded-full transition-all duration-300 group-hover:scale-110 ${indicatorColors[colorIndex]}`}>
+                                <h1 className="mx-auto font-semibold text-lg text-white">{index + 1}</h1>
+                            </div>
+                            <div
+                                className={`order-1 rounded-lg shadow-lg w-5/12 px-6 py-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+                                    index % 2 === 0 ? 'ml-6' : 'mr-6'
+                                } ${colorClasses[colorIndex]}`}
+                                style={{
+                                    clipPath: 'polygon(0 0, 100% 0, 95% 100%, 0% 100%)'
+                                }}
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="mb-2 font-bold text-gray-900 text-lg">
+                                            {exp.job_title || 'Sans titre'}
+                                        </h3>
+                                        <p className="text-sm text-gray-700 font-medium">
+                                            {exp.company || 'Entreprise inconnue'}
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {new Date(exp.start_date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })} - {' '}
+                                            {exp.end_date ? new Date(exp.end_date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : 'Présent'}
+                                        </p>
+                                        {exp.description && (
+                                            <p className="text-sm text-gray-700 mt-2">
+                                                {exp.description}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="bg-white/90 text-gray-800 text-xs font-semibold px-2 py-1 rounded-full shadow-sm">
+                                            {new Date(exp.start_date).getFullYear()} - {' '}
+                                            {exp.end_date ? new Date(exp.end_date).getFullYear() : 'Auj.'}
+                                        </span>
+                                        <div className="flex justify-end mt-4 gap-2">
+                                            <button
+                                                onClick={() => handleEditExperience(exp)}
+                                                className="btn btn-square btn-xs btn-ghost hover:bg-white/70"
+                                                title="Modifier"
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-4 w-4 text-gray-600"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                    />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteExperience(exp._id)}
+                                                className="btn btn-square btn-xs btn-ghost hover:bg-white/70 text-error"
+                                                title="Supprimer"
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-4 w-4"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        )}
+    </div>
+)}
                     </div>
                 </div>
             </div>
