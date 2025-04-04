@@ -17,8 +17,10 @@ const skillSchema = new mongoose.Schema({
     enum: ['Technical', 'Soft Skill', 'Management'], // Liste de catégories possibles (par exemple)
   },
   tags: {
-    type: [String], // Liste de tags pour classifier la compétence
-    default: [],
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
   }
 }, {
   timestamps: true, // Enregistre automatiquement les dates de création et de mise à jour
