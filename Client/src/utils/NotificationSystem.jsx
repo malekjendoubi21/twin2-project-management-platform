@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import api from './Api';
 import useSession from '../hooks/useSession';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Add useNavigate
 import socketService from './SocketService';
 
 const NotificationSystem = () => {
   const { user } = useSession();
+  const navigate = useNavigate(); // Initialize navigate
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -16,12 +17,32 @@ const NotificationSystem = () => {
     if (user) {
       fetchNotifications();
 
-      // Set up periodic refresh
+      // Set up periodic refresh (you can keep this as a fallback)
       const interval = setInterval(() => {
         fetchNotifications();
       }, 30000);
-
-      return () => clearInterval(interval);
+      
+      // Set up socket listener for real-time notifications
+      const handleNewNotification = (notification) => {
+        console.log('New notification received via socket:', notification);
+        // Add the new notification to the state
+        setNotifications(prev => [notification, ...prev]);
+        // Update unread count
+        setUnreadCount(prevCount => prevCount + 1);
+        // Optionally show a toast
+        toast.success(`New notification: ${notification.message}`, {
+          duration: 4000,
+        });
+      };
+      
+      // Register the socket event listener
+      socketService.on('new-notification', handleNewNotification);
+      
+      // Clean up on unmount
+      return () => {
+        clearInterval(interval);
+        socketService.off('new-notification', handleNewNotification);
+      };
     }
   }, [user]);
 
@@ -40,10 +61,35 @@ const NotificationSystem = () => {
     }
   };
 
-  const markAsRead = async (notificationId) => {
+  // Enhanced markAsRead function with navigation
+  const markAsRead = async (notification) => {
     try {
-      await api.patch(`/api/notifications/${notificationId}/read`);
-      fetchNotifications();
+      // First mark as read
+      await api.patch(`/api/notifications/${notification._id}/read`);
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => n._id === notification._id ? {...n, read: true} : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      
+      // Close notification dropdown
+      setShowNotifications(false);
+      
+      // Navigate based on notification type
+      if (notification.type === 'invitation' || 
+          notification.relatedInvitation || 
+          (notification.message && notification.message.toLowerCase().includes('invite'))) {
+        navigate('/invitations');
+      } else if (notification.relatedWorkspace) {
+        navigate(`/workspace/${notification.relatedWorkspace}`);
+      } else if (notification.relatedProject) {
+        navigate(`/project/${notification.relatedProject}`);
+      } else if (notification.relatedTask) {
+        navigate(`/task/${notification.relatedTask}`);
+      } else if (notification.actionLink) {
+        navigate(notification.actionLink);
+      }
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -133,7 +179,7 @@ const NotificationSystem = () => {
                     <div 
                       key={notification._id} 
                       className="py-2 px-1 border-b hover:bg-base-300 cursor-pointer bg-base-200"
-                      onClick={() => markAsRead(notification._id)}
+                      onClick={() => markAsRead(notification)} 
                     >
                       <p className="text-sm font-semibold">{notification.message}</p>
                       <p className="text-xs text-gray-500 mt-1">{formatDate(notification.createdAt)}</p>
@@ -150,6 +196,7 @@ const NotificationSystem = () => {
                     <div 
                       key={notification._id} 
                       className="py-2 px-1 border-b hover:bg-base-300 cursor-pointer opacity-60"
+                      onClick={() => markAsRead(notification)} 
                     >
                       <p className="text-sm">{notification.message}</p>
                       <p className="text-xs text-gray-500 mt-1">{formatDate(notification.createdAt)}</p>

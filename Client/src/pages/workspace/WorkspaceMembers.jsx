@@ -61,57 +61,76 @@ const WorkspaceMembers = () => {
     }
   };
   
-  // Fetch stats for each member
-  const fetchMemberStats = async (membersList) => {
-    try {
-      const statsPromises = membersList.map(async (member) => {
+// Update the fetchMemberStats function to get accurate counts
+const fetchMemberStats = async (membersList) => {
+  try {
+    const statsObj = {};
+    const profilesObj = {};
+    
+    for (const member of membersList) {
+      try {
+        // Default stats
+        const memberStats = { 
+          workspacesCount: 1, 
+          projectsCount: 0,
+          tasksCount: 0,
+          completedTasksCount: 0,
+          contributionPercentage: 0 
+        };
+        
+        // Get workspace count from the server
         try {
-          // Get both stats and profile info when the popover is opened
-          const statsResponse = await api.get(`/api/workspaces/${workspace._id}/members/${member._id}/stats`);
-          const profileResponse = await api.get(`/api/users/${member._id}/profile`);
-          
-          return { 
-            memberId: member._id, 
-            stats: statsResponse.data,
-            profile: profileResponse.data.profile 
-          };
-        } catch (error) {
-          console.error(`Error fetching data for member ${member._id}:`, error);
-          return { 
-            memberId: member._id, 
-            stats: { 
-              workspacesCount: 1, 
-              projectsCount: 0, 
-              tasksCount: 0,
-              completedTasksCount: 0,
-              contributionPercentage: 0 
-            },
-            profile: {
-              bio: 'No bio available',
-              createdAt: member.createdAt || new Date().toISOString()
-            }
-          };
+          const countResponse = await api.get(`/api/users/${member._id}/workspaces/count`);
+          if (countResponse.data && typeof countResponse.data.count === 'number') {
+            memberStats.workspacesCount = countResponse.data.count;
+          }
+        } catch (countError) {
+          console.warn(`Error getting workspace count for ${member._id}:`, countError);
+          // Keep default count (1)
         }
-      });
+        
+        // ... rest of your stats calculation
+        
+        // Get profile info
+        let memberProfile = {
+          _id: member._id,
+          name: member.name || "User",
+          email: member.email || "",
+          bio: 'No bio available',
+          createdAt: member.createdAt || new Date().toISOString()
+        };
+        
+        try {
+          const profileResponse = await api.get(`/api/users/${member._id}/profile`);
+          if (profileResponse.data && profileResponse.data.profile) {
+            memberProfile = profileResponse.data.profile;
+          }
+        } catch (profileError) {
+          console.warn(`Error fetching profile for ${member._id}:`, profileError);
+          // Keep default profile
+        }
+        
+        // Update state
+        statsObj[member._id] = memberStats;
+        profilesObj[member._id] = memberProfile;
+        
+        setMemberStats(prev => ({ ...prev, [member._id]: memberStats }));
+        setMemberProfiles(prev => ({ ...prev, [member._id]: memberProfile }));
+      } catch (memberError) {
+        console.error(`Error processing member ${member._id}:`, memberError);
+      }
       
-      const results = await Promise.all(statsPromises);
-      
-      // Split results into stats and profiles
-      const statsObj = {};
-      const profilesObj = {};
-      
-      results.forEach(result => {
-        statsObj[result.memberId] = result.stats;
-        profilesObj[result.memberId] = result.profile;
-      });
-      
-      setMemberStats(statsObj);
-      setMemberProfiles(profilesObj);
-      
-    } catch (error) {
-      console.error('Error fetching member data:', error);
+      // Add slight delay between members
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
-  };
+    
+    setMemberStats(statsObj);
+    setMemberProfiles(profilesObj);
+    
+  } catch (error) {
+    console.error('Error fetching member data:', error);
+  }
+};
   
   const handleRoleChange = async (memberId, newRole) => {
     if (!hasPermission('edit', workspace, user._id)) {

@@ -264,151 +264,200 @@ const getBasicUserInfo = async (req, res) => {
 };
 
 const getUserProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Default profile to return in case of errors
+    const defaultProfile = {
+      profile: {
+        _id: userId,
+        name: "User",
+        email: "",
+        bio: 'No bio available',
+        profile_picture: null,
+        createdAt: new Date().toISOString()
+      }
+    };
+    
     try {
-      const { userId } = req.params;
+      // Find the user
+      const user = await User.findById(userId).select('name email bio profile_picture createdAt');
       
-      // Default profile to return in case of errors
-      const defaultProfile = {
-        profile: {
-          _id: userId,
-          name: "User",
-          email: "",
-          bio: 'No bio available',
-          profile_picture: null,
-          createdAt: new Date().toISOString()
-        },
-        stats: {
-          workspacesCount: 1,
-          projectsCount: 0,
-          tasksCount: 0,
-          completedTasksCount: 0,
-          contributionPercentage: 0
-        }
-      };
-      
-      try {
-        // Find the user
-        const user = await User.findById(userId).select('name email bio profile_picture createdAt');
-        
-        if (!user) {
-          return res.status(200).json(defaultProfile);
-        }
-        
-        // Create profile data structure
-        const profileData = {
-          profile: {
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            bio: user.bio || 'No bio available',
-            profile_picture: user.profile_picture,
-            createdAt: user.createdAt
-          },
-          stats: {
-            workspacesCount: 1, // Default value
-            projectsCount: 0,
-            tasksCount: 0,
-            completedTasksCount: 0,
-            contributionPercentage: 0
-          }
-        };
-        
-        try {
-          // Safely convert to ObjectId if valid
-          let userObjectId;
-          try {
-            // Check if valid ObjectID first
-            if (mongoose.Types.ObjectId.isValid(userId)) {
-              userObjectId = new mongoose.Types.ObjectId(userId); // Using new keyword here
-            }
-          } catch (objectIdError) {
-            console.error('Error creating ObjectId:', objectIdError);
-            // Continue with string ID
-            userObjectId = userId;
-          }
-          
-          // Get workspaces count - using safer query
-          try {
-            const workspaces = await Workspace.find({ 
-              $or: [
-                { owner: userId },
-                { members: userId }
-              ] 
-            });
-            
-            profileData.stats.workspacesCount = workspaces.length || 1;
-          } catch (workspaceError) {
-            console.error('Error counting workspaces:', workspaceError);
-            // Keep default value
-          }
-          
-          // Get projects count
-          try {
-            const projects = await Project.find({ members: userId });
-            profileData.stats.projectsCount = projects.length;
-          } catch (projectError) {
-            console.error('Error counting projects:', projectError);
-            // Keep default value
-          }
-          
-          // Get tasks count
-          try {
-            const tasks = await Task.find({ assignee: userId });
-            
-            profileData.stats.tasksCount = tasks.length;
-            profileData.stats.completedTasksCount = tasks.filter(task => 
-              task.status === 'completed' || task.completed
-            ).length;
-            
-            // Calculate completion percentage
-            if (profileData.stats.tasksCount > 0) {
-              profileData.stats.contributionPercentage = Math.round(
-                (profileData.stats.completedTasksCount / profileData.stats.tasksCount) * 100
-              );
-            }
-          } catch (taskError) {
-            console.error('Error counting tasks:', taskError);
-            // Keep default values
-          }
-          
-        } catch (statsError) {
-          console.error('Error calculating stats:', statsError);
-          // Keep default stats values
-        }
-        
-        res.status(200).json(profileData);
-        
-      } catch (userError) {
-        console.error('Error fetching user:', userError);
+      if (!user) {
         return res.status(200).json(defaultProfile);
       }
       
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      // Return default profile instead of error
+      // Just return the user profile without trying to count workspaces/projects/tasks
       return res.status(200).json({
         profile: {
-          _id: userId,
-          name: "User",
-          email: "",
-          bio: 'No bio available',
-          profile_picture: null,
-          createdAt: new Date().toISOString()
-        },
-        stats: {
-          workspacesCount: 1,
-          projectsCount: 0,
-          tasksCount: 0,
-          completedTasksCount: 0,
-          contributionPercentage: 0
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          bio: user.bio || 'No bio available',
+          profile_picture: user.profile_picture,
+          createdAt: user.createdAt
         }
       });
+      
+    } catch (userError) {
+      console.error('Error fetching user:', userError);
+      return res.status(200).json(defaultProfile);
     }
-  };
-  
+    
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    // Return default profile instead of error
+    return res.status(200).json({
+      profile: {
+        _id: userId,
+        name: "User",
+        email: "",
+        bio: 'No bio available',
+        profile_picture: null,
+        createdAt: new Date().toISOString()
+      }
+    });
+  }
+};
+const getUserWorkspacesCount = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Find workspaces where user is owner
+    const ownedWorkspaces = await Workspace.find({
+      owner: userId,
+      isDeleted: { $ne: true },
+      isArchived: { $ne: true }
+    });
+    
+    // Find workspaces where user is a member - using the CORRECT query pattern
+    const memberWorkspaces = await Workspace.find({
+      'members.user': userId,  // This is the correct way to query the nested user field
+      isDeleted: { $ne: true },
+      isArchived: { $ne: true }
+    });
+    
+    // Combine owned and member workspaces, avoiding duplicates
+    const uniqueWorkspaces = new Set();
+    
+    // Add owned workspaces
+    ownedWorkspaces.forEach(workspace => {
+      uniqueWorkspaces.add(workspace._id.toString());
+    });
+    
+    // Add member workspaces
+    memberWorkspaces.forEach(workspace => {
+      uniqueWorkspaces.add(workspace._id.toString());
+    });
+    
+    // Convert to array
+    const allWorkspaceIds = Array.from(uniqueWorkspaces);
+    
+    return res.status(200).json({ 
+      count: allWorkspaceIds.length,
+      workspaces: allWorkspaceIds
+    });
+    
+  } catch (error) {
+    console.error('Error counting user workspaces:', error);
+    return res.status(200).json({ count: 0 });
+  }
+};
+const fixUserWorkspaces = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Validate userId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID format' });
+    }
 
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log(`Found user: ${user.name}, ID: ${user._id}`);
+    
+    try {
+      // First, find workspaces where user is owner
+      const ownedWorkspaces = await Workspace.find({
+        owner: userId,
+        isDeleted: { $ne: true },
+        isArchived: { $ne: true }
+      });
+      
+      // Then, find all workspaces
+      const allWorkspaces = await Workspace.find({
+        isDeleted: { $ne: true },
+        isArchived: { $ne: true }
+      });
+      
+      // Manually filter to find workspaces where user is a member
+      const memberWorkspaces = allWorkspaces.filter(workspace => {
+        if (!workspace.members || !Array.isArray(workspace.members)) {
+          return false;
+        }
+        
+        return workspace.members.some(member => {
+          // Handle ObjectId or string comparison
+          if (typeof member === 'object' && member._id) {
+            return member._id.toString() === userId.toString();
+          }
+          return member.toString() === userId.toString();
+        });
+      });
+      
+      // Combine owned and member workspaces
+      const activeWorkspaces = [
+        ...ownedWorkspaces,
+        ...memberWorkspaces.filter(w => 
+          !ownedWorkspaces.some(ow => ow._id.toString() === w._id.toString())
+        )
+      ];
+      
+      console.log(`Found ${activeWorkspaces.length} active workspaces for user`);
+      
+      // Get the IDs of these workspaces
+      const workspaceIds = activeWorkspaces.map(w => w._id);
+      
+      // Save original workspaces for comparison
+      const originalWorkspaces = user.workspaces ? [...user.workspaces] : [];
+      console.log(`Original workspaces: ${originalWorkspaces.length}`);
+      
+      // Update user document with ONLY these workspace IDs
+      user.workspaces = workspaceIds;
+      await user.save();
+      
+      return res.status(200).json({ 
+        message: 'User workspace references fixed',
+        workspaceCount: workspaceIds.length,
+        originalCount: originalWorkspaces.length,
+        workspaces: activeWorkspaces.map(w => ({
+          _id: w._id.toString(),
+          name: w.name,
+          owner: w.owner.toString(),
+          isOwner: w.owner.toString() === userId.toString()
+        }))
+      });
+    } catch (queryError) {
+      console.error('Error finding workspaces:', queryError);
+      return res.status(500).json({ 
+        error: queryError.message, 
+        step: 'workspace_query' 
+      });
+    }
+  } catch (error) {
+    console.error('Error fixing user workspaces:', error);
+    return res.status(500).json({ 
+      error: error.message,
+      step: 'main'
+    });
+  }
+};
 
-module.exports = { getUserProfile, profilePictureUpload, getBasicUserInfo, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getMe };
+module.exports = { getUserWorkspacesCount,fixUserWorkspaces, getUserProfile, profilePictureUpload, getBasicUserInfo, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getMe };
 
 
 
