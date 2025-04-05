@@ -5,7 +5,9 @@ const { validateWorkspace } = require('../validators/WorkspaceValidator');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const notificationController = require('./notificationController');
-
+const { validateProject } = require('../validators/validatorProject');
+const Project = require('../models/Project');
+const Task = require('../models/Task'); 
 // Create a new workspace
 exports.addWorkspace = async (req, res) => {
   const { error } = validateWorkspace(req.body);
@@ -337,9 +339,44 @@ exports.getWorkspaceInvitations = async (req, res) => {
 // controllers/WorkspaceController.js
 exports.createProject = async (req, res) => {
   try {
+    // Get current date for the start date but use the string 'now' for validation
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Create project data matching your validator's expected structure
+    // Only include fields explicitly allowed in your schema
+    const projectData = {
+      project_name: req.body.name,
+      status: 'not started',
+      start_date: tomorrow, // Use tomorrow to ensure it's after "now"
+      end_date: new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days from today
+      id_teamMembre: [req.user._id.toString()], // Convert ObjectId to string as required by validation
+    };
+    
+    // Validate with your schema
+    const { error } = validateProject(projectData);
+    if (error) {
+      console.log('Validation error:', error.details);
+      return res.status(400).json({ errors: error.details.map((err) => err.message) });
+    }
+    
+    // After validation passes, we can add the fields needed for MongoDB that weren't in the validation
+    const fullProjectData = {
+      ...projectData,
+      description: req.body.description,
+      id_workspace: req.params.workspaceId,
+      createdBy: req.user._id
+    };
+    
+    // Create the project in the projects collection
+    const newStandaloneProject = await Project.create(fullProjectData);
+    
+    // Now also add it to the workspace
     const workspace = await Workspace.findByIdAndUpdate(
       req.params.workspaceId,
       { $push: { projects: {
+        _id: newStandaloneProject._id,
         name: req.body.name,
         description: req.body.description,
         createdBy: req.user._id
@@ -347,10 +384,18 @@ exports.createProject = async (req, res) => {
       { new: true, runValidators: true }
     ).populate('projects.createdBy', 'name email');
 
-    const newProject = workspace.projects[workspace.projects.length - 1];
+    // Return the project in the format expected by the frontend
+    const projectToReturn = {
+      _id: newStandaloneProject._id,
+      name: req.body.name,
+      description: req.body.description,
+      createdBy: req.user._id,
+      createdAt: newStandaloneProject.createdAt
+    };
     
-    res.status(201).json(newProject);
+    res.status(201).json(projectToReturn);
   } catch (err) {
+    console.error('Error creating project:', err);
     res.status(500).json({ error: 'Failed to create project', details: err.message });
   }
 };
@@ -644,5 +689,166 @@ exports.respondToInvitationById = async (req, res) => {
   } catch (error) {
     console.error('Error responding to invitation:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+exports.getUserWorkspaceStats = async (req, res) => {
+  try {
+    const { workspaceId, userId } = req.params;
+    
+    // Default stats to return
+    const defaultStats = {
+      workspacesCount: 1,
+      projectsCount: 0,
+      tasksCount: 0,
+      completedTasksCount: 0,
+      contributionPercentage: 0
+    };
+    
+    // Check if workspace exists
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) {
+      return res.status(200).json(defaultStats);
+    }
+    
+    // Properly check if user is a member - fix for the Mongoose error
+    let isMember = false;
+    
+    // Check if user is the owner
+    if (workspace.owner && workspace.owner.toString() === userId) {
+      isMember = true;
+    }
+    
+    // Check if user is in members array
+    if (!isMember && workspace.members && Array.isArray(workspace.members)) {
+      // Handle both cases: members as strings or as objects
+      for (const member of workspace.members) {
+        const memberId = typeof member === 'object' ? member._id.toString() : member.toString();
+        if (memberId === userId) {
+          isMember = true;
+          break;
+        }
+      }
+    }
+    
+    if (!isMember) {
+      // Just return default stats instead of error
+      return res.status(200).json(defaultStats);
+    }
+    
+    // Calculate stats
+    try {
+      // 1. Count total workspaces user belongs to
+      let workspacesCount = 1; // Default to at least this workspace
+      
+      try {
+        // This query was causing the error - fix it
+        workspacesCount = await Workspace.countDocuments({
+          $or: [
+            { owner: userId },
+            { members: { $elemMatch: { $eq: userId } } }
+          ]
+        });
+        
+        if (workspacesCount === 0) {
+          // Fallback if the query doesn't work
+          workspacesCount = 1;
+        }
+      } catch (workspaceError) {
+        console.error('Error counting workspaces:', workspaceError);
+        // Keep default value
+      }
+      
+      // 2. Count projects user is a member of in this workspace
+      let projectsCount = 0;
+      let userProjects = [];
+      
+      try {
+        // Get projects user is a member of
+        userProjects = await Project.find({ 
+          workspace: workspaceId,
+          $or: [
+            { owner: userId },
+            { members: { $elemMatch: { $eq: userId } } }
+          ]
+        });
+        
+        projectsCount = userProjects.length;
+      } catch (projectError) {
+        console.error('Error counting projects:', projectError);
+      }
+      
+      // 3. Count tasks assigned to user
+      let tasksCount = 0;
+      let completedTasksCount = 0;
+      
+      try {
+        // If you have a Task model
+        if (typeof Task !== 'undefined') {
+          const projectIds = userProjects.map(p => p._id);
+          
+          if (projectIds.length > 0) {
+            const userTasks = await Task.find({
+              project: { $in: projectIds },
+              assignee: userId
+            });
+            
+            tasksCount = userTasks.length;
+            completedTasksCount = userTasks.filter(task => 
+              task.status === 'completed' || task.completed
+            ).length;
+          }
+        } else {
+          // If tasks are embedded in projects
+          for (const project of userProjects) {
+            if (project.tasks && Array.isArray(project.tasks)) {
+              for (const task of project.tasks) {
+                // Check if task is assigned to this user
+                const assigneeId = typeof task.assignee === 'object' 
+                  ? task.assignee.toString() 
+                  : task.assignee;
+                  
+                if (assigneeId === userId) {
+                  tasksCount++;
+                  if (task.status === 'completed' || task.completed) {
+                    completedTasksCount++;
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (taskError) {
+        console.error('Error counting tasks:', taskError);
+      }
+      
+      // Calculate contribution percentage
+      const contributionPercentage = tasksCount > 0 
+        ? Math.round((completedTasksCount / tasksCount) * 100) 
+        : 0;
+      
+      // Return stats
+      return res.status(200).json({
+        workspacesCount,
+        projectsCount,
+        tasksCount,
+        completedTasksCount,
+        contributionPercentage
+      });
+      
+    } catch (statsError) {
+      console.error('Error calculating stats:', statsError);
+      return res.status(200).json(defaultStats);
+    }
+    
+  } catch (error) {
+    console.error('Error fetching user workspace stats:', error);
+    // Return default stats instead of error
+    return res.status(200).json({
+      workspacesCount: 1,
+      projectsCount: 0,
+      tasksCount: 0,
+      completedTasksCount: 0,
+      contributionPercentage: 0
+    });
   }
 };

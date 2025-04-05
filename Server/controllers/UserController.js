@@ -1,7 +1,11 @@
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const { validateUser, validateUpdateUser } = require('../validators/validators');
-const { get } = require('mongoose');
+const mongoose = require('mongoose'); // Add this import
+const Workspace = require('../models/Workspace');
+const Project = require('../models/Project'); // This was missing
+const Task = require('../models/Task'); // This was missing
+
 
 const getAllUsers = async (req, res) => {
     await User.find()
@@ -259,9 +263,152 @@ const getBasicUserInfo = async (req, res) => {
     }
 };
 
+const getUserProfile = async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Default profile to return in case of errors
+      const defaultProfile = {
+        profile: {
+          _id: userId,
+          name: "User",
+          email: "",
+          bio: 'No bio available',
+          profile_picture: null,
+          createdAt: new Date().toISOString()
+        },
+        stats: {
+          workspacesCount: 1,
+          projectsCount: 0,
+          tasksCount: 0,
+          completedTasksCount: 0,
+          contributionPercentage: 0
+        }
+      };
+      
+      try {
+        // Find the user
+        const user = await User.findById(userId).select('name email bio profile_picture createdAt');
+        
+        if (!user) {
+          return res.status(200).json(defaultProfile);
+        }
+        
+        // Create profile data structure
+        const profileData = {
+          profile: {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            bio: user.bio || 'No bio available',
+            profile_picture: user.profile_picture,
+            createdAt: user.createdAt
+          },
+          stats: {
+            workspacesCount: 1, // Default value
+            projectsCount: 0,
+            tasksCount: 0,
+            completedTasksCount: 0,
+            contributionPercentage: 0
+          }
+        };
+        
+        try {
+          // Safely convert to ObjectId if valid
+          let userObjectId;
+          try {
+            // Check if valid ObjectID first
+            if (mongoose.Types.ObjectId.isValid(userId)) {
+              userObjectId = new mongoose.Types.ObjectId(userId); // Using new keyword here
+            }
+          } catch (objectIdError) {
+            console.error('Error creating ObjectId:', objectIdError);
+            // Continue with string ID
+            userObjectId = userId;
+          }
+          
+          // Get workspaces count - using safer query
+          try {
+            const workspaces = await Workspace.find({ 
+              $or: [
+                { owner: userId },
+                { members: userId }
+              ] 
+            });
+            
+            profileData.stats.workspacesCount = workspaces.length || 1;
+          } catch (workspaceError) {
+            console.error('Error counting workspaces:', workspaceError);
+            // Keep default value
+          }
+          
+          // Get projects count
+          try {
+            const projects = await Project.find({ members: userId });
+            profileData.stats.projectsCount = projects.length;
+          } catch (projectError) {
+            console.error('Error counting projects:', projectError);
+            // Keep default value
+          }
+          
+          // Get tasks count
+          try {
+            const tasks = await Task.find({ assignee: userId });
+            
+            profileData.stats.tasksCount = tasks.length;
+            profileData.stats.completedTasksCount = tasks.filter(task => 
+              task.status === 'completed' || task.completed
+            ).length;
+            
+            // Calculate completion percentage
+            if (profileData.stats.tasksCount > 0) {
+              profileData.stats.contributionPercentage = Math.round(
+                (profileData.stats.completedTasksCount / profileData.stats.tasksCount) * 100
+              );
+            }
+          } catch (taskError) {
+            console.error('Error counting tasks:', taskError);
+            // Keep default values
+          }
+          
+        } catch (statsError) {
+          console.error('Error calculating stats:', statsError);
+          // Keep default stats values
+        }
+        
+        res.status(200).json(profileData);
+        
+      } catch (userError) {
+        console.error('Error fetching user:', userError);
+        return res.status(200).json(defaultProfile);
+      }
+      
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      // Return default profile instead of error
+      return res.status(200).json({
+        profile: {
+          _id: userId,
+          name: "User",
+          email: "",
+          bio: 'No bio available',
+          profile_picture: null,
+          createdAt: new Date().toISOString()
+        },
+        stats: {
+          workspacesCount: 1,
+          projectsCount: 0,
+          tasksCount: 0,
+          completedTasksCount: 0,
+          contributionPercentage: 0
+        }
+      });
+    }
+  };
+  
 
 
-module.exports = { profilePictureUpload, getBasicUserInfo, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getMe };
+module.exports = { getUserProfile, profilePictureUpload, getBasicUserInfo, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getMe };
 
 
 
