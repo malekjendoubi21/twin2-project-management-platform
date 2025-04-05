@@ -109,7 +109,7 @@ const Profile = () => {
     const certificationFileInputRef = useRef(null);
 
 
-   // États pour les expériences
+    // États pour les expériences
     const [experiences, setExperiences] = useState([]);
     const [showExperienceForm, setShowExperienceForm] = useState(false);
     const [newExperience, setNewExperience] = useState({
@@ -525,97 +525,97 @@ const Profile = () => {
         if (certificationFileInputRef.current) certificationFileInputRef.current.value = null;
     };
 
-// Gestion des expériences
-const handleAddExperience = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
-    try {
-        const response = await api.post('/api/experiences/addExperience', {
-            job_title: newExperience.job_title,
-            company: newExperience.company,
-            start_date: newExperience.start_date,
-            end_date: newExperience.end_date,
-            description: newExperience.description
-        });
-        
-        setExperiences([...experiences, response.data]);
-        setNewExperience({
-            job_title: '',
-            company: '',
-            start_date: '',
-            end_date: '',
-            description: ''
-        });
-        setShowExperienceForm(false);
-        toast.success('Expérience ajoutée avec succès');
-    } catch (error) {
-        console.error('Error adding experience:', error.response?.data || error.message);
-        toast.error(`Échec de l'ajout: ${error.response?.data?.message || error.message}`);
-    } finally {
-        setIsSaving(false);
-    }
-};
+    // Gestion des expériences
+    const handleAddExperience = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            const response = await api.post('/api/experiences/addExperience', {
+                job_title: newExperience.job_title,
+                company: newExperience.company,
+                start_date: newExperience.start_date,
+                end_date: newExperience.end_date,
+                description: newExperience.description
+            });
 
-const handleEditExperience = (experience) => {
-    setEditingExperienceId(experience._id);
-    setEditExperienceData({
-        job_title: experience.job_title || '',
-        company: experience.company || '',
-        start_date: experience.start_date?.split('T')[0] || '',
-        end_date: experience.end_date?.split('T')[0] || '',
-        description: experience.description || ''
-    });
-    setShowExperienceForm(true);
-};
+            setExperiences([...experiences, response.data]);
+            setNewExperience({
+                job_title: '',
+                company: '',
+                start_date: '',
+                end_date: '',
+                description: ''
+            });
+            setShowExperienceForm(false);
+            toast.success('Expérience ajoutée avec succès');
+        } catch (error) {
+            console.error('Error adding experience:', error.response?.data || error.message);
+            toast.error(`Échec de l'ajout: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
-const handleUpdateExperience = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
-    try {
-        const response = await api.put(
-            `/api/experiences/updateExperience/${editingExperienceId}`,
-            {
-                job_title: editExperienceData.job_title,
-                company: editExperienceData.company,
-                start_date: editExperienceData.start_date,
-                end_date: editExperienceData.end_date,
-                description: editExperienceData.description
-            }
-        );
-        
-        setExperiences(experiences.map(exp => 
-            exp._id === editingExperienceId ? response.data : exp
-        ));
-        
-        // Réinitialisation
-        setEditingExperienceId(null);
+    const handleEditExperience = (experience) => {
+        setEditingExperienceId(experience._id);
         setEditExperienceData({
-            job_title: '',
-            company: '',
-            start_date: '',
-            end_date: '',
-            description: ''
+            job_title: experience.job_title || '',
+            company: experience.company || '',
+            start_date: experience.start_date?.split('T')[0] || '',
+            end_date: experience.end_date?.split('T')[0] || '',
+            description: experience.description || ''
         });
-        setShowExperienceForm(false);
-        toast.success('Expérience mise à jour avec succès');
-    } catch (error) {
-        console.error('Error updating experience:', error);
-        toast.error(`Échec de la mise à jour: ${error.response?.data?.message || error.message}`);
-    } finally {
-        setIsSaving(false);
-    }
-};
+        setShowExperienceForm(true);
+    };
 
-const handleDeleteExperience = async (experienceId) => {
-    try {
-        await api.delete(`/api/experiences/${experienceId}`);
-        setExperiences(experiences.filter(exp => exp._id !== experienceId));
-        toast.success('Expérience supprimée avec succès');
-    } catch (error) {
-        console.error('Error deleting experience:', error);
-        toast.error(`Échec de la suppression: ${error.response?.data?.message || error.message}`);
-    }
-};
+    const handleUpdateExperience = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            const response = await api.put(
+                `/api/experiences/updateExperience/${editingExperienceId}`,
+                {
+                    job_title: editExperienceData.job_title,
+                    company: editExperienceData.company,
+                    start_date: editExperienceData.start_date,
+                    end_date: editExperienceData.end_date,
+                    description: editExperienceData.description
+                }
+            );
+
+            setExperiences(experiences.map(exp =>
+                exp._id === editingExperienceId ? response.data : exp
+            ));
+
+            // Réinitialisation
+            setEditingExperienceId(null);
+            setEditExperienceData({
+                job_title: '',
+                company: '',
+                start_date: '',
+                end_date: '',
+                description: ''
+            });
+            setShowExperienceForm(false);
+            toast.success('Expérience mise à jour avec succès');
+        } catch (error) {
+            console.error('Error updating experience:', error);
+            toast.error(`Échec de la mise à jour: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDeleteExperience = async (experienceId) => {
+        try {
+            await api.delete(`/api/experiences/${experienceId}`);
+            setExperiences(experiences.filter(exp => exp._id !== experienceId));
+            toast.success('Expérience supprimée avec succès');
+        } catch (error) {
+            console.error('Error deleting experience:', error);
+            toast.error(`Échec de la suppression: ${error.response?.data?.message || error.message}`);
+        }
+    };
 
     if (loading) {
         return (
@@ -686,7 +686,7 @@ const handleDeleteExperience = async (experienceId) => {
             <div className="container mx-auto px-4 py-8">
                 <div className="max-w-5xl mx-auto">
                     <div className="bg-base-100 shadow-xl rounded-t-lg overflow-hidden">
-                        <div className="h-40 bg-gradient-to-r from-primary to-secondary opacity-80"></div>
+                        <div className="h-40 bg-gradient-to-r from-purple-500 to-pink-500 opacity-80"></div>
                         <div className="px-8 pb-6 relative">
                             <div className="absolute -top-16 left-8 group">
                                 <div className="w-32 h-32 rounded-full border-4 border-base-100 overflow-hidden bg-base-200 shadow-lg relative">
@@ -762,9 +762,26 @@ const handleDeleteExperience = async (experienceId) => {
                                     <div>
                                         <h1 className="text-3xl font-bold">{user?.name || 'User'}</h1>
                                         <p className="text-base-content opacity-75">{user?.email || 'user@example.com'}</p>
-                                        <p className="mt-1">
+                                        <div className="mt-1 flex items-center gap-2">
                                             <span className="badge badge-primary">{user?.role || 'user'}</span>
-                                        </p>
+                                            {skills
+                                                .filter((skill) => skill.tags >= 70)
+                                                .map((skill) => {
+                                                    const categoryColors = {
+                                                        Technical: 'badge bg-blue-200 text-blue-800',
+                                                        'Soft Skill': 'badge bg-green-200 text-green-800',
+                                                        Management: 'badge bg-purple-200 text-purple-800',
+                                                    };
+                                                    return (
+                                                        <span
+                                                            key={skill._id}
+                                                            className={categoryColors[skill.category] || 'badge badge-outline'}
+                                                        >
+                                                            {skill.name}
+                                                        </span>
+                                                    );
+                                                })}
+                                        </div>
                                     </div>
                                     {!isEditing && (
                                         <button
@@ -804,18 +821,6 @@ const handleDeleteExperience = async (experienceId) => {
                                 Profile
                             </button>
                             <button
-                                className={`tab ${activeTab === 'security' ? 'tab-active' : ''}`}
-                                onClick={() => setActiveTab('security')}
-                            >
-                                Security
-                            </button>
-                            <button
-                                className={`tab ${activeTab === 'preferences' ? 'tab-active' : ''}`}
-                                onClick={() => setActiveTab('preferences')}
-                            >
-                                Preferences
-                            </button>
-                            <button
                                 className={`tab ${activeTab === 'Skills' ? 'tab-active' : ''}`}
                                 onClick={() => setActiveTab('Skills')}
                             >
@@ -833,414 +838,755 @@ const handleDeleteExperience = async (experienceId) => {
                             >
                                 Experience
                             </button>
+                            <button
+                                className={`tab ${activeTab === 'security' ? 'tab-active' : ''}`}
+                                onClick={() => setActiveTab('security')}
+                            >
+                                Security
+                            </button>
+                            <button
+                                className={`tab ${activeTab === 'preferences' ? 'tab-active' : ''}`}
+                                onClick={() => setActiveTab('preferences')}
+                            >
+                                Preferences
+                            </button>
                         </div>
-                    </div>
-
-                    <div className="bg-base-100 shadow-xl rounded-b-lg p-6">
-                        {activeTab === 'profile' && (
-                            <div>
-                                {isEditing ? (
-                                    <form onSubmit={handleSubmit} className="space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-base-100 shadow-xl rounded-b-lg p-6">
+                            {activeTab === 'profile' && (
+                                <div>
+                                    {isEditing ? (
+                                        <form onSubmit={handleSubmit} className="space-y-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="form-control">
+                                                    <label className="label">
+                                                        <span className="label-text font-medium">Full Name</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={formData.name}
+                                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                        className="input input-bordered"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="form-control">
+                                                    <label className="label">
+                                                        <span className="label-text font-medium">Email Address</span>
+                                                    </label>
+                                                    <input
+                                                        type="email"
+                                                        value={formData.email}
+                                                        className="input input-bordered input-disabled"
+                                                        disabled
+                                                        readOnly
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="form-control">
+                                                    <label className="label">
+                                                        <span className="label-text font-medium">Phone Number</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={formData.phone_number}
+                                                        onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                                                        className="input input-bordered"
+                                                        placeholder="e.g. +216 12 345 6789"
+                                                    />
+                                                </div>
+                                                <div className="form-control">
+                                                    <label className="label">
+                                                        <span className="label-text font-medium">Role</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={formData.role}
+                                                        className="input input-bordered input-disabled"
+                                                        disabled
+                                                    />
+                                                </div>
+                                            </div>
                                             <div className="form-control">
                                                 <label className="label">
-                                                    <span className="label-text font-medium">Full Name</span>
+                                                    <span className="label-text font-medium">Bio</span>
+                                                </label>
+                                                <textarea
+                                                    value={formData.bio}
+                                                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                                                    className="textarea textarea-bordered h-24"
+                                                    placeholder="Tell us about yourself"
+                                                />
+                                            </div>
+                                            <div className="flex gap-4">
+                                                <button
+                                                    type="submit"
+                                                    className="btn btn-primary flex-1"
+                                                    disabled={isSaving}
+                                                >
+                                                    {isSaving ? (
+                                                        <>
+                                                            <span className="loading loading-spinner loading-xs"></span>
+                                                            Saving...
+                                                        </>
+                                                    ) : 'Save Changes'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsEditing(false)}
+                                                    className="btn btn-outline flex-1"
+                                                    disabled={isSaving}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </form>
+                                    ) : (
+                                        <div className="space-y-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div>
+                                                    <h3 className="text-sm font-semibold text-base-content/60 uppercase">Contact Information</h3>
+                                                    <div className="mt-3 space-y-4">
+                                                        <div className="flex items-center">
+                                                            <svg
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                className="h-5 w-5 text-primary mr-3"
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                                stroke="currentColor"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth="2"
+                                                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                                                />
+                                                            </svg>
+                                                            <span>{user?.email || 'user@example.com'}</span>
+                                                        </div>
+                                                        <div className="flex items-center">
+                                                            <svg
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                className="h-5 w-5 text-primary mr-3"
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                                stroke="currentColor"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth="2"
+                                                                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                                                                />
+                                                            </svg>
+                                                            <span>{formatPhoneDisplay(user?.phone_number)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-sm font-semibold text-base-content/60 uppercase">Account Details</h3>
+                                                    <div className="mt-3 space-y-4">
+                                                        <div className="flex items-center">
+                                                            <svg
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                className="h-5 w-5 text-primary mr-3"
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                                stroke="currentColor"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth="2"
+                                                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                                                />
+                                                            </svg>
+                                                            <span>{user?.name || 'User'}</span>
+                                                        </div>
+                                                        <div className="flex items-center">
+                                                            <svg
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                className="h-5 w-5 text-primary mr-3"
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                                stroke="currentColor"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth="2"
+                                                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                                                />
+                                                            </svg>
+                                                            <span className="capitalize">{user?.role || 'user'}</span>
+                                                        </div>
+                                                        <div className="flex items-center">
+                                                            <svg
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                className="h-5 w-5 text-primary mr-3"
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                                stroke="currentColor"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth="2"
+                                                                    d="M12 15v2m-6 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                                                />
+                                                            </svg>
+                                                            <span>2FA: {user?.two_factor_enabled ? 'Enabled' : 'Disabled'}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="mt-8">
+                                                <h3 className="text-sm font-semibold text-base-content/60 uppercase">Biography</h3>
+                                                <div className="mt-3 p-4 bg-base-200 rounded-lg">
+                                                    <p>{user?.bio || 'No bio provided yet. Click Edit Profile to add one!'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'security' && (
+                                <div className="space-y-8">
+                                    <div>
+                                        <h3 className="text-xl font-bold mb-4">Change Password</h3>
+                                        <form onSubmit={handlePasswordChange} className="space-y-4">
+                                            <div className="form-control">
+                                                <label className="label">
+                                                    <span className="label-text">Current Password</span>
                                                 </label>
                                                 <input
-                                                    type="text"
-                                                    value={formData.name}
-                                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                    type="password"
+                                                    value={formData.password}
+                                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                                     className="input input-bordered"
                                                     required
                                                 />
                                             </div>
                                             <div className="form-control">
                                                 <label className="label">
-                                                    <span className="label-text font-medium">Email Address</span>
+                                                    <span className="label-text">New Password</span>
                                                 </label>
                                                 <input
-                                                    type="email"
-                                                    value={formData.email}
-                                                    className="input input-bordered input-disabled"
-                                                    disabled
-                                                    readOnly
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="form-control">
-                                                <label className="label">
-                                                    <span className="label-text font-medium">Phone Number</span>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={formData.phone_number}
-                                                    onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                                                    type="password"
+                                                    value={formData.newPassword}
+                                                    onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
                                                     className="input input-bordered"
-                                                    placeholder="e.g. +216 12 345 6789"
+                                                    required
+                                                    minLength={8}
                                                 />
                                             </div>
                                             <div className="form-control">
                                                 <label className="label">
-                                                    <span className="label-text font-medium">Role</span>
+                                                    <span className="label-text">Confirm New Password</span>
                                                 </label>
                                                 <input
-                                                    type="text"
-                                                    value={formData.role}
-                                                    className="input input-bordered input-disabled"
-                                                    disabled
+                                                    type="password"
+                                                    value={formData.confirmPassword}
+                                                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                                    className="input input-bordered"
+                                                    required
                                                 />
                                             </div>
-                                        </div>
-                                        <div className="form-control">
-                                            <label className="label">
-                                                <span className="label-text font-medium">Bio</span>
-                                            </label>
-                                            <textarea
-                                                value={formData.bio}
-                                                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                                                className="textarea textarea-bordered h-24"
-                                                placeholder="Tell us about yourself"
-                                            />
-                                        </div>
-                                        <div className="flex gap-4">
                                             <button
                                                 type="submit"
-                                                className="btn btn-primary flex-1"
-                                                disabled={isSaving}
+                                                className="btn btn-primary"
+                                                disabled={isSaving || !formData.password || !formData.newPassword || formData.newPassword !== formData.confirmPassword}
                                             >
                                                 {isSaving ? (
                                                     <>
                                                         <span className="loading loading-spinner loading-xs"></span>
-                                                        Saving...
+                                                        Changing Password...
                                                     </>
-                                                ) : 'Save Changes'}
+                                                ) : 'Change Password'}
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div className="divider"></div>
+                                    <div>
+                                        <h3 className="text-xl font-bold mb-4">Two-Factor Authentication</h3>
+                                        <div className="flex items-center justify-between bg-base-200 p-4 rounded-lg">
+                                            <div>
+                                                <p className="font-medium">Two-Factor Authentication</p>
+                                                <p className="text-sm opacity-70">Add an extra layer of security to your account</p>
+                                            </div>
+                                            <div className="form-control">
+                                                <label className="cursor-pointer label">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="toggle toggle-primary"
+                                                        checked={formData.two_factor_enabled}
+                                                        readOnly
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <button className="btn btn-outline btn-sm mt-4">
+                                            {formData.two_factor_enabled ? 'Disable' : 'Enable'} Two-Factor Authentication
+                                        </button>
+                                    </div>
+                                    <div className="divider"></div>
+                                    <div>
+                                        <h3 className="text-xl font-bold mb-4">Sessions</h3>
+                                        <div className="bg-base-200 p-4 rounded-lg">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="font-medium">Current Session</p>
+                                                    <p className="text-sm opacity-70">This device</p>
+                                                </div>
+                                                <div className="badge badge-success">Active</div>
+                                            </div>
+                                        </div>
+                                        <button className="btn btn-outline btn-error btn-sm mt-4">
+                                            Logout from All Devices
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'preferences' && (
+                                <div className="space-y-8">
+                                    <div>
+                                        <h3 className="text-xl font-bold mb-4">Theme Settings</h3>
+                                        <div className="flex gap-4">
+                                            <button
+                                                className={`btn ${theme === 'light' ? 'btn-primary' : 'btn-outline'}`}
+                                                onClick={() => handleThemeChange('light')}
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-5 w-5 mr-2"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth="2"
+                                                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                                                    />
+                                                </svg>
+                                                Light
                                             </button>
                                             <button
-                                                type="button"
-                                                onClick={() => setIsEditing(false)}
-                                                className="btn btn-outline flex-1"
-                                                disabled={isSaving}
+                                                className={`btn ${theme === 'dark' ? 'btn-primary' : 'btn-outline'}`}
+                                                onClick={() => handleThemeChange('dark')}
                                             >
-                                                Cancel
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-5 w-5 mr-2"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth="2"
+                                                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                                                    />
+                                                </svg>
+                                                Dark
+                                            </button>
+                                            <button
+                                                className={`btn ${theme === 'system' ? 'btn-primary' : 'btn-outline'}`}
+                                                onClick={() => handleThemeChange('system')}
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-5 w-5 mr-2"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth="2"
+                                                        d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                                    />
+                                                </svg>
+                                                System
                                             </button>
                                         </div>
-                                    </form>
-                                ) : (
-                                    <div className="space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <h3 className="text-sm font-semibold text-base-content/60 uppercase">Contact Information</h3>
-                                                <div className="mt-3 space-y-4">
-                                                    <div className="flex items-center">
-                                                        <svg
-                                                            xmlns="http://www.w3.org/2000/svg"
-                                                            className="h-5 w-5 text-primary mr-3"
-                                                            fill="none"
-                                                            viewBox="0 0 24 24"
-                                                            stroke="currentColor"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth="2"
-                                                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                                                            />
-                                                        </svg>
-                                                        <span>{user?.email || 'user@example.com'}</span>
-                                                    </div>
-                                                    <div className="flex items-center">
-                                                        <svg
-                                                            xmlns="http://www.w3.org/2000/svg"
-                                                            className="h-5 w-5 text-primary mr-3"
-                                                            fill="none"
-                                                            viewBox="0 0 24 24"
-                                                            stroke="currentColor"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth="2"
-                                                                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                                                            />
-                                                        </svg>
-                                                        <span>{formatPhoneDisplay(user?.phone_number)}</span>
-                                                    </div>
-                                                </div>
+                                    </div>
+                                    <div className="divider"></div>
+                                    <div>
+                                        <h3 className="text-xl font-bold mb-4">Email Preferences</h3>
+                                        <div className="space-y-4">
+                                            <div className="form-control">
+                                                <label className="cursor-pointer label justify-start gap-4">
+                                                    <input type="checkbox" checked={true} className="checkbox checkbox-primary" />
+                                                    <span>Task assignments and updates</span>
+                                                </label>
                                             </div>
-                                            <div>
-                                                <h3 className="text-sm font-semibold text-base-content/60 uppercase">Account Details</h3>
-                                                <div className="mt-3 space-y-4">
-                                                    <div className="flex items-center">
-                                                        <svg
-                                                            xmlns="http://www.w3.org/2000/svg"
-                                                            className="h-5 w-5 text-primary mr-3"
-                                                            fill="none"
-                                                            viewBox="0 0 24 24"
-                                                            stroke="currentColor"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth="2"
-                                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                                            />
-                                                        </svg>
-                                                        <span>{user?.name || 'User'}</span>
-                                                    </div>
-                                                    <div className="flex items-center">
-                                                        <svg
-                                                            xmlns="http://www.w3.org/2000/svg"
-                                                            className="h-5 w-5 text-primary mr-3"
-                                                            fill="none"
-                                                            viewBox="0 0 24 24"
-                                                            stroke="currentColor"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth="2"
-                                                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                                                            />
-                                                        </svg>
-                                                        <span className="capitalize">{user?.role || 'user'}</span>
-                                                    </div>
-                                                    <div className="flex items-center">
-                                                        <svg
-                                                            xmlns="http://www.w3.org/2000/svg"
-                                                            className="h-5 w-5 text-primary mr-3"
-                                                            fill="none"
-                                                            viewBox="0 0 24 24"
-                                                            stroke="currentColor"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth="2"
-                                                                d="M12 15v2m-6 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                                            />
-                                                        </svg>
-                                                        <span>2FA: {user?.two_factor_enabled ? 'Enabled' : 'Disabled'}</span>
-                                                    </div>
-                                                </div>
+                                            <div className="form-control">
+                                                <label className="cursor-pointer label justify-start gap-4">
+                                                    <input type="checkbox" checked={true} className="checkbox checkbox-primary" />
+                                                    <span>Project status updates</span>
+                                                </label>
                                             </div>
-                                        </div>
-                                        <div className="mt-8">
-                                            <h3 className="text-sm font-semibold text-base-content/60 uppercase">Biography</h3>
-                                            <div className="mt-3 p-4 bg-base-200 rounded-lg">
-                                                <p>{user?.bio || 'No bio provided yet. Click Edit Profile to add one!'}</p>
+                                            <div className="form-control">
+                                                <label className="cursor-pointer label justify-start gap-4">
+                                                    <input type="checkbox" checked={false} className="checkbox checkbox-primary" />
+                                                    <span>Marketing and promotional emails</span>
+                                                </label>
                                             </div>
                                         </div>
                                     </div>
-                                )}
-                            </div>
-                        )}
-
-                        {activeTab === 'security' && (
-                            <div className="space-y-8">
-                                <div>
-                                    <h3 className="text-xl font-bold mb-4">Change Password</h3>
-                                    <form onSubmit={handlePasswordChange} className="space-y-4">
-                                        <div className="form-control">
-                                            <label className="label">
-                                                <span className="label-text">Current Password</span>
-                                            </label>
-                                            <input
-                                                type="password"
-                                                value={formData.password}
-                                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                                className="input input-bordered"
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-control">
-                                            <label className="label">
-                                                <span className="label-text">New Password</span>
-                                            </label>
-                                            <input
-                                                type="password"
-                                                value={formData.newPassword}
-                                                onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                                                className="input input-bordered"
-                                                required
-                                                minLength={8}
-                                            />
-                                        </div>
-                                        <div className="form-control">
-                                            <label className="label">
-                                                <span className="label-text">Confirm New Password</span>
-                                            </label>
-                                            <input
-                                                type="password"
-                                                value={formData.confirmPassword}
-                                                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                                                className="input input-bordered"
-                                                required
-                                            />
-                                        </div>
-                                        <button
-                                            type="submit"
-                                            className="btn btn-primary"
-                                            disabled={isSaving || !formData.password || !formData.newPassword || formData.newPassword !== formData.confirmPassword}
-                                        >
-                                            {isSaving ? (
-                                                <>
-                                                    <span className="loading loading-spinner loading-xs"></span>
-                                                    Changing Password...
-                                                </>
-                                            ) : 'Change Password'}
-                                        </button>
-                                    </form>
+                                    <div className="divider"></div>
+                                    <div>
+                                        <h3 className="text-xl font-bold mb-4">Language</h3>
+                                        <select className="select select-bordered w-full max-w-xs">
+                                            <option value="en">English (US)</option>
+                                            <option value="fr">Français</option>
+                                            <option value="ar">العربية</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div className="divider"></div>
-                                <div>
-                                    <h3 className="text-xl font-bold mb-4">Two-Factor Authentication</h3>
-                                    <div className="flex items-center justify-between bg-base-200 p-4 rounded-lg">
-                                        <div>
-                                            <p className="font-medium">Two-Factor Authentication</p>
-                                            <p className="text-sm opacity-70">Add an extra layer of security to your account</p>
-                                        </div>
-                                        <div className="form-control">
-                                            <label className="cursor-pointer label">
-                                                <input
-                                                    type="checkbox"
-                                                    className="toggle toggle-primary"
-                                                    checked={formData.two_factor_enabled}
-                                                    readOnly
+                            )}
+
+                            {activeTab === 'Skills' && (
+                                <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h2 className="text-2xl font-bold text-primary">My Skills</h2>
+                                        <button
+                                            onClick={() => {
+                                                setShowSkillForm(true);
+                                                setEditingSkillId(null);
+                                                setNewSkill({ name: '', description: '', category: 'Technical', tags: 50 });
+                                            }}
+                                            className="btn btn-primary gap-2"
+                                            disabled={showSkillForm}
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-5 w-5"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                    clipRule="evenodd"
                                                 />
-                                            </label>
-                                        </div>
+                                            </svg>
+                                            Add Skill
+                                        </button>
                                     </div>
-                                    <button className="btn btn-outline btn-sm mt-4">
-                                        {formData.two_factor_enabled ? 'Disable' : 'Enable'} Two-Factor Authentication
-                                    </button>
-                                </div>
-                                <div className="divider"></div>
-                                <div>
-                                    <h3 className="text-xl font-bold mb-4">Sessions</h3>
-                                    <div className="bg-base-200 p-4 rounded-lg">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="font-medium">Current Session</p>
-                                                <p className="text-sm opacity-70">This device</p>
+
+                                    {showSkillForm && (
+                                        <div className="card bg-base-200 shadow-lg mb-8">
+                                            <div className="card-body">
+                                                <h3 className="card-title text-lg mb-4">
+                                                    {editingSkillId ? 'Edit Skill' : 'New Skill'}
+                                                </h3>
+                                                <form
+                                                    onSubmit={editingSkillId ? handleUpdateSkill : handleAddSkill}
+                                                    className="space-y-4"
+                                                >
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text">Name*</span>
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={editingSkillId ? editSkillData.name : newSkill.name}
+                                                                onChange={(e) =>
+                                                                    editingSkillId
+                                                                        ? setEditSkillData({
+                                                                            ...editSkillData,
+                                                                            name: e.target.value,
+                                                                        })
+                                                                        : setNewSkill({
+                                                                            ...newSkill,
+                                                                            name: e.target.value,
+                                                                        })
+                                                                }
+                                                                className="input input-bordered"
+                                                                placeholder="Ex: React, Project Management"
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text">Category*</span>
+                                                            </label>
+                                                            <select
+                                                                value={editingSkillId ? editSkillData.category : newSkill.category}
+                                                                onChange={(e) =>
+                                                                    editingSkillId
+                                                                        ? setEditSkillData({
+                                                                            ...editSkillData,
+                                                                            category: e.target.value,
+                                                                        })
+                                                                        : setNewSkill({
+                                                                            ...newSkill,
+                                                                            category: e.target.value,
+                                                                        })
+                                                                }
+                                                                className="select select-bordered"
+                                                                required
+                                                            >
+                                                                <option value="Technical">Technical</option>
+                                                                <option value="Soft Skill">Soft Skill</option>
+                                                                <option value="Management">Management</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div className="form-control">
+                                                        <label className="label">
+                                                            <span className="label-text">Description*</span>
+                                                        </label>
+                                                        <textarea
+                                                            value={editingSkillId ? editSkillData.description : newSkill.description}
+                                                            onChange={(e) =>
+                                                                editingSkillId
+                                                                    ? setEditSkillData({
+                                                                        ...editSkillData,
+                                                                        description: e.target.value,
+                                                                    })
+                                                                    : setNewSkill({
+                                                                        ...newSkill,
+                                                                        description: e.target.value,
+                                                                    })
+                                                            }
+                                                            className="textarea textarea-bordered h-24"
+                                                            placeholder="Describe your skill..."
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="form-control">
+                                                        <label className="label">
+                                                            <span className="label-text">Proficiency Level (0-100)*</span>
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max="100"
+                                                            value={editingSkillId ? editSkillData.tags : newSkill.tags}
+                                                            onChange={(e) => {
+                                                                const value = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                                                                editingSkillId
+                                                                    ? setEditSkillData({ ...editSkillData, tags: value })
+                                                                    : setNewSkill({ ...newSkill, tags: value });
+                                                            }}
+                                                            className="input input-bordered"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="flex justify-end gap-3 mt-6">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setShowSkillForm(false);
+                                                                setEditingSkillId(null);
+                                                                setEditSkillData({ name: '', description: '', category: 'Technical', tags: 50 });
+                                                            }}
+                                                            className="btn btn-ghost"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button type="submit" className="btn btn-primary">
+                                                            {editingSkillId ? 'Update' : 'Add'}
+                                                        </button>
+                                                    </div>
+                                                </form>
                                             </div>
-                                            <div className="badge badge-success">Active</div>
                                         </div>
-                                    </div>
-                                    <button className="btn btn-outline btn-error btn-sm mt-4">
-                                        Logout from All Devices
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                                    )}
 
-                        {activeTab === 'preferences' && (
-                            <div className="space-y-8">
-                                <div>
-                                    <h3 className="text-xl font-bold mb-4">Theme Settings</h3>
-                                    <div className="flex gap-4">
-                                        <button
-                                            className={`btn ${theme === 'light' ? 'btn-primary' : 'btn-outline'}`}
-                                            onClick={() => handleThemeChange('light')}
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    {skills.length === 0 && !showSkillForm ? (
+                                        <div className="text-center py-12">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-12 w-12 mx-auto text-gray-400"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={1.5}
+                                                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                                                />
                                             </svg>
-                                            Light
-                                        </button>
+                                            <h3 className="mt-4 text-lg font-medium text-gray-500">No skills added yet</h3>
+                                            <p className="mt-1 text-gray-400">Add your skills to display them here</p>
+                                            <button
+                                                onClick={() => setShowSkillForm(true)}
+                                                className="btn btn-primary mt-6"
+                                            >
+                                                Add Skill
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {skills.map((skill) => {
+                                                const categoryColors = {
+                                                    Technical: 'bg-blue-200 text-blue-800',
+                                                    'Soft Skill': 'bg-green-200 text-green-800',
+                                                    Management: 'bg-purple-200 text-purple-800',
+                                                };
+
+                                                // Déterminer le niveau de compétence
+                                                let skillLevel = "";
+                                                let levelClass = "";
+                                                if (skill.tags > 70) {
+                                                    skillLevel = "Expert";
+                                                    levelClass = "badge-success";
+                                                } else if (skill.tags > 50) {
+                                                    skillLevel = "Advanced";
+                                                    levelClass = "badge-warning";
+                                                } else if (skill.tags > 30) {
+                                                    skillLevel = "Intermediate";
+                                                    levelClass = "badge-info";
+                                                } else {
+                                                    skillLevel = "Beginner";
+                                                    levelClass = "badge-outline";
+                                                }
+
+                                                return (
+                                                    <div
+                                                        key={skill._id}
+                                                        className="card bg-base-100 border border-base-300 hover:border-primary transition-colors h-full"
+                                                    >
+                                                        <div className="card-body p-3">
+                                                            <div className="flex flex-row gap-4">
+                                                                {/* Partie gauche - Contenu textuel */}
+                                                                <div className="flex-1">
+                                                                    <div className="flex justify-between items-start mb-2">
+                                                                        <h3 className="card-title text-lg">
+                                                                            {skill.name}
+                                                                        </h3>
+                                                                        <span className={`badge ${categoryColors[skill.category]} capitalize`}>
+                                                                            {skill.category}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <span className={`badge ${levelClass}`}>
+                                                                            {skillLevel}
+                                                                        </span>
+                                                                        
+                                                                    </div>
+
+                                                                    {skill.description && (
+                                                                        <p className="text-base-content/80 line-clamp-3">
+                                                                            {skill.description}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Partie droite - Cercle de progression et boutons */}
+                                                                <div className="flex flex-col items-center justify-between">
+                                                                    <ProgressCircle percentage={skill.tags} size={60} strokeWidth={4} />
+
+                                                                    <div className="flex gap-2 mt-2">
+                                                                        <button
+                                                                            onClick={() => handleEditSkill(skill)}
+                                                                            className="btn btn-square btn-xs btn-ghost"
+                                                                            title="Edit"
+                                                                        >
+                                                                            <svg
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                className="h-4 w-4"
+                                                                                fill="none"
+                                                                                viewBox="0 0 24 24"
+                                                                                stroke="currentColor"
+                                                                            >
+                                                                                <path
+                                                                                    strokeLinecap="round"
+                                                                                    strokeLinejoin="round"
+                                                                                    strokeWidth={2}
+                                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                                                />
+                                                                            </svg>
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDeleteSkill(skill._id)}
+                                                                            className="btn btn-square btn-xs btn-ghost text-error"
+                                                                            title="Delete"
+                                                                        >
+                                                                            <svg
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                className="h-4 w-4"
+                                                                                fill="none"
+                                                                                viewBox="0 0 24 24"
+                                                                                stroke="currentColor"
+                                                                            >
+                                                                                <path
+                                                                                    strokeLinecap="round"
+                                                                                    strokeLinejoin="round"
+                                                                                    strokeWidth={2}
+                                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                                />
+                                                                            </svg>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'Certifications' && (
+                                <div className="mt-4 p-6 bg-base-100 text-base-content rounded-lg border border-base-300 shadow-lg">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h2 className="text-2xl font-bold text-primary">Mes Certifications</h2>
                                         <button
-                                            className={`btn ${theme === 'dark' ? 'btn-primary' : 'btn-outline'}`}
-                                            onClick={() => handleThemeChange('dark')}
+                                            onClick={() => {
+                                                setShowCertificationForm(true);
+                                                setEditingCertificationId(null);
+                                                setNewCertification({
+                                                    certifications_name: '',
+                                                    issued_by: '',
+                                                    obtained_date: '',
+                                                    description: '',
+                                                    image: null,
+                                                });
+                                                setCertificationImagePreview(null);
+                                                if (certificationFileInputRef.current) certificationFileInputRef.current.value = '';
+                                            }}
+                                            className="btn btn-primary gap-2 hover:bg-primary-focus transition-colors mb-4"
+                                            disabled={showCertificationForm}
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-5 w-5 text-white"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                    clipRule="evenodd"
+                                                />
                                             </svg>
-                                            Dark
-                                        </button>
-                                        <button
-                                            className={`btn ${theme === 'system' ? 'btn-primary' : 'btn-outline'}`}
-                                            onClick={() => handleThemeChange('system')}
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                            </svg>
-                                            System
+                                            Add Certification
                                         </button>
                                     </div>
-                                </div>
-                                <div className="divider"></div>
-                                <div>
-                                    <h3 className="text-xl font-bold mb-4">Email Preferences</h3>
-                                    <div className="space-y-4">
-                                        <div className="form-control">
-                                            <label className="cursor-pointer label justify-start gap-4">
-                                                <input type="checkbox" checked={true} className="checkbox checkbox-primary" />
-                                                <span>Task assignments and updates</span>
-                                            </label>
-                                        </div>
-                                        <div className="form-control">
-                                            <label className="cursor-pointer label justify-start gap-4">
-                                                <input type="checkbox" checked={true} className="checkbox checkbox-primary" />
-                                                <span>Project status updates</span>
-                                            </label>
-                                        </div>
-                                        <div className="form-control">
-                                            <label className="cursor-pointer label justify-start gap-4">
-                                                <input type="checkbox" checked={false} className="checkbox checkbox-primary" />
-                                                <span>Marketing and promotional emails</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="divider"></div>
-                                <div>
-                                    <h3 className="text-xl font-bold mb-4">Language</h3>
-                                    <select className="select select-bordered w-full max-w-xs">
-                                        <option value="en">English (US)</option>
-                                        <option value="fr">Français</option>
-                                        <option value="ar">العربية</option>
-                                    </select>
-                                </div>
-                            </div>
-                        )}
 
-                        {activeTab === 'Skills' && (
-                            <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h2 className="text-2xl font-bold text-primary">My Skills</h2>
-                                    <button
-                                        onClick={() => {
-                                            setShowSkillForm(true);
-                                            setEditingSkillId(null);
-                                            setNewSkill({ name: '', description: '', category: 'Technical', tags: 50 });
-                                        }}
-                                        className="btn btn-primary gap-2"
-                                        disabled={showSkillForm}
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="h-5 w-5"
-                                            viewBox="0 0 20 20"
-                                            fill="currentColor"
-                                        >
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                                                clipRule="evenodd"
-                                            />
-                                        </svg>
-                                        Add Skill
-                                    </button>
-                                </div>
-
-                                {showSkillForm && (
-                                    <div className="card bg-base-200 shadow-lg mb-8">
-                                        <div className="card-body">
-                                            <h3 className="card-title text-lg mb-4">
-                                                {editingSkillId ? 'Edit Skill' : 'New Skill'}
+                                    {showCertificationForm && (
+                                        <div className="bg-base-200 p-6 rounded-lg mb-8 shadow-sm">
+                                            <h3 className="text-lg font-semibold mb-4">
+                                                {editingCertificationId ? 'Modifier la Certification' : 'Nouvelle Certification'}
                                             </h3>
                                             <form
-                                                onSubmit={editingSkillId ? handleUpdateSkill : handleAddSkill}
+                                                onSubmit={editingCertificationId ? handleUpdateCertification : handleAddCertification}
                                                 className="space-y-4"
                                             >
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1250,816 +1596,555 @@ const handleDeleteExperience = async (experienceId) => {
                                                         </label>
                                                         <input
                                                             type="text"
-                                                            value={editingSkillId ? editSkillData.name : newSkill.name}
+                                                            value={editingCertificationId ? editCertificationData.certifications_name : newCertification.certifications_name}
                                                             onChange={(e) =>
-                                                                editingSkillId
-                                                                    ? setEditSkillData({
-                                                                        ...editSkillData,
-                                                                        name: e.target.value,
-                                                                    })
-                                                                    : setNewSkill({
-                                                                        ...newSkill,
-                                                                        name: e.target.value,
-                                                                    })
+                                                                editingCertificationId
+                                                                    ? setEditCertificationData(prev => ({ ...prev, certifications_name: e.target.value }))
+                                                                    : setNewCertification(prev => ({ ...prev, certifications_name: e.target.value }))
                                                             }
                                                             className="input input-bordered"
-                                                            placeholder="Ex: React, Project Management"
+                                                            placeholder="Ex: AWS Certified Developer"
                                                             required
                                                         />
                                                     </div>
                                                     <div className="form-control">
                                                         <label className="label">
-                                                            <span className="label-text">Category*</span>
+                                                            <span className="label-text">Issued by                                *</span>
                                                         </label>
-                                                        <select
-                                                            value={editingSkillId ? editSkillData.category : newSkill.category}
+                                                        <input
+                                                            type="text"
+                                                            value={editingCertificationId ? editCertificationData.issued_by : newCertification.issued_by}
                                                             onChange={(e) =>
-                                                                editingSkillId
-                                                                    ? setEditSkillData({
-                                                                        ...editSkillData,
-                                                                        category: e.target.value,
-                                                                    })
-                                                                    : setNewSkill({
-                                                                        ...newSkill,
-                                                                        category: e.target.value,
-                                                                    })
+                                                                editingCertificationId
+                                                                    ? setEditCertificationData(prev => ({ ...prev, issued_by: e.target.value }))
+                                                                    : setNewCertification(prev => ({ ...prev, issued_by: e.target.value }))
                                                             }
-                                                            className="select select-bordered"
+                                                            className="input input-bordered"
+                                                            placeholder="Ex: Amazon Web Services"
                                                             required
-                                                        >
-                                                            <option value="Technical">Technical</option>
-                                                            <option value="Soft Skill">Soft Skill</option>
-                                                            <option value="Management">Management</option>
-                                                        </select>
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="form-control">
+                                                        <label className="label">
+                                                            <span className="label-text">Date obtained  *</span>
+                                                        </label>
+                                                        <input
+                                                            type="date"
+                                                            value={editingCertificationId ? editCertificationData.obtained_date : newCertification.obtained_date}
+                                                            onChange={(e) =>
+                                                                editingCertificationId
+                                                                    ? setEditCertificationData(prev => ({ ...prev, obtained_date: e.target.value }))
+                                                                    : setNewCertification(prev => ({ ...prev, obtained_date: e.target.value }))
+                                                            }
+                                                            className="input input-bordered"
+                                                            max={new Date().toISOString().split('T')[0]}
+                                                            required
+                                                        />
                                                     </div>
                                                 </div>
                                                 <div className="form-control">
                                                     <label className="label">
-                                                        <span className="label-text">Description*</span>
+                                                        <span className="label-text">Description</span>
                                                     </label>
                                                     <textarea
-                                                        value={editingSkillId ? editSkillData.description : newSkill.description}
+                                                        value={editingCertificationId ? editCertificationData.description : newCertification.description}
                                                         onChange={(e) =>
-                                                            editingSkillId
-                                                                ? setEditSkillData({
-                                                                    ...editSkillData,
-                                                                    description: e.target.value,
-                                                                })
-                                                                : setNewSkill({
-                                                                    ...newSkill,
-                                                                    description: e.target.value,
-                                                                })
+                                                            editingCertificationId
+                                                                ? setEditCertificationData(prev => ({ ...prev, description: e.target.value }))
+                                                                : setNewCertification(prev => ({ ...prev, description: e.target.value }))
                                                         }
                                                         className="textarea textarea-bordered h-24"
-                                                        placeholder="Describe your skill..."
-                                                        required
+                                                        placeholder="Décrivez cette certification..."
                                                     />
                                                 </div>
                                                 <div className="form-control">
                                                     <label className="label">
-                                                        <span className="label-text">Proficiency Level (0-100)*</span>
+                                                        <span className="label-text">Image</span>
                                                     </label>
                                                     <input
-                                                        type="number"
-                                                        min="0"
-                                                        max="100"
-                                                        value={editingSkillId ? editSkillData.tags : newSkill.tags}
-                                                        onChange={(e) => {
-                                                            const value = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
-                                                            editingSkillId
-                                                                ? setEditSkillData({ ...editSkillData, tags: value })
-                                                                : setNewSkill({ ...newSkill, tags: value });
-                                                        }}
-                                                        className="input input-bordered"
-                                                        required
+                                                        type="file"
+                                                        ref={certificationFileInputRef}
+                                                        onChange={(e) => handleCertificationImageSelect(e, !!editingCertificationId)}
+                                                        className="file-input file-input-bordered"
+                                                        accept="image/jpeg,image/png,image/gif"
                                                     />
                                                 </div>
+                                                {certificationImagePreview && (
+                                                    <div className="mt-4">
+                                                        <label className="label">
+                                                            <span className="label-text">Aperçu</span>
+                                                        </label>
+                                                        <div className="w-40 h-40 border-2 border-base-300 rounded-lg overflow-hidden bg-base-200 flex items-center justify-center">
+                                                            <img src={certificationImagePreview} alt="Aperçu" className="w-full h-full object-contain" />
+                                                        </div>
+                                                        <div className="mt-2 flex justify-center">
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleCancelCertificationImage}
+                                                                className="btn btn-sm btn-error btn-outline"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 <div className="flex justify-end gap-3 mt-6">
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            setShowSkillForm(false);
-                                                            setEditingSkillId(null);
-                                                            setEditSkillData({ name: '', description: '', category: 'Technical', tags: 50 });
+                                                            setShowCertificationForm(false);
+                                                            setEditingCertificationId(null);
+                                                            setNewCertification({ certifications_name: '', issued_by: '', obtained_date: '', description: '', image: null });
+                                                            setEditCertificationData({ certifications_name: '', issued_by: '', obtained_date: '', description: '', image: null });
+                                                            setCertificationImagePreview(null);
+                                                            if (certificationFileInputRef.current) certificationFileInputRef.current.value = '';
                                                         }}
-                                                        className="btn btn-ghost"
+                                                        className="btn btn-ghost hover:bg-base-300 transition-colors"
                                                     >
                                                         Cancel
                                                     </button>
-                                                    <button type="submit" className="btn btn-primary">
-                                                        {editingSkillId ? 'Update' : 'Add'}
+                                                    <button type="submit" className="btn btn-primary hover:bg-primary-focus transition-colors">
+                                                        {editingCertificationId ? 'Save' : 'Add Certification'}
                                                     </button>
                                                 </div>
                                             </form>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
-                                {skills.length === 0 && !showSkillForm ? (
-                                    <div className="text-center py-12">
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="h-12 w-12 mx-auto text-gray-400"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={1.5}
-                                                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                                            />
-                                        </svg>
-                                        <h3 className="mt-4 text-lg font-medium text-gray-500">No skills added yet</h3>
-                                        <p className="mt-1 text-gray-400">Add your skills to display them here</p>
-                                        <button
-                                            onClick={() => setShowSkillForm(true)}
-                                            className="btn btn-primary mt-6"
-                                        >
-                                            Add Skill
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {skills.map((skill) => (
-                                            <div
-                                                key={skill._id}
-                                                className="card bg-base-100 border border-base-300 hover:border-primary transition-colors"
+                                    {certifications.length === 0 && !showCertificationForm && (
+                                        <div className="text-center py-12 bg-base-200 rounded-lg shadow-sm">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-12 w-12 mx-auto text-gray-400"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
                                             >
-                                                <div className="card-body">
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={1.5}
+                                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                                />
+                                            </svg>
+                                            <h3 className="mt-4 text-lg font-medium text-gray-500">No certification added.</h3>
+                                            <p className="mt-1 text-gray-400">Add your certifications to display them here</p>
+                                            <button
+                                                onClick={() => setShowCertificationForm(true)}
+                                                className="btn btn-primary mt-6 hover:bg-primary-focus transition-colors"
+                                            >
+                                                Add Certification
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {certifications.length > 0 && !showCertificationForm && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {certifications.map((certification) => (
+                                                <div
+                                                    key={certification._id}
+                                                    className="bg-base-100 border border-base-300 hover:border-primary transition-colors p-4 rounded-lg shadow-sm"
+                                                >
                                                     <div className="flex justify-between items-start gap-4">
                                                         <div className="flex-1">
-                                                            <h3 className="card-title text-lg">
-                                                                {skill.name}
-                                                                <span className="badge badge-outline badge-sm ml-2 capitalize">
-                                                                    {skill.category}
-                                                                </span>
+                                                            <h3 className="text-lg font-semibold">
+                                                                {certification.certifications_name || 'Sans nom'}
                                                             </h3>
-                                                            {skill.description && (
+                                                            {certification.description && (
                                                                 <p className="mt-2 text-base-content/80 line-clamp-2">
-                                                                    {skill.description}
+                                                                    {certification.description}
                                                                 </p>
                                                             )}
+                                                            <p className="text-sm text-base-content/70 mt-1">
+                                                                Issued by  * : {certification.issued_by || 'Inconnu'}
+                                                            </p>
+                                                            <p>Obtained on *: {new Date(certification.obtained_date).toLocaleDateString('fr-FR')}</p>
                                                         </div>
-                                                        <div className="flex flex-col items-center">
-                                                            <ProgressCircle percentage={skill.tags} size={70} strokeWidth={6} />
-                                                            <div className="mt-2 flex gap-2">
-                                                                <button
-                                                                    onClick={() => handleEditSkill(skill)}
-                                                                    className="btn btn-square btn-xs btn-ghost"
-                                                                    title="Edit"
-                                                                >
-                                                                    <svg
-                                                                        xmlns="http://www.w3.org/2000/svg"
-                                                                        className="h-4 w-4"
-                                                                        fill="none"
-                                                                        viewBox="0 0 24 24"
-                                                                        stroke="currentColor"
-                                                                    >
-                                                                        <path
-                                                                            strokeLinecap="round"
-                                                                            strokeLinejoin="round"
-                                                                            strokeWidth={2}
-                                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                                                        />
-                                                                    </svg>
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDeleteSkill(skill._id)}
-                                                                    className="btn btn-square btn-xs btn-ghost text-error"
-                                                                    title="Delete"
-                                                                >
-                                                                    <svg
-                                                                        xmlns="http://www.w3.org/2000/svg"
-                                                                        className="h-4 w-4"
-                                                                        fill="none"
-                                                                        viewBox="0 0 24 24"
-                                                                        stroke="currentColor"
-                                                                    >
-                                                                        <path
-                                                                            strokeLinecap="round"
-                                                                            strokeLinejoin="round"
-                                                                            strokeWidth={2}
-                                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                                        />
-                                                                    </svg>
-                                                                </button>
+                                                        {certification.image ? (
+                                                            <div className="w-20 h-20 border border-base-300 rounded-lg overflow-hidden bg-base-200">
+                                                                <img
+                                                                    src={certification.image.startsWith('data:') ? certification.image : `/uploads/${certification.image}`}
+                                                                    alt={certification.certifications_name}
+                                                                    className="w-full h-full object-cover"
+                                                                    onError={(e) => {
+                                                                        e.target.src = 'https://via.placeholder.com/80?text=Pas+d%27image';
+                                                                        e.target.alt = 'Image not available';
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        ) : null}
+                                                    </div>
+                                                    <div className="flex justify-end mt-4 gap-2">
+                                                        {!certification.image && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingCertificationId(certification._id);
+                                                                    setEditCertificationData({
+                                                                        ...certification,
+                                                                        obtained_date: certification.obtained_date.split('T')[0],
+                                                                    });
+                                                                    setCertificationImagePreview(certification.image || null);
+                                                                    setShowCertificationForm(true);
+                                                                }}
+                                                                className="btn btn-sm bg-base-200 hover:bg-base-300 text-base-content transition-colors"
+                                                            >
+                                                                Add a photo
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleEditCertification(certification)}
+                                                            className="btn btn-square btn-xs btn-ghost hover:bg-base-300 transition-colors"
+                                                            title="Modifier"
+                                                        >
+                                                            <svg
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                className="h-4 w-4"
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                                stroke="currentColor"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={2}
+                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                                />
+                                                            </svg>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteCertification(certification._id)}
+                                                            className="btn btn-square btn-xs btn-ghost text-error hover:bg-error/20 transition-colors"
+                                                            title="Supprimer"
+                                                        >
+                                                            <svg
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                className="h-4 w-4"
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                                stroke="currentColor"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={2}
+                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'Experience' && (
+                                <div className="mt-4 p-6 bg-base-100 shadow-xl rounded-lg">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h2 className="text-2xl font-bold text-primary">Professional Experience </h2>
+                                        <button
+                                            onClick={() => {
+                                                setShowExperienceForm(true);
+                                                setEditingExperienceId(null);
+                                                setNewExperience({
+                                                    job_title: '',
+                                                    company: '',
+                                                    start_date: '',
+                                                    end_date: '',
+                                                    description: '',
+                                                });
+                                            }}
+                                            className="btn btn-primary gap-2 animate-bounce"
+                                            disabled={showExperienceForm}
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-5 w-5"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                    clipRule="evenodd"
+                                                />
+                                            </svg>
+                                            Add an Experience
+                                        </button>
+                                    </div>
+
+                                    {showExperienceForm && (
+                                        <div className="card bg-gradient-to-br from-primary/5 to-secondary/5 shadow-lg mb-8 border border-primary/20">
+                                            <div className="card-body">
+                                                <h3 className="card-title text-lg mb-4 text-primary">
+                                                    {editingExperienceId ? 'Edit the Experience' : 'New Experience'}
+                                                </h3>
+                                                <form
+                                                    onSubmit={editingExperienceId ? handleUpdateExperience : handleAddExperience}
+                                                    className="space-y-4"
+                                                >
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text text-gray-700 font-medium">Job *</span>
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={editingExperienceId ? editExperienceData.job_title : newExperience.job_title}
+                                                                onChange={(e) =>
+                                                                    editingExperienceId
+                                                                        ? setEditExperienceData({ ...editExperienceData, job_title: e.target.value })
+                                                                        : setNewExperience({ ...newExperience, job_title: e.target.value })
+                                                                }
+                                                                className="input input-bordered focus:ring-2 focus:ring-primary"
+                                                                placeholder="Ex: Full Stack Developer"
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text text-gray-700 font-medium">company*</span>
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={editingExperienceId ? editExperienceData.company : newExperience.company}
+                                                                onChange={(e) =>
+                                                                    editingExperienceId
+                                                                        ? setEditExperienceData({ ...editExperienceData, company: e.target.value })
+                                                                        : setNewExperience({ ...newExperience, company: e.target.value })
+                                                                }
+                                                                className="input input-bordered focus:ring-2 focus:ring-primary"
+                                                                placeholder="Ex: Innovative Solutions"
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text text-gray-700 font-medium">Start date *</span>
+                                                            </label>
+                                                            <input
+                                                                type="date"
+                                                                value={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
+                                                                onChange={(e) =>
+                                                                    editingExperienceId
+                                                                        ? setEditExperienceData({ ...editExperienceData, start_date: e.target.value })
+                                                                        : setNewExperience({ ...newExperience, start_date: e.target.value })
+                                                                }
+                                                                className="input input-bordered focus:ring-2 focus:ring-primary"
+                                                                max={new Date().toISOString().split('T')[0]}
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text text-gray-700 font-medium">End date*</span>
+                                                            </label>
+                                                            <input
+                                                                type="date"
+                                                                value={editingExperienceId ? editExperienceData.end_date : newExperience.end_date}
+                                                                onChange={(e) =>
+                                                                    editingExperienceId
+                                                                        ? setEditExperienceData({ ...editExperienceData, end_date: e.target.value })
+                                                                        : setNewExperience({ ...newExperience, end_date: e.target.value })
+                                                                }
+                                                                className="input input-bordered focus:ring-2 focus:ring-primary"
+                                                                min={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
+                                                                max={new Date().toISOString().split('T')[0]}
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="form-control">
+                                                        <label className="label">
+                                                            <span className="label-text text-gray-700 font-medium">Description*</span>
+                                                        </label>
+                                                        <textarea
+                                                            value={editingExperienceId ? editExperienceData.description : newExperience.description}
+                                                            onChange={(e) =>
+                                                                editingExperienceId
+                                                                    ? setEditExperienceData({ ...editExperienceData, description: e.target.value })
+                                                                    : setNewExperience({ ...newExperience, description: e.target.value })
+                                                            }
+                                                            className="textarea textarea-bordered h-24 focus:ring-2 focus:ring-primary"
+                                                            placeholder="Décrivez votre expérience..."
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="flex justify-end gap-3 mt-6">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setShowExperienceForm(false);
+                                                                setEditingExperienceId(null);
+                                                                setEditExperienceData({
+                                                                    job_title: '',
+                                                                    company: '',
+                                                                    start_date: '',
+                                                                    end_date: '',
+                                                                    description: '',
+                                                                });
+                                                            }}
+                                                            className="btn btn-ghost hover:bg-gray-100"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            type="submit"
+                                                            className="btn btn-primary hover:bg-primary-focus"
+                                                        >
+                                                            {editingExperienceId ? 'Save' : 'Add'}
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {experiences.length === 0 && !showExperienceForm && (
+                                        <div className="text-center py-12 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg border-2 border-dashed border-primary/30 transition-all hover:border-primary/50">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-12 w-12 mx-auto text-primary/50"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={1.5}
+                                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                                />
+                                            </svg>
+                                            <h3 className="mt-4 text-lg font-medium text-gray-700">No experience added</h3>
+                                            <p className="mt-1 text-gray-500">Add your experiences to display here</p>
+                                            <button
+                                                onClick={() => setShowExperienceForm(true)}
+                                                className="btn btn-primary mt-6 hover:bg-primary-focus"
+                                            >
+                                                Add an Experience
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {experiences.length > 0 && !showExperienceForm && (
+                                        <div className="relative">
+                                            <div className="absolute left-1/2 transform -translate-x-1/2 h-full border-l-2 border-primary/20"></div>
+                                            {experiences.map((exp, index) => {
+                                                const colorClasses = [
+                                                    'bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500',
+                                                    'bg-gradient-to-r from-purple-50 to-purple-100 border-l-4 border-purple-500',
+                                                    'bg-gradient-to-r from-emerald-50 to-emerald-100 border-l-4 border-emerald-500',
+                                                    'bg-gradient-to-r from-amber-50 to-amber-100 border-l-4 border-amber-500',
+                                                ];
+                                                const indicatorColors = [
+                                                    'bg-blue-500',
+                                                    'bg-purple-500',
+                                                    'bg-emerald-500',
+                                                    'bg-amber-500',
+                                                ];
+                                                const colorIndex = index % colorClasses.length;
+
+                                                return (
+                                                    <div
+                                                        key={exp._id}
+                                                        className={`mb-8 flex justify-between items-center w-full ${index % 2 === 0 ? 'flex-row' : 'flex-row-reverse'
+                                                            } group`}
+                                                    >
+                                                        <div className="order-1 w-5/12"></div>
+                                                        <div className={`z-10 flex items-center order-1 shadow-lg w-8 h-8 rounded-full transition-all duration-300 group-hover:scale-110 ${indicatorColors[colorIndex]}`}>
+                                                            <h1 className="mx-auto font-semibold text-lg text-white">{index + 1}</h1>
+                                                        </div>
+                                                        <div
+                                                            className={`order-1 rounded-lg shadow-lg w-5/12 px-6 py-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${index % 2 === 0 ? 'ml-6' : 'mr-6'
+                                                                } ${colorClasses[colorIndex]}`}
+                                                            style={{
+                                                                clipPath: 'polygon(0 0, 100% 0, 95% 100%, 0% 100%)',
+                                                            }}
+                                                        >
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <h3 className="mb-2 font-bold text-gray-900 text-lg">
+                                                                        {exp.job_title || 'Untitled'}
+                                                                    </h3>
+                                                                    <p className="text-sm text-gray-700 font-medium">
+                                                                        {exp.company || 'Unknown company'}
+                                                                    </p>
+                                                                    <p className="text-xs text-gray-500 mt-1">
+                                                                        {new Date(exp.start_date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })} -{' '}
+                                                                        {exp.end_date
+                                                                            ? new Date(exp.end_date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
+                                                                            : 'Présent'}
+                                                                    </p>
+                                                                    {exp.description && (
+                                                                        <p className="text-sm text-gray-700 mt-2">
+                                                                            {exp.description}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex flex-col items-end">
+                                                                    <span className="bg-white/90 text-gray-800 text-xs font-semibold px-2 py-1 rounded-full shadow-sm">
+                                                                        {new Date(exp.start_date).getFullYear()} -{' '}
+                                                                        {exp.end_date ? new Date(exp.end_date).getFullYear() : 'Auj.'}
+                                                                    </span>
+                                                                    <div className="flex justify-end mt-4 gap-2">
+                                                                        <button
+                                                                            onClick={() => handleEditExperience(exp)}
+                                                                            className="btn btn-square btn-xs btn-ghost hover:bg-white/70"
+                                                                            title="Modifier"
+                                                                        >
+                                                                            <svg
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                className="h-4 w-4 text-gray-600"
+                                                                                fill="none"
+                                                                                viewBox="0 0 24 24"
+                                                                                stroke="currentColor"
+                                                                            >
+                                                                                <path
+                                                                                    strokeLinecap="round"
+                                                                                    strokeLinejoin="round"
+                                                                                    strokeWidth={2}
+                                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                                                />
+                                                                            </svg>
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDeleteExperience(exp._id)}
+                                                                            className="btn btn-square btn-xs btn-ghost hover:bg-white/70 text-error"
+                                                                            title="Supprimer"
+                                                                        >
+                                                                            <svg
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                className="h-4 w-4"
+                                                                                fill="none"
+                                                                                viewBox="0 0 24 24"
+                                                                                stroke="currentColor"
+                                                                            >
+                                                                                <path
+                                                                                    strokeLinecap="round"
+                                                                                    strokeLinejoin="round"
+                                                                                    strokeWidth={2}
+                                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                                />
+                                                                            </svg>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-{activeTab === 'Certifications' && (
-    <div className="mt-4 p-6 bg-base-100 text-base-content rounded-lg border border-base-300 shadow-lg">
-        <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-primary">Mes Certifications</h2>
-            <button
-                onClick={() => {
-                    setShowCertificationForm(true);
-                    setEditingCertificationId(null);
-                    setNewCertification({
-                        certifications_name: '',
-                        issued_by: '',
-                        obtained_date: '',
-                        description: '',
-                        image: null,
-                    });
-                    setCertificationImagePreview(null);
-                    if (certificationFileInputRef.current) certificationFileInputRef.current.value = '';
-                }}
-                className="btn btn-primary gap-2 hover:bg-primary-focus transition-colors mb-4"
-                disabled={showCertificationForm}
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 text-white"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                >
-                    <path
-                        fillRule="evenodd"
-                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                        clipRule="evenodd"
-                    />
-                </svg>
-                Ajouter une Certification
-            </button>
-        </div>
-
-        {showCertificationForm && (
-            <div className="bg-base-200 p-6 rounded-lg mb-8 shadow-sm">
-                <h3 className="text-lg font-semibold mb-4">
-                    {editingCertificationId ? 'Modifier la Certification' : 'Nouvelle Certification'}
-                </h3>
-                <form
-                    onSubmit={editingCertificationId ? handleUpdateCertification : handleAddCertification}
-                    className="space-y-4"
-                >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-control">
-                            <label className="label">
-                                <span className="label-text">Nom*</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={editingCertificationId ? editCertificationData.certifications_name : newCertification.certifications_name}
-                                onChange={(e) =>
-                                    editingCertificationId
-                                        ? setEditCertificationData(prev => ({ ...prev, certifications_name: e.target.value }))
-                                        : setNewCertification(prev => ({ ...prev, certifications_name: e.target.value }))
-                                }
-                                className="input input-bordered"
-                                placeholder="Ex: AWS Certified Developer"
-                                required
-                            />
-                        </div>
-                        <div className="form-control">
-                            <label className="label">
-                                <span className="label-text">Délivré par*</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={editingCertificationId ? editCertificationData.issued_by : newCertification.issued_by}
-                                onChange={(e) =>
-                                    editingCertificationId
-                                        ? setEditCertificationData(prev => ({ ...prev, issued_by: e.target.value }))
-                                        : setNewCertification(prev => ({ ...prev, issued_by: e.target.value }))
-                                }
-                                className="input input-bordered"
-                                placeholder="Ex: Amazon Web Services"
-                                required
-                            />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-control">
-                            <label className="label">
-                                <span className="label-text">Date d'obtention *</span>
-                            </label>
-                            <input
-                                type="date"
-                                value={editingCertificationId ? editCertificationData.obtained_date : newCertification.obtained_date}
-                                onChange={(e) =>
-                                    editingCertificationId
-                                        ? setEditCertificationData(prev => ({ ...prev, obtained_date: e.target.value }))
-                                        : setNewCertification(prev => ({ ...prev, obtained_date: e.target.value }))
-                                }
-                                className="input input-bordered"
-                                max={new Date().toISOString().split('T')[0]}
-                                required
-                            />
-                        </div>
-                    </div>
-                    <div className="form-control">
-                        <label className="label">
-                            <span className="label-text">Description</span>
-                        </label>
-                        <textarea
-                            value={editingCertificationId ? editCertificationData.description : newCertification.description}
-                            onChange={(e) =>
-                                editingCertificationId
-                                    ? setEditCertificationData(prev => ({ ...prev, description: e.target.value }))
-                                    : setNewCertification(prev => ({ ...prev, description: e.target.value }))
-                            }
-                            className="textarea textarea-bordered h-24"
-                            placeholder="Décrivez cette certification..."
-                        />
-                    </div>
-                    <div className="form-control">
-                        <label className="label">
-                            <span className="label-text">Image</span>
-                        </label>
-                        <input
-                            type="file"
-                            ref={certificationFileInputRef}
-                            onChange={(e) => handleCertificationImageSelect(e, !!editingCertificationId)}
-                            className="file-input file-input-bordered"
-                            accept="image/jpeg,image/png,image/gif"
-                        />
-                    </div>
-                    {certificationImagePreview && (
-                        <div className="mt-4">
-                            <label className="label">
-                                <span className="label-text">Aperçu</span>
-                            </label>
-                            <div className="w-40 h-40 border-2 border-base-300 rounded-lg overflow-hidden bg-base-200 flex items-center justify-center">
-                                <img src={certificationImagePreview} alt="Aperçu" className="w-full h-full object-contain" />
-                            </div>
-                            <div className="mt-2 flex justify-center">
-                                <button
-                                    type="button"
-                                    onClick={handleCancelCertificationImage}
-                                    className="btn btn-sm btn-error btn-outline"
-                                >
-                                    Annuler
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setShowCertificationForm(false);
-                                setEditingCertificationId(null);
-                                setNewCertification({ certifications_name: '', issued_by: '', obtained_date: '', description: '', image: null });
-                                setEditCertificationData({ certifications_name: '', issued_by: '', obtained_date: '', description: '', image: null });
-                                setCertificationImagePreview(null);
-                                if (certificationFileInputRef.current) certificationFileInputRef.current.value = '';
-                            }}
-                            className="btn btn-ghost hover:bg-base-300 transition-colors"
-                        >
-                            Annuler
-                        </button>
-                        <button type="submit" className="btn btn-primary hover:bg-primary-focus transition-colors">
-                            {editingCertificationId ? 'Sauvegarder' : 'Ajouter Certification'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        )}
-
-        {certifications.length === 0 && !showCertificationForm && (
-            <div className="text-center py-12 bg-base-200 rounded-lg shadow-sm">
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-12 w-12 mx-auto text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                    />
-                </svg>
-                <h3 className="mt-4 text-lg font-medium text-gray-500">Aucune certification ajoutée</h3>
-                <p className="mt-1 text-gray-400">Ajoutez vos certifications pour les afficher ici</p>
-                <button
-                    onClick={() => setShowCertificationForm(true)}
-                    className="btn btn-primary mt-6 hover:bg-primary-focus transition-colors"
-                >
-                    Ajouter une Certification
-                </button>
-            </div>
-        )}
-
-        {certifications.length > 0 && !showCertificationForm && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {certifications.map((certification) => (
-                    <div
-                        key={certification._id}
-                        className="bg-base-100 border border-base-300 hover:border-primary transition-colors p-4 rounded-lg shadow-sm"
-                    >
-                        <div className="flex justify-between items-start gap-4">
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold">
-                                    {certification.certifications_name || 'Sans nom'}
-                                </h3>
-                                {certification.description && (
-                                    <p className="mt-2 text-base-content/80 line-clamp-2">
-                                        {certification.description}
-                                    </p>
-                                )}
-                                <p className="text-sm text-base-content/70 mt-1">
-                                    Délivré par : {certification.issued_by || 'Inconnu'}
-                                </p>
-                                <p>Obtenu le : {new Date(certification.obtained_date).toLocaleDateString('fr-FR')}</p>
-                            </div>
-                            {certification.image ? (
-                                <div className="w-20 h-20 border border-base-300 rounded-lg overflow-hidden bg-base-200">
-                                    <img
-                                        src={certification.image.startsWith('data:') ? certification.image : `/uploads/${certification.image}`}
-                                        alt={certification.certifications_name}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                            e.target.src = 'https://via.placeholder.com/80?text=Pas+d%27image';
-                                            e.target.alt = 'Image non disponible';
-                                        }}
-                                    />
-                                </div>
-                            ) : null}
-                        </div>
-                        <div className="flex justify-end mt-4 gap-2">
-                            {!certification.image && (
-                                <button
-                                    onClick={() => {
-                                        setEditingCertificationId(certification._id);
-                                        setEditCertificationData({
-                                            ...certification,
-                                            obtained_date: certification.obtained_date.split('T')[0],
-                                        });
-                                        setCertificationImagePreview(certification.image || null);
-                                        setShowCertificationForm(true);
-                                    }}
-                                    className="btn btn-sm bg-base-200 hover:bg-base-300 text-base-content transition-colors"
-                                >
-                                    Ajouter une photo
-                                </button>
-                            )}
-                            <button
-                                onClick={() => handleEditCertification(certification)}
-                                className="btn btn-square btn-xs btn-ghost hover:bg-base-300 transition-colors"
-                                title="Modifier"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-4 w-4"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    />
-                                </svg>
-                            </button>
-                            <button
-                                onClick={() => handleDeleteCertification(certification._id)}
-                                className="btn btn-square btn-xs btn-ghost text-error hover:bg-error/20 transition-colors"
-                                title="Supprimer"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-4 w-4"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        )}
-    </div>
-)}
-
-
-
-{activeTab === 'Experience' && (
-    <div className="mt-4 p-6 bg-base-100 shadow-xl rounded-lg">
-        <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-primary">Expérience Professionnelle </h2>
-            <button
-                onClick={() => {
-                    setShowExperienceForm(true);
-                    setEditingExperienceId(null);
-                    setNewExperience({
-                        job_title: '',
-                        company: '',
-                        start_date: '',
-                        end_date: '',
-                        description: '',
-                    });
-                }}
-                className="btn btn-primary gap-2 animate-bounce"
-                disabled={showExperienceForm}
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                >
-                    <path
-                        fillRule="evenodd"
-                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                        clipRule="evenodd"
-                    />
-                </svg>
-                Ajouter une Expérience 🎉
-            </button>
-        </div>
-
-        {showExperienceForm && (
-            <div className="card bg-gradient-to-br from-primary/5 to-secondary/5 shadow-lg mb-8 border border-primary/20">
-                <div className="card-body">
-                    <h3 className="card-title text-lg mb-4 text-primary">
-                        {editingExperienceId ? 'Modifier l\'Expérience' : 'Nouvelle Expérience'}
-                    </h3>
-                    <form
-                        onSubmit={editingExperienceId ? handleUpdateExperience : handleAddExperience}
-                        className="space-y-4"
-                    >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text text-gray-700 font-medium">Poste*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editingExperienceId ? editExperienceData.job_title : newExperience.job_title}
-                                    onChange={(e) =>
-                                        editingExperienceId
-                                            ? setEditExperienceData({ ...editExperienceData, job_title: e.target.value })
-                                            : setNewExperience({ ...newExperience, job_title: e.target.value })
-                                    }
-                                    className="input input-bordered focus:ring-2 focus:ring-primary"
-                                    placeholder="Ex: Full Stack Developer"
-                                    required
-                                />
-                            </div>
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text text-gray-700 font-medium">Entreprise*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editingExperienceId ? editExperienceData.company : newExperience.company}
-                                    onChange={(e) =>
-                                        editingExperienceId
-                                            ? setEditExperienceData({ ...editExperienceData, company: e.target.value })
-                                            : setNewExperience({ ...newExperience, company: e.target.value })
-                                    }
-                                    className="input input-bordered focus:ring-2 focus:ring-primary"
-                                    placeholder="Ex: Innovative Solutions"
-                                    required
-                                />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text text-gray-700 font-medium">Date de début*</span>
-                                </label>
-                                <input
-                                    type="date"
-                                    value={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
-                                    onChange={(e) =>
-                                        editingExperienceId
-                                            ? setEditExperienceData({ ...editExperienceData, start_date: e.target.value })
-                                            : setNewExperience({ ...newExperience, start_date: e.target.value })
-                                    }
-                                    className="input input-bordered focus:ring-2 focus:ring-primary"
-                                    max={new Date().toISOString().split('T')[0]}
-                                    required
-                                />
-                            </div>
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text text-gray-700 font-medium">Date de fin*</span>
-                                </label>
-                                <input
-                                    type="date"
-                                    value={editingExperienceId ? editExperienceData.end_date : newExperience.end_date}
-                                    onChange={(e) =>
-                                        editingExperienceId
-                                            ? setEditExperienceData({ ...editExperienceData, end_date: e.target.value })
-                                            : setNewExperience({ ...newExperience, end_date: e.target.value })
-                                    }
-                                    className="input input-bordered focus:ring-2 focus:ring-primary"
-                                    min={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
-                                    max={new Date().toISOString().split('T')[0]}
-                                    required
-                                />
-                            </div>
-                        </div>
-                        <div className="form-control">
-                            <label className="label">
-                                <span className="label-text text-gray-700 font-medium">Description*</span>
-                            </label>
-                            <textarea
-                                value={editingExperienceId ? editExperienceData.description : newExperience.description}
-                                onChange={(e) =>
-                                    editingExperienceId
-                                        ? setEditExperienceData({ ...editExperienceData, description: e.target.value })
-                                        : setNewExperience({ ...newExperience, description: e.target.value })
-                                }
-                                className="textarea textarea-bordered h-24 focus:ring-2 focus:ring-primary"
-                                placeholder="Décrivez votre expérience..."
-                                required
-                            />
-                        </div>
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowExperienceForm(false);
-                                    setEditingExperienceId(null);
-                                    setEditExperienceData({
-                                        job_title: '',
-                                        company: '',
-                                        start_date: '',
-                                        end_date: '',
-                                        description: ''
-                                    });
-                                }}
-                                className="btn btn-ghost hover:bg-gray-100"
-                            >
-                                Annuler
-                            </button>
-                            <button 
-                                type="submit" 
-                                className="btn btn-primary hover:bg-primary-focus"
-                            >
-                                {editingExperienceId ? 'Mettre à jour' : 'Ajouter'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        )}
-
-        {experiences.length === 0 && !showExperienceForm && (
-            <div className="text-center py-12 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg border-2 border-dashed border-primary/30 transition-all hover:border-primary/50">
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-12 w-12 mx-auto text-primary/50"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                    />
-                </svg>
-                <h3 className="mt-4 text-lg font-medium text-gray-700">Aucune expérience ajoutée</h3>
-                <p className="mt-1 text-gray-500">Ajoutez vos expériences pour les afficher ici</p>
-                <button
-                    onClick={() => setShowExperienceForm(true)}
-                    className="btn btn-primary mt-6 hover:bg-primary-focus"
-                >
-                    Ajouter une Expérience
-                </button>
-            </div>
-        )}
-
-        {experiences.length > 0 && !showExperienceForm && (
-            <div className="relative">
-                <div className="absolute left-1/2 transform -translate-x-1/2 h-full border-l-2 border-primary/20"></div>
-                {experiences.map((exp, index) => {
-                    // Couleurs alternées basées sur l'index
-                    const colorClasses = [
-                        'bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500',
-                        'bg-gradient-to-r from-purple-50 to-purple-100 border-l-4 border-purple-500',
-                        'bg-gradient-to-r from-emerald-50 to-emerald-100 border-l-4 border-emerald-500',
-                        'bg-gradient-to-r from-amber-50 to-amber-100 border-l-4 border-amber-500'
-                    ];
-                    const indicatorColors = [
-                        'bg-blue-500', 
-                        'bg-purple-500', 
-                        'bg-emerald-500', 
-                        'bg-amber-500'
-                    ];
-                    const colorIndex = index % colorClasses.length;
-                    
-                    return (
-                        <div
-                            key={exp._id}
-                            className={`mb-8 flex justify-between items-center w-full ${
-                                index % 2 === 0 ? 'flex-row' : 'flex-row-reverse'
-                            } group`}
-                        >
-                            <div className="order-1 w-5/12"></div>
-                            <div className={`z-10 flex items-center order-1 shadow-lg w-8 h-8 rounded-full transition-all duration-300 group-hover:scale-110 ${indicatorColors[colorIndex]}`}>
-                                <h1 className="mx-auto font-semibold text-lg text-white">{index + 1}</h1>
-                            </div>
-                            <div
-                                className={`order-1 rounded-lg shadow-lg w-5/12 px-6 py-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-                                    index % 2 === 0 ? 'ml-6' : 'mr-6'
-                                } ${colorClasses[colorIndex]}`}
-                                style={{
-                                    clipPath: 'polygon(0 0, 100% 0, 95% 100%, 0% 100%)'
-                                }}
-                            >
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h3 className="mb-2 font-bold text-gray-900 text-lg">
-                                            {exp.job_title || 'Sans titre'}
-                                        </h3>
-                                        <p className="text-sm text-gray-700 font-medium">
-                                            {exp.company || 'Entreprise inconnue'}
-                                        </p>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            {new Date(exp.start_date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })} - {' '}
-                                            {exp.end_date ? new Date(exp.end_date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : 'Présent'}
-                                        </p>
-                                        {exp.description && (
-                                            <p className="text-sm text-gray-700 mt-2">
-                                                {exp.description}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                        <span className="bg-white/90 text-gray-800 text-xs font-semibold px-2 py-1 rounded-full shadow-sm">
-                                            {new Date(exp.start_date).getFullYear()} - {' '}
-                                            {exp.end_date ? new Date(exp.end_date).getFullYear() : 'Auj.'}
-                                        </span>
-                                        <div className="flex justify-end mt-4 gap-2">
-                                            <button
-                                                onClick={() => handleEditExperience(exp)}
-                                                className="btn btn-square btn-xs btn-ghost hover:bg-white/70"
-                                                title="Modifier"
-                                            >
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    className="h-4 w-4 text-gray-600"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                                    />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteExperience(exp._id)}
-                                                className="btn btn-square btn-xs btn-ghost hover:bg-white/70 text-error"
-                                                title="Supprimer"
-                                            >
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    className="h-4 w-4"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                    />
-                                                </svg>
-                                            </button>
+                                                );
+                                            })}
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
-                            </div>
+                            )}
                         </div>
-                    );
-                })}
-            </div>
-        )}
-    </div>
-)}
                     </div>
                 </div>
             </div>
