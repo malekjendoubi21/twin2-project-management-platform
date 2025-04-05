@@ -123,7 +123,7 @@ const Acceuil = () => {
         if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
         logout();
       }, 61000);
-    }, 30000);
+    }, 1800000);
   };
 
   const staySignedIn = () => {
@@ -639,7 +639,19 @@ PlaniFy</Link>
                 <option>Español</option>
               </select>
             </div>
-            
+            {/* <button 
+  className="btn btn-warning"
+  onClick={async () => {
+    try {
+      const response = await api.post(`/api/users/67eed4753eb65d91455c3055/fix-workspaces`);
+      toast.success('Workspaces fixed successfully!');
+      console.log('Fix result:', response.data);
+    } catch (error) {
+      toast.error('Failed to fix workspaces');
+      console.error('Fix error:', error);
+    }
+  }}
+></button> */}
             {/* Copyright and Links */}
             <div className="flex gap-4">
               <span className="text-sm">© 2024 
