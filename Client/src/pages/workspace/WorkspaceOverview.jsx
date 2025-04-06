@@ -34,6 +34,13 @@ const WorkspaceOverview = () => {
   const inviteModalRef = useRef(null);
   const emailInputRef = useRef(null);
 
+  // Add these new state variables with your other state variables
+  const [verifiedUsers, setVerifiedUsers] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const userDropdownRef = useRef(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+
   // Effects
   useEffect(() => {
     if (workspace) {
@@ -59,6 +66,10 @@ const WorkspaceOverview = () => {
       if (showInviteModal && inviteModalRef.current && !inviteModalRef.current.contains(event.target)) {
         setShowInviteModal(false);
       }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target) && 
+        emailInputRef.current && !emailInputRef.current.contains(event.target)) {
+      setShowUserDropdown(false);
+    }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -77,6 +88,23 @@ const WorkspaceOverview = () => {
       console.error('Error fetching owner details:', error);
     } finally {
       setOwnerLoading(false);
+    }
+  };
+
+  // Add this new function to fetch verified users
+  const fetchVerifiedUsers = async (search = '') => {
+    setIsLoadingUsers(true);
+    try {
+      // Add the ownerId to exclude from results
+      const ownerId = workspace?.owner?._id;
+      const response = await api.get(
+        `/api/users/verified${search ? `?search=${search}` : '?search='}${ownerId ? `&excludeUser=${ownerId}` : ''}`
+      );
+      setVerifiedUsers(response.data || []);
+    } catch (error) {
+      console.error('Error fetching verified users:', error);
+    } finally {
+      setIsLoadingUsers(false);
     }
   };
 
@@ -202,6 +230,15 @@ const WorkspaceOverview = () => {
     }
   };
   
+  // Handle user selection from dropdown
+  const selectUser = (user) => {
+    if (emailInputRef.current) {
+      emailInputRef.current.value = user.email;
+    }
+    setSelectedUser(user);
+    setShowUserDropdown(false);
+  };
+
   // Loading state
   if (isLoading && !workspace) {
     return (
@@ -280,7 +317,18 @@ const WorkspaceOverview = () => {
           <div className="mb-6">
           <form onSubmit={async (e) => {
   e.preventDefault();
-  const emailValue = emailInputRef.current.value;
+  
+  // Get email from selected user or input field
+  let emailValue;
+  
+  if (selectedUser) {
+    emailValue = selectedUser.email;
+  } else if (emailInputRef.current) {
+    emailValue = emailInputRef.current.value;
+  } else {
+    toast.error('Please enter a valid email address');
+    return;
+  }
   
   if (!emailValue || !validateEmail(emailValue)) {
     toast.error('Please enter a valid email address');
@@ -295,7 +343,12 @@ const WorkspaceOverview = () => {
     });
     
     toast.success(`Invitation sent to ${emailValue}`);
-    emailInputRef.current.value = '';
+    
+    // Clear input and selected user
+    if (emailInputRef.current) {
+      emailInputRef.current.value = '';
+    }
+    setSelectedUser(null);
     fetchPendingInvitations();
     
     // If the response includes the user ID of the invited user, we could use it here
@@ -318,29 +371,117 @@ const WorkspaceOverview = () => {
                   <span className="label-text font-semibold">Email Address</span>
                 </label>
                 <div className="flex gap-2">
-                  <input
-                    id="invite-email"
-                    type="email"
-                    ref={emailInputRef}
-                    placeholder="colleague@example.com"
-                    className="input input-bordered w-full"
-                    disabled={isInviting}
-                    required
-                  />
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary" 
-                    disabled={isInviting}
-                  >
-                    {isInviting ? (
-                      <>
-                        <span className="loading loading-spinner loading-xs"></span>
-                        Sending...
-                      </>
-                    ) : "Send Invitation"}
-                  </button>
-                </div>
+                <div className="relative w-full">
+  {selectedUser ? (
+    <div className="flex items-center border rounded-lg p-2 bg-base-100">
+      <div className="flex items-center gap-3 flex-1">
+        <div className="avatar">
+          <div className="w-10 rounded-full">
+            {selectedUser.profile_picture ? (
+              <img src={selectedUser.profile_picture} alt={selectedUser.name || selectedUser.email} />
+            ) : (
+              <div className="bg-primary text-white flex items-center justify-center h-full">
+                {(selectedUser.name?.charAt(0) || selectedUser.email?.charAt(0) || 'U').toUpperCase()}
               </div>
+            )}
+          </div>
+        </div>
+        <div>
+          <p className="font-medium">{selectedUser.name || 'Unnamed User'}</p>
+          <p className="text-sm opacity-70">{selectedUser.email}</p>
+        </div>
+      </div>
+      <button 
+        type="button"
+        onClick={() => {
+          setSelectedUser(null);
+          emailInputRef.current.value = '';
+          emailInputRef.current.focus();
+        }}
+        className="btn btn-ghost btn-sm btn-circle"
+      >
+        ✕
+      </button>
+    </div>
+  ) : (
+                  <input
+      id="invite-email"
+      type="email"
+      ref={emailInputRef}
+      placeholder="colleague@example.com"
+      className="input input-bordered w-full"
+      disabled={isInviting}
+      required
+      onFocus={() => {
+        fetchVerifiedUsers();
+        setShowUserDropdown(true);
+      }}
+      onChange={(e) => {
+        fetchVerifiedUsers(e.target.value);
+      }}
+    />
+  )}
+      
+      {!selectedUser && showUserDropdown && (
+        <div 
+          className="absolute mt-1 w-full bg-base-100 shadow-lg rounded-lg border border-base-300 z-50 max-h-60 overflow-y-auto"
+          ref={userDropdownRef}
+        >
+          {isLoadingUsers ? (
+            <div className="flex justify-center items-center p-4">
+              <span className="loading loading-spinner loading-sm"></span>
+            </div>
+          ) : verifiedUsers.length === 0 ? (
+            <div className="p-4 text-center text-sm opacity-70">
+              No verified users found. You can type an email address directly.
+            </div>
+          ) : (
+            <ul>
+              {verifiedUsers.map(user => (
+                <li 
+                  key={user._id}
+                  className="hover:bg-base-200 cursor-pointer p-2"
+                  onClick={() => selectUser(user)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="avatar">
+                      <div className="w-10 rounded-full">
+                        {user.profile_picture ? (
+                          <img src={user.profile_picture} alt={user.name || user.email} />
+                        ) : (
+                          <div className="bg-primary text-white flex items-center justify-center h-full">
+                            {(user.name?.charAt(0) || user.email?.charAt(0) || 'U').toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-medium">{user.name || 'Unnamed User'}</p>
+                      <p className="text-sm opacity-70">{user.email}</p>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+    
+    <button 
+      type="submit" 
+      className="btn btn-primary" 
+      disabled={isInviting}
+    >
+      {isInviting ? (
+        <>
+          <span className="loading loading-spinner loading-xs"></span>
+          Sending...
+        </>
+      ) : "Send Invitation"}
+    </button>
+  </div>
+</div>
             </form>
           </div>
 

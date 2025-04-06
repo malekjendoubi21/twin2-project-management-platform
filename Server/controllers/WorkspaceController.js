@@ -7,8 +7,8 @@ const nodemailer = require('nodemailer');
 const notificationController = require('./notificationController');
 const { validateProject } = require('../validators/validatorProject');
 const Project = require('../models/Project');
-const Task = require('../models/Task'); 
-// Create a new workspace
+const Task = require('../models/Task');
+
 exports.addWorkspace = async (req, res) => {
   const { error } = validateWorkspace(req.body);
   if (error) return res.status(400).json({ errors: error.details.map(err => err.message) });
@@ -22,7 +22,6 @@ exports.addWorkspace = async (req, res) => {
   }
 };
 
-// Get all workspaces
 exports.getAllWorkspaces = async (req, res) => {
   try {
     const workspaces = await Workspace.find().populate('owner members.user projects');
@@ -32,7 +31,6 @@ exports.getAllWorkspaces = async (req, res) => {
   }
 };
 
-// Get a single workspace by ID
 exports.getWorkspaceById = async (req, res) => {
   try {
     const query = Workspace.findById(req.params.id);
@@ -50,7 +48,7 @@ exports.getWorkspaceById = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
-// Update a workspace
+
 exports.updateWorkspace = async (req, res) => {
   const { error } = validateWorkspace(req.body);
   if (error) return res.status(400).json({ errors: error.details.map(err => err.message) });
@@ -64,7 +62,6 @@ exports.updateWorkspace = async (req, res) => {
   }
 };
 
-// Delete a workspace
 exports.deleteWorkspace = async (req, res) => {
   try {
     const deletedWorkspace = await Workspace.findByIdAndDelete(req.params.id);
@@ -90,11 +87,17 @@ exports.inviteToWorkspace = async (req, res) => {
       return res.status(404).json({ message: 'Workspace not found' });
     }
     
-    // Verify the user is the workspace owner
-    if (workspace.owner.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Only the workspace owner can send invitations' });
-    }
+    const isOwner = workspace.owner.toString() === req.user.id;
     
+    // Check if user is an editor
+    const userMember = workspace.members.find(member => 
+      member.user.toString() === req.user.id && 
+      (member.role === 'editor' || member.role === 'admin')
+    );
+
+    if (!isOwner && !userMember) {
+      return res.status(403).json({ message: 'You do not have permission to send invitations' });
+    }
     // Check if user with this email already exists
     const existingUser = await User.findOne({ email });
     
@@ -214,7 +217,6 @@ const invitationUrl = `${clientUrl}/invitations/${token}/accept`;
   }
 };
 
-// Accept or decline invitation
 exports.respondToInvitation = async (req, res) => {
   const { token } = req.params;
   const { action, userData } = req.body; // Add userData for registration if needed
@@ -309,7 +311,6 @@ exports.respondToInvitation = async (req, res) => {
   }
 };
 
-// Get all pending invitations for a workspace
 exports.getWorkspaceInvitations = async (req, res) => {
   const workspaceId = req.params.id;
   
@@ -320,9 +321,18 @@ exports.getWorkspaceInvitations = async (req, res) => {
       return res.status(404).json({ message: 'Workspace not found' });
     }
     
-    // Verify the user is the workspace owner
-    if (workspace.owner.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Only the workspace owner can view invitations' });
+    // Check if user is the owner
+    const isOwner = workspace.owner.toString() === req.user.id;
+    
+    // Check if user is an editor
+    const userMember = workspace.members.find(member => 
+      member.user.toString() === req.user.id && 
+      (member.role === 'editor' || member.role === 'admin')
+    );
+    
+    // Allow access if user is owner OR editor
+    if (!isOwner && !userMember) {
+      return res.status(403).json({ message: 'You do not have permission to view invitations' });
     }
     
     // Get all invitations for this workspace
@@ -336,7 +346,6 @@ exports.getWorkspaceInvitations = async (req, res) => {
   }
 };
 
-// controllers/WorkspaceController.js
 exports.createProject = async (req, res) => {
   try {
     // Get current date for the start date but use the string 'now' for validation
@@ -425,6 +434,7 @@ exports.getProjects = async (req, res) => {
       });
   }
 };
+
 exports.verifyInvitation = async (req, res) => {
   const { token } = req.params;
   
@@ -484,6 +494,7 @@ exports.getUserWorkspaces = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
 exports.getWorkspaceMembers = async (req, res) => {
   try {
     const { id: workspaceId } = req.params;
@@ -522,7 +533,6 @@ exports.getWorkspaceMembers = async (req, res) => {
   }
 };
 
-// Update a member's role
 exports.updateMemberRole = async (req, res) => {
   try {
     const { id: workspaceId, memberId } = req.params;
@@ -565,7 +575,6 @@ exports.updateMemberRole = async (req, res) => {
   }
 };
 
-// Remove a member from workspace
 exports.removeMember = async (req, res) => {
   try {
     const { id: workspaceId, memberId } = req.params;
@@ -601,6 +610,7 @@ exports.removeMember = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
 exports.getUserInvitations = async (req, res) => {
   try {
     // Find pending invitations for the current user's email
@@ -617,6 +627,7 @@ exports.getUserInvitations = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 exports.respondToInvitationById = async (req, res) => {
   const { invitationId } = req.params;
   const { action } = req.body;
@@ -691,6 +702,7 @@ exports.respondToInvitationById = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 exports.getUserWorkspaceStats = async (req, res) => {
   try {
     const { workspaceId, userId } = req.params;
