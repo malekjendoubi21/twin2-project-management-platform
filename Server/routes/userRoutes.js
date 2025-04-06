@@ -43,5 +43,33 @@ router.patch('/:id/add-workspace',protection, async (req, res) => {
 router.get('/:userId/profile', protection, getUserProfile);
 router.get('/:userId/workspaces/count',protection ,getUserWorkspacesCount);
 router.post('/:userId/fix-workspaces', protection ,fixUserWorkspaces);
+router.get('/verified', protection, async (req, res) => {
+  try {
+    const search = req.query.search || '';
+    const excludeUser = req.query.excludeUser; // Get the user ID to exclude
+    
+    const query = { 
+      isVerified: true,
+      $or: [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ]
+    };
+    
+    // If we have a user to exclude, add it to the query
+    if (excludeUser) {
+      query._id = { $ne: excludeUser }; // $ne means "not equal"
+    }
+    
+    const users = await User.find(query)
+      .select('name email profile_picture')
+      .limit(10);
+      
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching verified users:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 module.exports = router
