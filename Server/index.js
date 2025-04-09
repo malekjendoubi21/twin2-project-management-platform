@@ -36,6 +36,7 @@ const ressourceRoutes = require("./routes/ressourceRoutes");
 const certificationRoutes = require('./routes/certificationsRoutes');
 const skillsRoutes = require('./routes/skillsRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
@@ -47,6 +48,7 @@ app.use("/api/ressources", ressourceRoutes);
 app.use('/api/certifications', certificationRoutes);
 app.use('/api/skills', skillsRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.get("/", (req, res) => {
   res.send("Project Management Platform Backend");
