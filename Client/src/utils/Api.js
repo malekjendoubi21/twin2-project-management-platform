@@ -19,33 +19,42 @@ api.interceptors.request.use(config => {
   return config;
 });
 
-// Response interceptor
+// Response interceptor with improved handling
 api.interceptors.response.use(
   response => response,
   error => {
-    if (error.config.url.includes('/auth/register')) {
+    // Ignorer les erreurs spécifiques pour ces endpoints
+    if (error.config.url.includes('/auth/register') || 
+        error.config.url.includes('/auth/login')) {
       return Promise.reject(error);
     }
-    // Skip handling for login endpoint
-    if (error.config.url.includes('/auth/login')) {
+    
+    // Ignorer les erreurs d'invitation
+    if (error.response?.status === 400 && 
+        error.config.url.includes('/invite') && 
+        error.response?.data?.message === 'An invitation has already been sent to this email') {
       return Promise.reject(error);
     }
-        // Skip handling for "already invited" errors
-        if (error.response?.status === 400 && 
-          error.config.url.includes('/invite') && 
-          error.response?.data?.message === 'An invitation has already been sent to this email') {
-        return Promise.reject(error);
-      }
+    
+    // Gestion des requêtes annulées
     if (axios.isCancel(error) || 
         error.code === 'ERR_CANCELED' || 
         (error.message && error.message.toLowerCase() === 'canceled')) {
-      // Return a resolved promise to prevent error cascading for cancellations
+      // Résoudre avec un statut personnalisé au lieu de rejeter
       return Promise.resolve({ status: 'canceled', data: null });
     }
-    // Handle 401 Unauthorized
+    
+    // Gestion améliorée des erreurs 401 (Non autorisé)
     if (error.response?.status === 401) {
+      // Supprimer le token invalide
       localStorage.removeItem('token');
-      if (!window.location.pathname.includes('/login')) {
+      
+      // Ne pas rediriger automatiquement si nous sommes sur certaines pages
+      const currentPath = window.location.pathname;
+      const noRedirectPaths = ['/login', '/register', '/forgot-password'];
+      
+      if (!noRedirectPaths.some(path => currentPath.includes(path))) {
+        // Afficher le toast mais laisser le composant gérer la redirection
         toast.error('Session expirée. Veuillez vous reconnecter.', {
           duration: 5000,
           position: 'top-center',
@@ -56,28 +65,33 @@ api.interceptors.response.use(
             borderRadius: '8px'
           }
         });
-        window.location.href = '/login';
+        
+        // Au lieu de rediriger ici, on laisse le rejet de promesse se propager
+        // Le composant pourra décider comment gérer cette erreur
       }
     }
 
-    // Handle other errors
+    // Afficher les messages d'erreur pour d'autres types d'erreurs
     const errorMessage = error.response?.data?.error || 
-                        error.message || 
-                        'Une erreur est survenue';
+                       error.message || 
+                       'Une erreur est survenue';
     
-    toast.error(errorMessage, {
-      duration: 5000,
-      position: 'top-center',
-      style: {
-        background: '#f44336',
-        color: '#fff',
-        padding: '16px',
-      }
-    });
+    // Uniquement afficher le toast pour les erreurs qui ne sont pas des erreurs d'authentification
+    // ou si nous sommes déjà sur une page d'authentification
+    if (error.response?.status !== 401 || window.location.pathname.includes('/login')) {
+      toast.error(errorMessage, {
+        duration: 5000,
+        position: 'top-center',
+        style: {
+          background: '#f44336',
+          color: '#fff',
+          padding: '16px',
+        }
+      });
+    }
 
     return Promise.reject(error);
   }
 );
-
 
 export default api;

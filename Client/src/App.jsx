@@ -24,6 +24,7 @@ import NotFound from './pages/NotFound.jsx';
 import socketService from './utils/SocketService';
 import useSession from './hooks/useSession';
 import ProjectDetails from './pages/workspace/ProjectDetails.jsx';
+import AdminProfile from "./dashboard/AdminProfile.jsx";
 
 function App() {
   const { user } = useSession();
