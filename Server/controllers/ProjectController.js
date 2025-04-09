@@ -11,14 +11,25 @@ exports.getAllProjects = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err });
   }
 };
-
 exports.getProjectById = async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id).populate('id_teamMembre').populate('id_tasks');
-    if (!project) return res.status(404).json({ message: 'Project not found' });
+    const { id } = req.params;
+    
+    const project = await Project.findById(id)
+      .populate('id_teamMembre')
+      .populate({
+        path: 'id_tasks',
+        select: 'title description status priority estimated_time actual_time deadline assigned_to'
+      });
+    
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
     res.status(200).json(project);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err });
+  } catch (error) {
+    console.error('Error fetching project details:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 

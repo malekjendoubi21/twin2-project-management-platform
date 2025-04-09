@@ -23,6 +23,7 @@ import Profile from './pages/Profile';
 import NotFound from './pages/NotFound.jsx';
 import socketService from './utils/SocketService';
 import useSession from './hooks/useSession';
+import ProjectDetails from './pages/workspace/ProjectDetails.jsx';
 
 function App() {
   const { user } = useSession();
@@ -71,6 +72,7 @@ function App() {
             <Route index element={<Navigate to="overview" replace />} />
             <Route path="overview" element={<WorkspaceOverview />}  />
             <Route path="projects" element={<Projects />} />
+            <Route path="projects/:projectId" element={<ProjectDetails />} />
             <Route path="members" element={<WorkspaceMembers />} />
             <Route path="settings" element={<WorkspaceSettings />} />
           </Route>

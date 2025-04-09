@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; 
+import { Link, useNavigate, useLocation } from 'react-router-dom'; 
 import api from '../utils/Api';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
@@ -19,6 +19,7 @@ const Login = () => {
   const [showSuccessTransition, setShowSuccessTransition] = useState(false);
   
   const navigate = useNavigate(); 
+  const location = useLocation();
   
   // Function to handle the lockout countdown
   useEffect(() => {
@@ -141,6 +142,35 @@ const Login = () => {
       navigate('/login', { replace: true });
     }
   }, []);
+
+  // Function to check Google auth status and redirect based on role
+  useEffect(() => {
+    // Check if user was redirected from Google OAuth
+    if (location.search.includes('googleAuth=success')) {
+      setIsLoading(true);
+      
+      // Get user info to determine role
+      api.get('/api/users/getMe')
+        .then(response => {
+          // Show success animation
+          setShowSuccessTransition(true);
+          
+          // Redirect based on user role after delay for animation
+          setTimeout(() => {
+            const redirectPath = response.data.role === 'admin' 
+              ? '/dashboard' 
+              : '/acceuil';
+            
+            navigate(redirectPath);
+          }, 2000); // Time for animation
+        })
+        .catch(error => {
+          console.error("Error fetching user data after Google login:", error);
+          toast.error("Authentication successful, but there was a problem loading your profile");
+          setIsLoading(false);
+        });
+    }
+  }, [location, navigate]);
 
   // Format the lockout timer as MM:SS
   const formatTime = (seconds) => {
@@ -492,10 +522,10 @@ const Login = () => {
               transition={{ delay: 0.9 }}
               className="flex flex-col space-y-3"
             >
-              <a href="http://localhost:3000/api/auth/google">
-                <motion.button 
-                  className="btn btn-outline btn-md gap-2 w-full group" 
-                  disabled={isLocked}
+<a href="/api/auth/google?clientRedirect=true" className="w-full">
+  <motion.button 
+    className="btn btn-outline btn-md gap-2 w-full group" 
+    disabled={isLocked || isLoading}
                   whileHover={{ scale: 1.02, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
                   whileTap={{ scale: 0.98 }}
                 >

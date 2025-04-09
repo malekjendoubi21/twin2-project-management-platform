@@ -1,33 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const TaskController = require('../controllers/TaskController');
-//const { authenticateToken } = require('../middleware/authMiddleware');
+const taskController = require('../controllers/TaskController');
+const { protection, allowTo } =require('../controllers/AuthController');
 
-// Apply authentication middleware to all routes
-//router.use(authenticateToken);
+// Get tasks by project
+router.get('/projects/:projectId/tasks', protection, taskController.getTasksByProject);
 
-// Create a new task
-router.post('/addTask', TaskController.createTask);
+// Create new task
+router.post('/projects/:projectId/tasks', protection, taskController.createTask);
 
-// Get all tasks
-router.get('/', TaskController.getAllTasks);
+// Update task
+router.put('/tasks/:id', protection, taskController.updateTask);
 
-// Get tasks by project ID
-router.get('/project/:projectId', TaskController.getTasksByProject);
+// Delete task
+router.delete('/tasks/:id', protection, taskController.deleteTask);
 
-// Get tasks assigned to a specific user
-router.get('/user/:userId', TaskController.getUserTasks);
-
-// Get a single task by ID
-router.get('/:taskId', TaskController.getTaskById);
-
-// Update a task
-router.put('/:taskId', TaskController.updateTask);
-
-// Update task status
-router.patch('/:taskId/status', TaskController.updateTaskStatus);
-
-// Delete a task
-router.delete('/:taskId', TaskController.deleteTask);
-
-module.exports = router; 
+module.exports = router;

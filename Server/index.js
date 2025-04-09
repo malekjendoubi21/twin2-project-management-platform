@@ -41,7 +41,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/workspaces", workspaceRoutes);
-app.use("/api/tasks", taskRoutes);
+app.use("/api", taskRoutes);
 app.use("/api/experiences", experienceRoutes);
 app.use("/api/ressources", ressourceRoutes);
 app.use('/api/certifications', certificationRoutes);

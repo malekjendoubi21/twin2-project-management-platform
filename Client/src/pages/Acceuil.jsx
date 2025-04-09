@@ -546,6 +546,7 @@ const showToast = (message, type = 'success') => {
               transition={{ duration: 0.8, delay: 0.6 }}
               className="w-full md:w-1/2 h-96 relative"
             >
+              
               {/* 3D isometric workspace visualization */}
               <div className="w-full h-full relative perspective-1000">
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -620,6 +621,7 @@ const showToast = (message, type = 'success') => {
           </div>
         </motion.div>
       </section>
+
 
       {/* Main content area with animated tabs */}
       <motion.div
@@ -1056,7 +1058,197 @@ const showToast = (message, type = 'success') => {
   </motion.div>
 )}
       </motion.div>
-
+      <motion.div
+  initial={{ opacity: 0, y: 30 }}
+  whileInView={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.7, delay: 0.2 }}
+  viewport={{ once: true }}
+  className="container mx-auto px-6 sm:px-8 lg:px-12 py-12"
+>
+  <div className="flex justify-between items-center mb-8">
+    <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">
+      Your Achievements
+    </h2>
+    <button className="btn btn-sm btn-primary">View All</button>
+  </div>
+  
+  <div className="carousel carousel-center max-w-full p-4 space-x-4 bg-base-200/30 backdrop-blur-sm rounded-box">
+    {[
+      { name: "Fast Starter", icon: "🚀", desc: "Created first workspace", progress: 100 },
+      { name: "Team Player", icon: "👥", desc: "Added 5 team members", progress: 60 },
+      { name: "Task Master", icon: "✓", desc: "Completed 50 tasks", progress: 82 },
+      { name: "Project Pro", icon: "📊", desc: "Managed 10 projects", progress: 30 },
+      { name: "Communication Star", icon: "💬", desc: "100 comments", progress: 45 },
+    ].map((achievement, idx) => (
+      <div key={idx} className="carousel-item">
+        <motion.div 
+          whileHover={{ y: -10, scale: 1.05 }}
+          className="card w-64 bg-base-100 shadow-xl"
+        >
+          <div className="card-body items-center text-center p-6">
+            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-3xl mb-3">
+              {achievement.icon}
+            </div>
+            <h3 className="card-title text-primary">{achievement.name}</h3>
+            <p className="text-sm opacity-70">{achievement.desc}</p>
+            <div className="w-full mt-3">
+              <div className="w-full bg-base-300 rounded-full h-2">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${achievement.progress}%` }}
+                  transition={{ duration: 1, delay: 0.5 + idx * 0.1 }}
+                  className={`h-2 rounded-full ${achievement.progress === 100 ? 'bg-success' : 'bg-primary'}`}
+                ></motion.div>
+              </div>
+              <div className="flex justify-between text-xs mt-1">
+                <span>{achievement.progress}%</span>
+                <span>{achievement.progress === 100 ? "Completed!" : "In progress"}</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    ))}
+  </div>
+</motion.div>
+      {/* ****Add this under the hero section */}
+<section className="py-12">
+  <div className="container mx-auto px-6 sm:px-8 lg:px-12">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+    >
+      {/* Productivity Score */}
+      <motion.div 
+        whileHover={{ y: -8 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        className="card bg-gradient-to-br from-primary/10 to-primary/5 backdrop-blur-sm shadow-lg border border-white/10"
+      >
+        <div className="card-body p-6">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-base-content/70">Productivity</h3>
+            <div className="badge badge-primary">+12%</div>
+          </div>
+          <div className="flex items-end gap-2 mt-2 mb-4">
+            <span className="text-4xl font-bold">87</span>
+            <span className="text-base-content/50 text-sm mb-1">/ 100</span>
+          </div>
+          <div className="w-full bg-base-300 rounded-full h-2">
+            <div className="bg-primary h-2 rounded-full" style={{ width: "87%" }}></div>
+          </div>
+        </div>
+      </motion.div>
+      
+      {/* Tasks Completed */}
+      <motion.div 
+        whileHover={{ y: -8 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        className="card bg-gradient-to-br from-blue-500/10 to-blue-500/5 backdrop-blur-sm shadow-lg border border-white/10"
+      >
+        <div className="card-body p-6">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-base-content/70">Tasks Completed</h3>
+            <div className="badge badge-info">This Week</div>
+          </div>
+          <div className="flex items-end gap-1 mt-2">
+            <span className="text-4xl font-bold">24</span>
+            <span className="text-success text-sm mb-1 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
+              </svg>
+              8%
+            </span>
+          </div>
+          <div className="flex justify-between items-center mt-4 text-xs text-base-content/50">
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
+              <div key={day} className="flex flex-col items-center gap-1">
+                <div className="w-1.5 bg-blue-500/50 rounded-t-sm" style={{ 
+                  height: `${[12, 18, 24, 20, 30, 15, 8][i]}px` 
+                }}></div>
+                <span>{day}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+      
+      {/* Project Status */}
+      <motion.div 
+        whileHover={{ y: -8 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        className="card bg-gradient-to-br from-purple-500/10 to-purple-500/5 backdrop-blur-sm shadow-lg border border-white/10"
+      >
+        <div className="card-body p-6">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-base-content/70">Project Status</h3>
+          </div>
+          <div className="flex flex-col gap-3 mt-3">
+            <div className="w-full bg-base-300 rounded-full h-2.5">
+              <div className="bg-success h-2.5 rounded-full" style={{ width: "65%" }}></div>
+            </div>
+            <div className="grid grid-cols-3 text-xs">
+              <div>
+                <div className="text-success font-medium">Planning</div>
+                <div className="text-base-content/50">Completed</div>
+              </div>
+              <div>
+                <div className="text-success font-medium">Development</div>
+                <div className="text-base-content/50">In Progress</div>
+              </div>
+              <div>
+                <div className="text-base-content/50 font-medium">Testing</div>
+                <div className="text-base-content/50">Pending</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+      
+      {/* Time Tracking */}
+      <motion.div 
+        whileHover={{ y: -8 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        className="card bg-gradient-to-br from-teal-500/10 to-teal-500/5 backdrop-blur-sm shadow-lg border border-white/10"
+      >
+        <div className="card-body p-6">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-base-content/70">Time Logged</h3>
+          </div>
+          <div className="mt-3 flex items-center justify-center">
+            <div className="relative w-24 h-24">
+              <svg className="w-24 h-24" viewBox="0 0 36 36">
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="rgba(255, 255, 255, 0.1)"
+                  strokeWidth="3"
+                />
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="rgba(20, 184, 166, 0.7)"
+                  strokeWidth="3"
+                  strokeDasharray="75, 100"
+                  className="animate-dashboard-progress"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center flex-col">
+                <span className="text-xl font-bold">22.5</span>
+                <span className="text-xs text-base-content/50">hours</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-between text-xs text-base-content/50 mt-4">
+            <span>Weekly Goal: 30h</span>
+            <span>75%</span>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  </div>
+</section>
       {/* Quick Access Section with Glass Effect */}
       <section className="py-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-blue-500/5"></div>
