@@ -1,5 +1,6 @@
 const Project = require('../models/Project');
 const { validateProject } = require('../validators/validatorProject');
+const mongoose = require('mongoose'); // Add this import
 
 exports.getAllProjects = async (req, res) => {
   try {
@@ -14,6 +15,11 @@ exports.getAllProjects = async (req, res) => {
 exports.getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Add this validation to prevent the error
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid project ID format' });
+    }
     
     const project = await Project.findById(id)
       .populate('id_teamMembre')
