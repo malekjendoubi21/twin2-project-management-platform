@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const skillSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId, // Référence à l'ID de l'utilisateur
+    ref: 'User', // Référence au modèle User
+    required: true, // Ce champ est obligatoire
+  },
   name: {
     type: String,
     required: true,
