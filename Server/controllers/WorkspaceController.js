@@ -8,7 +8,7 @@ const notificationController = require('./notificationController');
 const { validateProject } = require('../validators/validatorProject');
 const Project = require('../models/Project');
 const Task = require('../models/Task');
-
+const mongoose = require('mongoose'); // Add this line to import mongoose
 exports.addWorkspace = async (req, res) => {
   const { error } = validateWorkspace(req.body);
   if (error) return res.status(400).json({ errors: error.details.map(err => err.message) });
@@ -348,19 +348,27 @@ exports.getWorkspaceInvitations = async (req, res) => {
 
 exports.createProject = async (req, res) => {
   try {
-    // Get current date for the start date but use the string 'now' for validation
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { workspaceId } = req.params;
     
-    // Create project data matching your validator's expected structure
-    // Only include fields explicitly allowed in your schema
+    console.log("Creating project for workspace ID:", workspaceId);
+    console.log("Request user:", req.user ? req.user.id : "Not authenticated");
+    
+    // First verify the workspace exists before doing anything else
+    const workspace = await Workspace.findById(workspaceId);
+    console.log("Workspace found:", workspace ? "Yes" : "No");
+    
+    if (!workspace) {
+      return res.status(404).json({ message: 'Workspace not found' });
+    }
+    
+    // Prepare project data for validation
     const projectData = {
-      project_name: req.body.name,
-      status: 'not started',
-      start_date: tomorrow, // Use tomorrow to ensure it's after "now"
-      end_date: new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days from today
-      id_teamMembre: [req.user._id.toString()], // Convert ObjectId to string as required by validation
+      project_name: req.body.project_name,
+      description: req.body.description,
+      status: req.body.status || 'not started',
+      start_date: new Date(req.body.start_date),
+      end_date: new Date(req.body.end_date),
+      id_teamMembre: [req.user._id.toString()]
     };
     
     // Validate with your schema
@@ -370,63 +378,105 @@ exports.createProject = async (req, res) => {
       return res.status(400).json({ errors: error.details.map((err) => err.message) });
     }
     
-    // After validation passes, we can add the fields needed for MongoDB that weren't in the validation
-    const fullProjectData = {
+    // Create the project in the Project collection - use the SAME ID for both collections
+    const projectId = new mongoose.Types.ObjectId(); // Generate a single ID to use in both places
+    
+    // Create project with predefined ID
+    const newProject = new Project({
+      _id: projectId, // Use the pre-generated ID
       ...projectData,
-      description: req.body.description,
-      id_workspace: req.params.workspaceId,
-      createdBy: req.user._id
-    };
+      workspace: workspaceId
+    });
     
-    // Create the project in the projects collection
-    const newStandaloneProject = await Project.create(fullProjectData);
+    const savedProject = await newProject.save();
+    console.log(`Created project with ID: ${savedProject._id}`);
     
-    // Now also add it to the workspace
-    const workspace = await Workspace.findByIdAndUpdate(
-      req.params.workspaceId,
-      { $push: { projects: newStandaloneProject._id }}, // Just store the ID reference
-      { new: true, runValidators: true }
+    // Update workspace with ONLY the project ID as a reference
+    const updatedWorkspace = await Workspace.findByIdAndUpdate(
+      workspaceId,
+      { 
+        $push: { 
+          projects: savedProject._id // Store only the ID, not the entire object
+        }
+      },
+      { new: true }
     );
-
-    // Return the project in the format expected by the frontend
-    const projectToReturn = {
-      _id: newStandaloneProject._id,
-      name: req.body.name,
-      description: req.body.description,
-      createdBy: req.user._id,
-      createdAt: newStandaloneProject.createdAt
-    };
     
-    res.status(201).json(projectToReturn);
-  } catch (err) {
-    console.error('Error creating project:', err);
-    res.status(500).json({ error: 'Failed to create project', details: err.message });
+    if (!updatedWorkspace) {
+      console.log(`Warning: Workspace ${workspaceId} not found when updating projects array`);
+    } else {
+      console.log(`Project ${savedProject._id} added to workspace projects array`);
+    }
+    
+    // Return the newly created project
+    res.status(201).json(savedProject);
+  } catch (error) {
+    console.error('Error creating project:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
 exports.getProjects = async (req, res) => {
   try {
-      const workspace = await Workspace.findById(req.params.workspaceId)
-          .select('projects')
-          .lean();
-
-      if (!workspace) {
-          return res.status(404).json({ error: 'Workspace not found' });
+    const { workspaceId } = req.params;
+    
+    // First get the workspace to get the project IDs
+    const workspace = await Workspace.findById(workspaceId).lean();
+    
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace not found' });
+    }
+    
+    if (!workspace.projects || !workspace.projects.length) {
+      console.log("No projects found in workspace");
+      return res.json([]);
+    }
+    
+    // Log the raw projects array for debugging
+    console.log("Raw projects in workspace:", JSON.stringify(workspace.projects));
+    
+    // Extract project IDs properly, handling any format
+    const projectIds = [];
+    
+    for (const project of workspace.projects) {
+      if (typeof project === 'string') {
+        // If it's already a string ID, add it directly
+        projectIds.push(project);
+      } else if (project && mongoose.Types.ObjectId.isValid(project)) {
+        // If it's a valid ObjectId, add it
+        projectIds.push(project);
+      } else if (typeof project === 'object' && project !== null) {
+        // If it's an object with _id, extract the _id
+        if (project._id && mongoose.Types.ObjectId.isValid(project._id)) {
+          projectIds.push(project._id);
+        }
       }
-
-      res.json(workspace.projects.map(project => ({
-          _id: project._id,
-          name: project.name,
-          description: project.description,
-          createdAt: project.createdAt
-      })));
-
+    }
+    
+    console.log("Extracted valid project IDs:", projectIds);
+    
+    // Now fetch the full project objects from the Projects collection
+    // Only if we have valid project IDs
+    if (projectIds.length === 0) {
+      console.log("No valid project IDs found");
+      return res.json([]);
+    }
+    
+    const projects = await Project.find({
+      _id: { $in: projectIds }
+    }).populate('id_tasks');
+    
+    // Debug information
+    console.log(`Found ${projects.length} projects for workspace ${workspaceId}`);
+    
+    // Map to the format expected by frontend
+    res.json(projects);
   } catch (err) {
-      console.error('Error fetching projects:', err);
-      res.status(500).json({ 
-          error: 'Failed to fetch projects',
-          details: process.env.NODE_ENV === 'development' ? err.message : undefined
-      });
+    console.error('Error fetching projects:', err);
+    res.status(500).json({ 
+      error: 'Failed to fetch projects',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
@@ -887,5 +937,93 @@ exports.getWorkspaceProjects = async (req, res) => {
   } catch (error) {
     console.error('Error fetching workspace projects:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+// Add this to your WorkspaceController.js file
+exports.cleanupWorkspaceProjects = async (req, res) => {
+  try {
+    console.log("Starting workspace projects cleanup...");
+    
+    // Get all workspaces
+    const workspaces = await Workspace.find();
+    console.log(`Found ${workspaces.length} workspaces to check`);
+    
+    let updatedCount = 0;
+    let errorCount = 0;
+    let totalProjectsFixed = 0;
+    
+    for (const workspace of workspaces) {
+      try {
+        let needsUpdate = false;
+        let fixedProjectsCount = 0;
+        
+        console.log(`Checking workspace: ${workspace._id} (${workspace.name || 'unnamed'})`);
+        console.log(`Original projects: ${JSON.stringify(workspace.projects)}`);
+        
+        // Skip if no projects
+        if (!workspace.projects || workspace.projects.length === 0) {
+          console.log("No projects to fix in this workspace");
+          continue;
+        }
+        
+        // Create a new projects array that contains only valid ObjectIds
+        const cleanProjects = [];
+        
+        for (const project of workspace.projects) {
+          if (typeof project === 'object' && project !== null) {
+            // If it's a full project object with _id
+            if (project._id) {
+              const projectId = typeof project._id === 'string' ? 
+                project._id : project._id.toString();
+              
+              console.log(`Converting project object to ID reference: ${projectId}`);
+              cleanProjects.push(mongoose.Types.ObjectId(projectId));
+              needsUpdate = true;
+              fixedProjectsCount++;
+            } 
+            // If it has a name property but no _id, it's malformed
+            else if (project.name) {
+              console.log(`Found malformed project without _id: ${project.name}`);
+              // Skip this project as we can't reference it properly
+            }
+            // If it's an ObjectId object
+            else if (project instanceof mongoose.Types.ObjectId) {
+              cleanProjects.push(project);
+            }
+          } 
+          // If it's already a string ID or ObjectId, keep it
+          else if (typeof project === 'string' || mongoose.Types.ObjectId.isValid(project)) {
+            cleanProjects.push(mongoose.Types.ObjectId(project));
+          }
+        }
+        
+        // Only update if needed
+        if (needsUpdate) {
+          console.log(`Updating workspace ${workspace._id} projects array:`);
+          console.log(`Before: ${workspace.projects.length} projects`);
+          console.log(`After: ${cleanProjects.length} projects`);
+          
+          workspace.projects = cleanProjects;
+          await workspace.save();
+          
+          updatedCount++;
+          totalProjectsFixed += fixedProjectsCount;
+          
+          console.log(`✅ Fixed ${fixedProjectsCount} projects in workspace ${workspace._id}`);
+        } else {
+          console.log(`✓ No fixes needed for workspace ${workspace._id}`);
+        }
+      } catch (workspaceError) {
+        console.error(`Error processing workspace ${workspace._id}:`, workspaceError);
+        errorCount++;
+      }
+    }
+    
+    res.status(200).json({ 
+      message: `Cleanup complete. Updated ${updatedCount} workspaces with ${totalProjectsFixed} fixed projects. Errors: ${errorCount}` 
+    });
+  } catch (error) {
+    console.error('Error during workspace cleanup:', error);
+    res.status(500).json({ message: 'Error during cleanup', error: error.message });
   }
 };

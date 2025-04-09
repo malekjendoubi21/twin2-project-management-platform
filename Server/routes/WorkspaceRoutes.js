@@ -20,7 +20,8 @@ router.post('/invitations/:token/respond',  workspaceController.respondToInvitat
 router.get('/invitations/:token/verify', workspaceController.verifyInvitation);
 router.get('/invitations/user', protection, workspaceController.getUserInvitations);
 router.post('/invitations/respond/:invitationId', protection, workspaceController.respondToInvitationById);
-
+// Add this route to your existing routes
+router.get('/admin/cleanup-projects', protection, workspaceController.cleanupWorkspaceProjects);
 // Member management routes
 router.get('/:id/members', protection, workspaceController.getWorkspaceMembers);
 router.put('/:id/members/:memberId', protection,workspaceController.updateMemberRole);
