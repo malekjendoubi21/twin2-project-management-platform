@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const experienceSchema = new mongoose.Schema({
+
+  userId: {
+    type: mongoose.Schema.Types.ObjectId, // Référence à l'ID de l'utilisateur
+    ref: "User", // Référence au modèle User
+    required: true, // Ce champ est obligatoire
+  },
   job_title: {
     type: String,
     required: true,
