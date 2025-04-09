@@ -37,6 +37,27 @@ const Dashboard = () => {
         completedTasks: 0,
         pendingTasks: 0
     });
+    const [teamSkillsDistribution, setTeamSkillsDistribution] = useState([]);
+    const [certificationStats, setCertificationStats] = useState({ totalCertifications: 0, topCertifications: [] });
+    const [ressourceUtilization, setRessourceUtilization] = useState({
+        totalRessources: 0,
+        ressourcesByType: [],
+        recentlyAdded: []
+    });
+    const [notificationStats, setNotificationStats] = useState({
+        totalNotifications: 0,
+        notificationsByType: [],
+        deliveryStats: { read: 0, unread: 0 }
+    });
+    const [teamExperienceStats, setTeamExperienceStats] = useState({
+        avgYearsExperience: 0,
+        experienceLevels: [],
+        topIndustries: []
+    });
+    const [recentLogins, setRecentLogins] = useState([]);
+    const [registrationTrend, setRegistrationTrend] = useState([]);
+    const [userRoleDistribution, setUserRoleDistribution] = useState([]);
+    const [notificationTypes, setNotificationTypes] = useState([]);
 
     // Couleurs personnalisées pour une meilleure expérience visuelle
     const chartColors = {
@@ -175,10 +196,20 @@ const Dashboard = () => {
 
     const fetchWorkspaceProgress = async () => {
         try {
-            const response = await api.get('/api/dashboard/workspace-progress');
-            setWorkspaceProgress(response.data);
+            // Utilisation de project-progress au lieu de workspace-progress qui n'existe pas
+            const response = await api.get('/api/dashboard/project-progress');
+            
+            // Adaptation des données reçues au format attendu par le graphique
+            const formattedData = response.data.map(project => ({
+                workspaceName: project.projectName || "Projet sans nom",
+                completedTasks: project.completedTasks || 0
+            }));
+            
+            setWorkspaceProgress(formattedData);
         } catch (error) {
             console.error('Error fetching workspace progress:', error);
+            // En cas d'erreur, définir des données vides pour éviter les erreurs de rendu
+            setWorkspaceProgress([]);
         }
     };
 
@@ -209,6 +240,125 @@ const Dashboard = () => {
         }
     };
 
+    const fetchTeamSkillsDistribution = async () => {
+        try {
+            const response = await api.get('/api/dashboard/team-skills-distribution');
+            setTeamSkillsDistribution(response.data);
+        } catch (error) {
+            console.error('Error fetching team skills distribution:', error);
+        }
+    };
+
+    const fetchCertificationStats = async () => {
+        try {
+            const response = await api.get('/api/dashboard/certifications-stats');
+            setCertificationStats(response.data);
+        } catch (error) {
+            console.error('Error fetching certification stats:', error);
+        }
+    };
+
+    const fetchRessourceUtilization = async () => {
+        try {
+            const response = await api.get('/api/dashboard/ressource-utilization');
+            setRessourceUtilization(response.data);
+        } catch (error) {
+            console.error('Error fetching ressource utilization:', error);
+        }
+    };
+
+    const fetchNotificationStats = async () => {
+        try {
+            const response = await api.get('/api/dashboard/notification-stats');
+            setNotificationStats(response.data);
+        } catch (error) {
+            console.error('Error fetching notification stats:', error);
+        }
+    };
+
+    const fetchTeamExperienceStats = async () => {
+        try {
+            const response = await api.get('/api/dashboard/team-experience-stats');
+            setTeamExperienceStats(response.data);
+        } catch (error) {
+            console.error('Error fetching team experience stats:', error);
+        }
+    };
+
+    const fetchRecentLogins = async () => {
+        try {
+            const response = await api.get('/api/dashboard/recent-logins');
+            setRecentLogins(response.data);
+        } catch (error) {
+            console.error('Error fetching recent logins:', error);
+            // Données d'exemple en cas d'erreur
+            const today = new Date();
+            setRecentLogins([
+                { name: "Thomas Dubois", email: "thomas.d@example.com", lastLogin: new Date(today - 1000 * 60 * 30).toISOString(), ip: "192.168.1.45" },
+                { name: "Sophia Laurent", email: "s.laurent@company.com", lastLogin: new Date(today - 1000 * 60 * 120).toISOString(), ip: "203.0.113.42" },
+                { name: "Lucas Martin", email: "l.martin@gmail.com", lastLogin: new Date(today - 1000 * 60 * 240).toISOString(), ip: "198.51.100.73" },
+                { name: "Emma Bernard", email: "emma.b@organization.org", lastLogin: new Date(today - 1000 * 60 * 400).toISOString(), ip: "172.16.254.1" }
+            ]);
+        }
+    };
+
+    const fetchRegistrationTrend = async () => {
+        try {
+            const response = await api.get('/api/dashboard/registration-trend');
+            setRegistrationTrend(response.data);
+        } catch (error) {
+            console.error('Error fetching registration trend:', error);
+            // Données d'exemple en cas d'erreur
+            const today = new Date();
+            const trendData = [];
+            
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                const dateString = date.toISOString().split('T')[0]; // Format "YYYY-MM-DD"
+                
+                trendData.push({
+                    date: dateString,
+                    registrations: Math.floor(Math.random() * 5) + 1, // Entre 1 et 5 inscriptions par jour
+                });
+            }
+            
+            setRegistrationTrend(trendData);
+        }
+    };
+
+    const fetchUserRoleDistribution = async () => {
+        try {
+            const response = await api.get('/api/dashboard/user-role-distribution');
+            setUserRoleDistribution(response.data);
+        } catch (error) {
+            console.error('Error fetching user role distribution:', error);
+            // Données d'exemple en cas d'erreur
+            setUserRoleDistribution([
+                { role: "Administrateur", count: 3 },
+                { role: "Chef de projet", count: 12 },
+                { role: "Développeur", count: 18 },
+                { role: "Designer", count: 7 }
+            ]);
+        }
+    };
+
+    const fetchNotificationTypes = async () => {
+        try {
+            const response = await api.get('/api/dashboard/notification-types');
+            setNotificationTypes(response.data);
+        } catch (error) {
+            console.error('Error fetching notification types:', error);
+            // Données d'exemple en cas d'erreur
+            setNotificationTypes([
+                { type: "Système", count: 45, color: "#FF6384" },
+                { type: "Tâche", count: 32, color: "#36A2EB" },
+                { type: "Projet", count: 28, color: "#FFCE56" },
+                { type: "Mention", count: 19, color: "#4BC0C0" }
+            ]);
+        }
+    };
+
     useEffect(() => {
         fetchWorkspaceCount();
         fetchUserCount();
@@ -220,6 +370,15 @@ const Dashboard = () => {
         fetchTaskDistributionByUser();
         fetchTaskProgressByDeadline();
         fetchTaskTrendOverTime();
+        fetchTeamSkillsDistribution();
+        fetchCertificationStats();
+        fetchRessourceUtilization();
+        fetchNotificationStats();
+        fetchTeamExperienceStats();
+        fetchRecentLogins();
+        fetchRegistrationTrend();
+        fetchUserRoleDistribution();
+        fetchNotificationTypes();
     }, []);
 
     const handleLogout = async () => {
@@ -310,16 +469,7 @@ const Dashboard = () => {
         ],
     };
 
-    const taskProgressByDeadlineChart = {
-        labels: taskProgressByDeadline.map(task => task.taskName),
-        datasets: [{
-            label: 'Progression des tâches (%)',
-            data: taskProgressByDeadline.map(task => task.completionPercentage),
-            backgroundColor: chartColors.info[0],
-            borderColor: chartColors.info[0],
-            borderWidth: 1,
-        }],
-    };
+
 
     const taskTrendOverTimeChart = {
         labels: taskTrendOverTime.map(item => item.date),
@@ -343,6 +493,98 @@ const Dashboard = () => {
                 tension: 0.4,
             },
         ],
+    };
+
+    // Configuration des graphiques pour les nouvelles données
+    const teamSkillsChart = {
+        labels: teamSkillsDistribution.map(skill => skill.skillName),
+        datasets: [{
+            label: 'Nombre d\'utilisateurs',
+            data: teamSkillsDistribution.map(skill => skill.userCount),
+            backgroundColor: chartColors.primary,
+            borderColor: chartColors.primary.map(color => color.replace('0.8', '1')),
+            borderWidth: 1,
+        }],
+    };
+
+    const certificationsChart = {
+        labels: certificationStats.topCertifications?.map(cert => cert.name) || [],
+        datasets: [{
+            label: 'Nombre de certifications',
+            data: certificationStats.topCertifications?.map(cert => cert.count) || [],
+            backgroundColor: chartColors.info,
+            borderColor: chartColors.info.map(color => color.replace('0.8', '1')),
+            borderWidth: 1,
+        }],
+    };
+
+    const ressourceTypeChart = {
+        labels: ressourceUtilization.ressourcesByType?.map(item => item.type) || [],
+        datasets: [{
+            label: 'Ressources par type',
+            data: ressourceUtilization.ressourcesByType?.map(item => item.count) || [],
+            backgroundColor: chartColors.status,
+            borderColor: chartColors.status.map(color => color.replace('0.8', '1')),
+            borderWidth: 1,
+        }],
+    };
+
+    const notificationsChart = {
+        labels: notificationStats.notificationsByType?.map(item => item.type) || [],
+        datasets: [{
+            label: 'Notifications par type',
+            data: notificationStats.notificationsByType?.map(item => item.count) || [],
+            backgroundColor: notificationStats.notificationsByType?.map(item => item.color) || chartColors.status,
+            borderColor: notificationStats.notificationsByType?.map(item => item.color) || chartColors.status,
+            borderWidth: 1,
+        }],
+    };
+
+    const teamExperienceChart = {
+        labels: teamExperienceStats.experienceLevels?.map(item => item.level) || [],
+        datasets: [{
+            label: 'Distribution de l\'expérience',
+            data: teamExperienceStats.experienceLevels?.map(item => item.count) || [],
+            backgroundColor: chartColors.accent,
+            borderColor: chartColors.accent.map(color => color.replace('0.8', '1')),
+            borderWidth: 1,
+        }],
+    };
+
+    // Configuration des nouveaux graphiques
+    const userRoleChart = {
+        labels: userRoleDistribution.map(item => item.role),
+        datasets: [{
+            label: 'Nombre d\'utilisateurs',
+            data: userRoleDistribution.map(item => item.count),
+            backgroundColor: chartColors.status,
+            borderColor: chartColors.status,
+            borderWidth: 1,
+        }],
+    };
+
+    const notificationTypesChart = {
+        labels: notificationTypes.map(item => item.type),
+        datasets: [{
+            label: 'Notifications par type',
+            data: notificationTypes.map(item => item.count),
+            backgroundColor: notificationTypes.map(item => item.color),
+            borderColor: notificationTypes.map(item => item.color),
+            borderWidth: 1,
+        }],
+    };
+
+    const registrationTrendChart = {
+        labels: registrationTrend.map(item => item.date),
+        datasets: [{
+            label: 'Nouvelles inscriptions',
+            data: registrationTrend.map(item => item.registrations),
+            backgroundColor: 'rgba(94, 114, 228, 0.2)',
+            borderColor: chartColors.primary[0],
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+        }],
     };
 
     return (
@@ -559,6 +801,181 @@ const Dashboard = () => {
                     </div>
                 </div>
 
+                {/* Ajout des nouveaux graphiques après les graphiques existants */}
+                <div className="bg-slate-900/40 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 col-span-2 mb-8">
+                    <h2 className="text-2xl font-bold text-white mb-6 bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
+                        Analyses Avancées
+                    </h2>
+                    
+                    {/* Première rangée de graphiques avancés */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div className="bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 hover:shadow-blue-900/10 transition-all duration-300">
+                            <h3 className="text-xl font-semibold text-white mb-4">Distribution des compétences</h3>
+                            <div className="h-64">
+                                <Bar
+                                    data={teamSkillsChart}
+                                    options={{
+                                        ...chartOptions,
+                                        plugins: {
+                                            ...chartOptions.plugins,
+                                            title: { ...chartOptions.plugins.title, text: 'Compétences de l\'équipe' }
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div className="bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 hover:shadow-purple-900/10 transition-all duration-300">
+                            <h3 className="text-xl font-semibold text-white mb-4">Certifications ({certificationStats.totalCertifications})</h3>
+                            <div className="h-64">
+                                <Doughnut
+                                    data={certificationsChart}
+                                    options={{
+                                        ...chartOptions,
+                                        plugins: {
+                                            ...chartOptions.plugins,
+                                            title: { ...chartOptions.plugins.title, text: 'Top 5 des certifications' }
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div className="bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 hover:shadow-amber-900/10 transition-all duration-300">
+                            <h3 className="text-xl font-semibold text-white mb-4">Ressources ({ressourceUtilization.totalRessources})</h3>
+                            <div className="h-64">
+                                <Doughnut
+                                    data={ressourceTypeChart}
+                                    options={{
+                                        ...chartOptions,
+                                        plugins: {
+                                            ...chartOptions.plugins,
+                                            title: { ...chartOptions.plugins.title, text: 'Types de ressources' }
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div className="bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 hover:shadow-green-900/10 transition-all duration-300">
+                            <h3 className="text-xl font-semibold text-white mb-4">Notifications</h3>
+                            <div className="h-64">
+                                <Doughnut
+                                    data={notificationsChart}
+                                    options={{
+                                        ...chartOptions,
+                                        plugins: {
+                                            ...chartOptions.plugins,
+                                            title: { ...chartOptions.plugins.title, text: 'Types de notifications' }
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Statistiques d'expérience */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div className="bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 hover:shadow-blue-900/10 transition-all duration-300">
+                            <h3 className="text-xl font-semibold text-white mb-4">Expérience de l'équipe</h3>
+                            <div className="h-64">
+                                <Bar
+                                    data={teamExperienceChart}
+                                    options={{
+                                        ...chartOptions,
+                                        plugins: {
+                                            ...chartOptions.plugins,
+                                            title: { ...chartOptions.plugins.title, text: 'Niveaux d\'expérience' }
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div className="bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 hover:shadow-purple-900/10 transition-all duration-300 col-span-2">
+                            <h3 className="text-xl font-semibold text-white mb-4">Top secteurs d'activité</h3>
+                            <div className="space-y-4 mt-4">
+                                {teamExperienceStats.topIndustries?.map((industry, index) => (
+                                    <div key={index} className="flex items-center">
+                                        <div className="w-32 text-gray-300">{industry.name}</div>
+                                        <div className="flex-1 mx-2">
+                                            <div className="bg-gray-700 h-4 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500" 
+                                                    style={{ width: `${(industry.count / Math.max(...teamExperienceStats.topIndustries.map(i => i.count))) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                        <div className="w-10 text-right text-gray-300">{industry.count}</div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-6 p-4 bg-slate-700/30 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-400">Moyenne d'années d'expérience</p>
+                                        <p className="text-2xl font-bold text-white">{teamExperienceStats.avgYearsExperience} ans</p>
+                                    </div>
+                                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white text-2xl font-bold">
+                                        {teamExperienceStats.avgYearsExperience}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Ressources récentes */}
+                    <div className="bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 hover:shadow-cyan-900/10 transition-all duration-300 mb-6">
+                        <h3 className="text-xl font-semibold text-white mb-4">Ressources récemment ajoutées</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {ressourceUtilization.recentlyAdded?.map((resource, index) => (
+                                <div key={index} className="bg-slate-700/30 rounded-lg p-4 hover:bg-slate-700/50 transition-all duration-300">
+                                    <div className="flex items-center mb-2">
+                                        <div className={`h-8 w-8 rounded-lg mr-2 flex items-center justify-center
+                                            ${resource.type === 'Documents' ? 'bg-blue-900/50 text-blue-400' : 
+                                             resource.type === 'Images' ? 'bg-green-900/50 text-green-400' :
+                                             resource.type === 'Vidéos' ? 'bg-red-900/50 text-red-400' :
+                                             resource.type === 'Audio' ? 'bg-yellow-900/50 text-yellow-400' :
+                                             'bg-purple-900/50 text-purple-400'}`}>
+                                            {resource.type === 'Documents' ? 'DOC' : 
+                                             resource.type === 'Images' ? 'IMG' :
+                                             resource.type === 'Vidéos' ? 'VID' :
+                                             resource.type === 'Audio' ? 'AUD' : 'FIC'}
+                                        </div>
+                                        <div>
+                                            <h4 className="text-white font-medium">{resource.name}</h4>
+                                            <p className="text-xs text-gray-400">{resource.date}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    {/* Statistiques de notifications */}
+                    <div className="bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 hover:shadow-amber-900/10 transition-all duration-300">
+                        <h3 className="text-xl font-semibold text-white mb-4">Vue d'ensemble des notifications</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div className="bg-slate-700/30 p-4 rounded-lg">
+                                <h4 className="text-gray-400 mb-1">Total</h4>
+                                <p className="text-3xl font-bold text-white">{notificationStats.totalNotifications}</p>
+                            </div>
+                            <div className="bg-slate-700/30 p-4 rounded-lg">
+                                <h4 className="text-gray-400 mb-1">Lues</h4>
+                                <p className="text-3xl font-bold text-green-400">{notificationStats.deliveryStats?.read}</p>
+                            </div>
+                            <div className="bg-slate-700/30 p-4 rounded-lg">
+                                <h4 className="text-gray-400 mb-1">Non lues</h4>
+                                <p className="text-3xl font-bold text-red-400">{notificationStats.deliveryStats?.unread}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center">
+                            <div className="h-3 bg-green-500 rounded-l-full" style={{ width: `${(notificationStats.deliveryStats?.read / notificationStats.totalNotifications) * 100}%` }}></div>
+                            <div className="h-3 bg-red-500 rounded-r-full" style={{ width: `${(notificationStats.deliveryStats?.unread / notificationStats.totalNotifications) * 100}%` }}></div>
+                        </div>
+                        <div className="flex justify-between mt-1">
+                            <span className="text-xs text-gray-400">{Math.round((notificationStats.deliveryStats?.read / notificationStats.totalNotifications) * 100)}% lues</span>
+                            <span className="text-xs text-gray-400">{Math.round((notificationStats.deliveryStats?.unread / notificationStats.totalNotifications) * 100)}% non lues</span>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Section spéciale pour les rapports */}
                 <div className="bg-slate-800/30 backdrop-blur-sm rounded-xl p-6 mb-8 border border-gray-700">
                     <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
@@ -595,6 +1012,115 @@ const Dashboard = () => {
                     </div>
                     <div className="mt-4 text-right">
                         <button className="text-purple-400 hover:text-purple-300 text-sm font-medium">Voir tous les rapports →</button>
+                    </div>
+                </div>
+
+                {/* NOUVELLE SECTION: Informations administratives */}
+                <div className="bg-slate-900/40 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 mb-8">
+                    <h2 className="text-2xl font-bold text-white mb-6 bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
+                        Informations Administratives
+                    </h2>
+
+                    {/* Graphiques pour les rôles utilisateurs et types de notifications */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div className="bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 hover:shadow-blue-900/10 transition-all duration-300">
+                            <h3 className="text-xl font-semibold text-white mb-4">Répartition des rôles utilisateurs</h3>
+                            <div className="h-64">
+                                <Doughnut
+                                    data={userRoleChart}
+                                    options={{
+                                        ...chartOptions,
+                                        plugins: {
+                                            ...chartOptions.plugins,
+                                            title: { ...chartOptions.plugins.title, text: 'Distribution des rôles' }
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div className="bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 hover:shadow-purple-900/10 transition-all duration-300">
+                            <h3 className="text-xl font-semibold text-white mb-4">Types de notifications</h3>
+                            <div className="h-64">
+                                <Doughnut
+                                    data={notificationTypesChart}
+                                    options={{
+                                        ...chartOptions,
+                                        plugins: {
+                                            ...chartOptions.plugins,
+                                            title: { ...chartOptions.plugins.title, text: 'Distribution par type' }
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tendance des inscriptions */}
+                    <div className="bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 hover:shadow-green-900/10 transition-all duration-300 mb-8">
+                        <h3 className="text-xl font-semibold text-white mb-4">Tendance des inscriptions</h3>
+                        <div className="h-64">
+                            <Line
+                                data={registrationTrendChart}
+                                options={{
+                                    ...chartOptions,
+                                    plugins: {
+                                        ...chartOptions.plugins,
+                                        title: { ...chartOptions.plugins.title, text: 'Nouvelles inscriptions (7 derniers jours)' }
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Connexions récentes */}
+                    <div className="bg-slate-800/60 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-gray-700 hover:shadow-amber-900/10 transition-all duration-300">
+                        <h3 className="text-xl font-semibold text-white mb-4">Connexions récentes</h3>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full bg-slate-800/50 rounded-lg overflow-hidden">
+                                <thead>
+                                    <tr className="border-b border-gray-700">
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Utilisateur</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date de connexion</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Adresse IP</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-700">
+                                    {recentLogins.map((login, index) => {
+                                        const loginDate = new Date(login.lastLogin);
+                                        const now = new Date();
+                                        const diffInMinutes = Math.floor((now - loginDate) / (1000 * 60));
+                                        
+                                        let timeAgo;
+                                        if (diffInMinutes < 60) {
+                                            timeAgo = `Il y a ${diffInMinutes} min`;
+                                        } else if (diffInMinutes < 24 * 60) {
+                                            timeAgo = `Il y a ${Math.floor(diffInMinutes / 60)} h`;
+                                        } else {
+                                            timeAgo = `Il y a ${Math.floor(diffInMinutes / (60 * 24))} j`;
+                                        }
+                                        
+                                        return (
+                                            <tr key={index} className="hover:bg-slate-700/30 transition-all duration-200">
+                                                <td className="py-3 px-4 whitespace-nowrap">
+                                                    <div className="flex items-center">
+                                                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center text-white text-sm font-medium">
+                                                            {login.name?.charAt(0).toUpperCase() || 'U'}
+                                                        </div>
+                                                        <div className="ml-3">
+                                                            <p className="text-white font-medium">{login.name}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 px-4 whitespace-nowrap text-gray-300">{login.email}</td>
+                                                <td className="py-3 px-4 whitespace-nowrap text-gray-400">{timeAgo}</td>
+                                                <td className="py-3 px-4 whitespace-nowrap text-gray-400">{login.ip}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 

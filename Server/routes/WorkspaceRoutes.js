@@ -5,6 +5,7 @@ const { protection, allowTo } =require('../controllers/AuthController');
 
 router.post('/addWorkspace', workspaceController.addWorkspace);
 router.get('/', workspaceController.getAllWorkspaces);
+router.get('/count', workspaceController.getWorkspaceCount);
 router.get('/:id', workspaceController.getWorkspaceById);
 router.put('/updateWorkspace/:id', protection,  workspaceController.updateWorkspace);
 router.delete('/:id', protection, workspaceController.deleteWorkspace);
