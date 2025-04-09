@@ -450,8 +450,23 @@ const Listusers = () => {
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center space-x-3">
-                                        <div className="bg-purple-600 h-12 w-12 rounded-full flex items-center justify-center text-xl font-bold text-white">
-                                            {usr.name.charAt(0).toUpperCase()}
+                                        <div className="w-12 h-12 rounded-full ring ring-purple-500 ring-offset-2 ring-offset-slate-800 overflow-hidden">
+                                            {usr.profile_picture ? (
+                                                <img
+                                                    src={usr.profile_picture}
+                                                    alt={usr.name}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.target.onerror = null;
+                                                        e.target.style.display = 'none';
+                                                        e.target.parentNode.innerHTML = `<div class="bg-gradient-to-br from-purple-600 to-blue-600 text-white flex items-center justify-center h-full w-full">${usr.name.charAt(0).toUpperCase()}</div>`;
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="bg-gradient-to-br from-purple-600 to-blue-600 text-white flex items-center justify-center h-full w-full">
+                                                    {usr.name.charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
                                         </div>
                                         <div>
                                             <h3 className="font-semibold text-white">{usr.name}</h3>

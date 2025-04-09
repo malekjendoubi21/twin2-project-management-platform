@@ -51,38 +51,50 @@ const UserDetails = () => {
 
     const handleUpdate = async (e) => {
         e.preventDefault();
-
-        // Créer un objet avec uniquement les champs modifiés
-        const updatedData = {};
-        if (formData.name !== user.name) updatedData.name = formData.name;
-        if (formData.email !== user.email) updatedData.email = formData.email;
-        if (formData.phone_number !== user.phone_number) updatedData.phone_number = formData.phone_number;
-        if (formData.bio !== user.bio) updatedData.bio = formData.bio;
-        if (formData.role !== user.role) updatedData.role = formData.role;
-        if (formData.password) updatedData.password = formData.password;
-
+    
+        // Au lieu d'envoyer uniquement les champs modifiés, envoyer tous les champs
+        // car la validation côté serveur attend tous les champs obligatoires
+        const updatedData = {
+            name: formData.name,
+            email: formData.email,
+            role: formData.role,
+            phone_number: formData.phone_number || '',
+            bio: formData.bio || ''
+        };
+        
+        // N'ajouter le mot de passe que s'il a été fourni
+        if (formData.password && formData.password.trim() !== '') {
+            updatedData.password = formData.password;
+        }
+        
+        // Log pour déboguer
+        console.log('Updating user with:', updatedData);
+        
         try {
-            await api.put(`/api/users/updateUser/${id}`, updatedData, {
+            const response = await api.put(`/api/users/updateUser/${id}`, updatedData, {
                 headers: { "Content-Type": "application/json" }
             });
-
-            // Afficher une notification de succès
+            
+            console.log('Update response:', response.data);
+    
+            // Show success notification
             const notification = document.getElementById('notification');
             notification.classList.remove('opacity-0');
             notification.classList.add('opacity-100');
-
+    
             setTimeout(() => {
                 notification.classList.remove('opacity-100');
                 notification.classList.add('opacity-0');
             }, 3000);
-
+    
             // Refresh user data
-            const response = await api.get(`/api/users/getUser/${id}`);
-            setUser(response.data);
+            const userResponse = await api.get(`/api/users/getUser/${id}`);
+            setUser(userResponse.data);
             setShowForm(false);
         } catch (error) {
-            console.error("Erreur lors de la mise à jour:", error.response ? error.response.data : error);
-            alert("Erreur lors de la mise à jour: " + (error.response?.data?.message || "Erreur inconnue"));
+            console.error("Update error:", error);
+            console.error("Error details:", error.response?.data || "No detailed error");
+            alert("Erreur lors de la mise à jour: " + (error.response?.data?.message || error.message || "Erreur inconnue"));
         }
     };
 
@@ -229,8 +241,23 @@ const UserDetails = () => {
                 {/* User Actions Bar */}
                 <div className="flex flex-wrap justify-between items-center mb-8 gap-4">
                     <div className="flex items-center space-x-4">
-                        <div className="bg-gradient-to-br from-purple-600 to-pink-600 h-16 w-16 rounded-xl flex items-center justify-center text-2xl font-bold text-white shadow-lg">
-                            {user.name.charAt(0).toUpperCase()}
+                        <div className="bg-gradient-to-br from-purple-600 to-pink-600 h-16 w-16 rounded-xl flex items-center justify-center text-2xl font-bold text-white shadow-lg overflow-hidden">
+                            {user.profile_picture ? (
+                                <img
+                                    src={user.profile_picture}
+                                    alt={user.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.style.display = 'none';
+                                        e.target.parentNode.innerHTML = `<div class="bg-gradient-to-br from-purple-600 to-blue-600 text-white flex items-center justify-center h-full w-full">${user.name.charAt(0).toUpperCase()}</div>`;
+                                    }}
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                    {user.name.charAt(0).toUpperCase()}
+                                </div>
+                            )}
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-white flex items-center">
@@ -301,9 +328,10 @@ const UserDetails = () => {
                         {activeTab === 'profile' && (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {/* Personal Info */}
-                                <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-700 hover:shadow-purple-900/10 transition-all duration-300">
+                                <div
+                                    className="bg-slate-800/60 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-700 hover:shadow-purple-900/10 transition-all duration-300">
                                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-                                        <FiUser className="mr-2 text-purple-400" /> Informations personnelles
+                                        <FiUser className="mr-2 text-purple-400"/> Informations personnelles
                                     </h3>
                                     <div className="space-y-4">
                                         <div>
@@ -315,9 +343,11 @@ const UserDetails = () => {
                                             <div className="flex items-center">
                                                 <p className="font-medium text-white mr-2">{user.email}</p>
                                                 {user.isVerified ? (
-                                                    <span className="bg-green-900/50 text-green-300 text-xs px-2 py-0.5 rounded">Vérifié</span>
+                                                    <span
+                                                        className="bg-green-900/50 text-green-300 text-xs px-2 py-0.5 rounded">Vérifié</span>
                                                 ) : (
-                                                    <span className="bg-red-900/50 text-red-300 text-xs px-2 py-0.5 rounded">Non vérifié</span>
+                                                    <span
+                                                        className="bg-red-900/50 text-red-300 text-xs px-2 py-0.5 rounded">Non vérifié</span>
                                                 )}
                                             </div>
                                         </div>
@@ -335,17 +365,20 @@ const UserDetails = () => {
                                 </div>
 
                                 {/* Role & Status */}
-                                <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-700 hover:shadow-purple-900/10 transition-all duration-300">
+                                <div
+                                    className="bg-slate-800/60 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-700 hover:shadow-purple-900/10 transition-all duration-300">
                                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-                                        <FiInfo className="mr-2 text-blue-400" /> Rôle et statut
+                                        <FiInfo className="mr-2 text-blue-400"/> Rôle et statut
                                     </h3>
                                     <div className="space-y-4">
                                         <div>
                                             <p className="text-xs text-gray-400">Rôle</p>
                                             <div className="font-medium">
                                                 {user.role === 'admin' ?
-                                                    <span className="bg-purple-900/50 text-purple-300 px-2 py-1 rounded-lg">Administrateur</span> :
-                                                    <span className="bg-blue-900/50 text-blue-300 px-2 py-1 rounded-lg">Utilisateur</span>
+                                                    <span
+                                                        className="bg-purple-900/50 text-purple-300 px-2 py-1 rounded-lg">Administrateur</span> :
+                                                    <span
+                                                        className="bg-blue-900/50 text-blue-300 px-2 py-1 rounded-lg">Utilisateur</span>
                                                 }
                                             </div>
                                         </div>
@@ -353,8 +386,10 @@ const UserDetails = () => {
                                             <p className="text-xs text-gray-400">Statut du compte</p>
                                             <div className="font-medium">
                                                 {user.isActive ?
-                                                    <span className="bg-green-900/50 text-green-300 px-2 py-1 rounded-lg">Actif</span> :
-                                                    <span className="bg-red-900/50 text-red-300 px-2 py-1 rounded-lg">Inactif</span>
+                                                    <span
+                                                        className="bg-green-900/50 text-green-300 px-2 py-1 rounded-lg">Actif</span> :
+                                                    <span
+                                                        className="bg-red-900/50 text-red-300 px-2 py-1 rounded-lg">Inactif</span>
                                                 }
                                             </div>
                                         </div>
@@ -372,16 +407,18 @@ const UserDetails = () => {
                                 </div>
 
                                 {/* Workspace Info */}
-                                <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-700 hover:shadow-purple-900/10 transition-all duration-300">
+                                <div
+                                    className="bg-slate-800/60 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-700 hover:shadow-purple-900/10 transition-all duration-300">
                                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-                                        <FiMail className="mr-2 text-amber-400" /> Espaces de travail
+                                        <FiMail className="mr-2 text-amber-400"/> Espaces de travail
                                     </h3>
                                     <div>
                                         {user.workspaces && user.workspaces.length > 0 ? (
                                             <ul className="space-y-2">
-                                                {user.workspaces.map((workspace, index) => (
-                                                    <li key={index} className="bg-slate-700/50 p-2 px-3 rounded-lg text-white">
-                                                        {workspace}
+                                                {user.workspaces.map((workspace) => (
+                                                    <li key={workspace._id}
+                                                        className="bg-slate-700/50 p-2 px-3 rounded-lg text-white">
+                                                        {workspace.name}
                                                     </li>
                                                 ))}
                                             </ul>
@@ -392,15 +429,17 @@ const UserDetails = () => {
                                         )}
                                     </div>
                                 </div>
+
                             </div>
                         )}
 
                         {activeTab === 'security' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Authentication */}
-                                <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-700 hover:shadow-purple-900/10 transition-all duration-300">
+                                <div
+                                    className="bg-slate-800/60 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-gray-700 hover:shadow-purple-900/10 transition-all duration-300">
                                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-                                        <FiShield className="mr-2 text-purple-400" /> Authentification
+                                        <FiShield className="mr-2 text-purple-400"/> Authentification
                                     </h3>
                                     <div className="space-y-4">
                                         <div>
@@ -589,7 +628,7 @@ const UserDetails = () => {
                                             </div>
                                             <div>
                                                 <label className="block mb-2 text-sm font-medium text-gray-300">
-                                                    Nouveau mot de passe (laisser vide pour ne pas modifier)
+                                                    Nouveau mot de passe
                                                 </label>
                                                 <input
                                                     type="password"
@@ -597,8 +636,11 @@ const UserDetails = () => {
                                                     value={formData.password}
                                                     onChange={handleInputChange}
                                                     className="w-full p-2.5 bg-slate-700 text-white rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                                    placeholder="••••••••"
+                                                    placeholder="Laisser vide pour conserver le mot de passe actuel"
                                                 />
+                                                <p className="mt-1 text-xs text-gray-400">
+                                                    Pour des raisons de sécurité, nous ne pouvons pas afficher le mot de passe existant.
+                                                </p>
                                             </div>
                                         </div>
                                         <div className="mt-6 flex justify-end space-x-3">
