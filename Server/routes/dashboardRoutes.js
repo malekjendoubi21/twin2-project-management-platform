@@ -13,4 +13,17 @@ router.get('/user-status-distribution', DashboardController.getUserStatusDistrib
 router.get('/task-distribution-by-user', DashboardController.getTaskDistributionByUser);
 router.get('/task-progress-by-deadline', DashboardController.getTaskProgressByDeadline);
 
+// Nouvelles routes pour les statistiques additionnelles
+router.get('/team-skills-distribution', DashboardController.getTeamSkillsDistribution);
+router.get('/certifications-stats', DashboardController.getCertificationsStats);
+router.get('/ressource-utilization', DashboardController.getRessourceUtilization);
+router.get('/notification-stats', DashboardController.getNotificationStats);
+router.get('/team-experience-stats', DashboardController.getTeamExperienceStats);
+
+// Nouvelles routes
+router.get('/recent-logins', DashboardController.getRecentLogins);
+router.get('/registration-trend', DashboardController.getRegistrationTrend);
+router.get('/user-role-distribution', DashboardController.getUserRoleDistribution);
+router.get('/notification-types', DashboardController.getNotificationTypes);
+
 module.exports = router;

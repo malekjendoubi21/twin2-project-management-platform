@@ -456,8 +456,17 @@ const fixUserWorkspaces = async (req, res) => {
     });
   }
 };
+const getUserCount = async (req, res) => {
+    try {
+        const count = await User.countDocuments(); // 👈 Récupère le nombre total d'utilisateurs
+        res.status(200).json({ count });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to retrieve user count", details: err });
+    }
+};
 
-module.exports = { getUserWorkspacesCount,fixUserWorkspaces, getUserProfile, profilePictureUpload, getBasicUserInfo, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getMe };
+
+module.exports = { getUserWorkspacesCount,fixUserWorkspaces, getUserProfile, profilePictureUpload, getBasicUserInfo, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getMe ,getUserCount};
 
 
 
