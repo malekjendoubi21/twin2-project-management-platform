@@ -38,16 +38,26 @@ const getMe = async (req, res) => {
       }
     };
 const getUserById = async (req, res) => {
-    const { id } = req.params;
+    try {
+        const { id } = req.params;
+        const user = await User.findById(id)
+            .populate({
+                path: 'workspaces',
+                select: 'name',  // Only get workspace name
+                match: {         // Only get active workspaces
+                    isDeleted: { $ne: true },
+                    isArchived: { $ne: true }
+                }
+            });
 
-    await User.findById(id)
-        .then(user => {
-            if (!user) {
-                return res.status(404).json({ error: "User not found" });
-            }
-            res.json(user);
-        })
-        .catch(err => res.status(500).json({ error: "Failed to retrieve user", details: err }));
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to retrieve user", details: err.message });
+    }
 };
 
 const addUser = async (req, res) => {

@@ -2,14 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/Api';
 import { toast } from 'react-hot-toast';
-import useSession from '../hooks/useSession';
 import { FiEdit, FiUser, FiMail, FiPhone, FiFileText, FiLock, FiShield, FiImage, FiSave, FiX } from 'react-icons/fi';
 
 const AdminProfile = () => {
     const navigate = useNavigate();
-    const { user, loading: sessionLoading, error: sessionError, refreshUser } = useSession();
+    const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [localUser, setLocalUser] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -21,80 +19,27 @@ const AdminProfile = () => {
         profile_picture: '',
     });
 
-    // Vérifier le token au chargement du composant
+    // Simplification : utiliser la même logique que Dashboard.jsx et Listusers.jsx
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            toast.error('Vous n\'êtes pas authentifié. Redirection vers la page de connexion.', {
-                style: {
-                    background: '#f44336',
-                    color: '#fff',
-                    padding: '16px',
-                    borderRadius: '0px'
+        const fetchUser = async () => {
+            try {
+                const response = await api.get('/api/users/getMe');
+                
+                if (response.data) {
+                    setUser(response.data);
+                    setFormData({
+                        name: response.data.name || '',
+                        email: response.data.email || '',
+                        phone_number: response.data.phone_number || '',
+                        bio: response.data.bio || '',
+                        role: response.data.role || 'user',
+                        two_factor_enabled: response.data.two_factor_enabled || false,
+                        profile_picture: response.data.profile_picture || '',
+                    });
                 }
-            });
-            navigate('/login');
-            return;
-        }
-    }, [navigate]);
-
-    // Utiliser directement les données de session si disponibles
-    useEffect(() => {
-        if (user && !sessionLoading) {
-            console.log('User data from session:', user);
-            setLocalUser(user);
-            setFormData({
-                name: user.name || '',
-                email: user.email || '',
-                phone_number: user.phone_number || '',
-                bio: user.bio || '',
-                role: user.role || 'user',
-                two_factor_enabled: user.two_factor_enabled || false,
-                profile_picture: user.profile_picture || '',
-            });
-            setLoading(false);
-        } else if (sessionError && !sessionLoading) {
-            console.error('Session error:', sessionError);
-            // Tentative de récupération des données malgré l'erreur de session
-            fetchUserDataDirectly();
-        }
-    }, [user, sessionLoading, sessionError]);
-
-    // N'essayer de récupérer manuellement les données que si useSession ne les a pas déjà
-    const fetchUserDataDirectly = async () => {
-        if (localUser) return; // Ne pas récupérer si nous avons déjà des données utilisateur
-        
-        try {
-            setLoading(true);
-            console.log('Fetching user data directly via API');
-            const token = localStorage.getItem('token');
-            
-            if (!token) {
-                throw new Error('No authentication token found');
-            }
-            
-            const response = await api.get('/api/users/getMe', {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-            
-            if (response.data) {
-                console.log('User data from direct API:', response.data);
-                setLocalUser(response.data);
-                setFormData({
-                    name: response.data.name || '',
-                    email: response.data.email || '',
-                    phone_number: response.data.phone_number || '',
-                    bio: response.data.bio || '',
-                    two_factor_enabled: response.data.two_factor_enabled || false,
-                    profile_picture: response.data.profile_picture || '',
-                });
-            }
-        } catch (error) {
-            console.error("Error fetching user data directly:", error);
-            if (error.response?.status === 401) {
-                toast.error('Session expirée. Veuillez vous reconnecter.', {
+            } catch (error) {
+                console.error("Erreur lors de la récupération des données utilisateur:", error);
+                toast.error('Vous n\'êtes pas authentifié. Redirection vers la page de connexion.', {
                     style: {
                         background: '#f44336',
                         color: '#fff',
@@ -102,21 +47,14 @@ const AdminProfile = () => {
                         borderRadius: '0px'
                     }
                 });
-                // Délai avant redirection pour permettre à l'utilisateur de voir le message
-                localStorage.removeItem('token'); // Supprimer le token invalide
-                setTimeout(() => navigate('/login'), 2000);
+                navigate('/login');
+            } finally {
+                setLoading(false);
             }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Essayer de récupérer les données directement si useSession échoue
-    useEffect(() => {
-        if (!user && !sessionLoading && !localUser) {
-            fetchUserDataDirectly();
-        }
-    }, [user, sessionLoading, localUser]);
+        };
+        
+        fetchUser();
+    }, [navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -141,7 +79,8 @@ const AdminProfile = () => {
 
             if (response.data) {
                 const updatedUser = response.data.user || response.data;
-                setLocalUser(updatedUser);
+                
+                setUser(updatedUser);
                 setFormData(prev => ({
                     ...prev,
                     ...updatedUser
@@ -157,8 +96,6 @@ const AdminProfile = () => {
                         borderRadius: '0px'
                     }
                 });
-
-                refreshUser();
             }
         } catch (error) {
             console.error('Update error:', error);
@@ -181,7 +118,7 @@ const AdminProfile = () => {
         }
     };
 
-    if (loading || sessionLoading) return (
+    if (loading) return (
         <div className="min-h-screen bg-gradient-to-r from-[#0C0A1F] to-[#3C0B64] flex items-center justify-center">
             <div className="text-white text-xl font-semibold animate-pulse flex items-center">
                 <svg className="animate-spin -ml-1 mr-3 h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -193,11 +130,8 @@ const AdminProfile = () => {
         </div>
     );
 
-    // Utiliser soit les données de session, soit les données récupérées localement
-    const currentUser = user || localUser;
-
     // S'il n'y a toujours pas d'utilisateur après chargement, afficher un message d'erreur
-    if (!currentUser) {
+    if (!user) {
         return (
             <div className="min-h-screen bg-gradient-to-r from-[#0C0A1F] to-[#3C0B64] flex items-center justify-center">
                 <div className="bg-slate-800/80 p-8 rounded-xl max-w-md text-center">
@@ -236,13 +170,13 @@ const AdminProfile = () => {
                                                 {formData.profile_picture ? (
                                                     <img src={formData.profile_picture} alt="Profile" className="w-full h-full object-cover" />
                                                 ) : (
-                                                    currentUser.name?.charAt(0).toUpperCase() || 'A'
+                                                    user.name?.charAt(0).toUpperCase() || 'A'
                                                 )}
                                             </div>
                                         </div>
-                                        <h2 className="text-2xl font-bold text-white mb-2">{currentUser.name}</h2>
-                                        <div className="badge badge-primary font-medium mb-4 capitalize">{currentUser.role}</div>
-                                        <p className="text-gray-300">{currentUser.email}</p>
+                                        <h2 className="text-2xl font-bold text-white mb-2">{user.name}</h2>
+                                        <div className="badge badge-primary font-medium mb-4 capitalize">{user.role}</div>
+                                        <p className="text-gray-300">{user.email}</p>
                                     </div>
                                 </div>
                             )}
@@ -268,17 +202,17 @@ const AdminProfile = () => {
 
                             {!isEditing ? (
                                 <div className="space-y-6">
-                                    <InfoField icon={<FiUser />} label="Nom" value={currentUser.name} />
-                                    <InfoField icon={<FiMail />} label="Email" value={currentUser.email} />
-                                    <InfoField icon={<FiPhone />} label="Téléphone" value={currentUser.phone_number || 'Non renseigné'} />
-                                    <InfoField icon={<FiFileText />} label="Biographie" value={currentUser.bio || 'Aucune biographie'} />
-                                    <InfoField icon={<FiLock />} label="Rôle" value={currentUser.role} isCapitalized={true} />
+                                    <InfoField icon={<FiUser />} label="Nom" value={user.name} />
+                                    <InfoField icon={<FiMail />} label="Email" value={user.email} />
+                                    <InfoField icon={<FiPhone />} label="Téléphone" value={user.phone_number || 'Non renseigné'} />
+                                    <InfoField icon={<FiFileText />} label="Biographie" value={user.bio || 'Aucune biographie'} />
+                                    <InfoField icon={<FiLock />} label="Rôle" value={user.role} isCapitalized={true} />
                                     <InfoField
                                         icon={<FiShield />}
                                         label="Authentification à deux facteurs"
-                                        value={currentUser.two_factor_enabled ? 'Activée' : 'Désactivée'}
+                                        value={user.two_factor_enabled ? 'Activée' : 'Désactivée'}
                                         isColored={true}
-                                        isEnabled={currentUser.two_factor_enabled}
+                                        isEnabled={user.two_factor_enabled}
                                     />
                                 </div>
                             ) : (
@@ -347,13 +281,7 @@ const AdminProfile = () => {
                                                 <FiImage /> URL de l'image de profil
                                             </span>
                                         </label>
-                                        <input
-                                            type="text"
-                                            value={formData.profile_picture}
-                                            onChange={(e) => setFormData({...formData, profile_picture: e.target.value})}
-                                            className="input input-bordered bg-base-200 text-white"
-                                            placeholder="https://example.com/image.jpg"
-                                        />
+
                                     </div>
 
                                     <div className="form-control">
