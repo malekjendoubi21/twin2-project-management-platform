@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useParams } from 'react-router-dom';
+import api from '../../utils/Api';
+import { toast } from 'react-hot-toast';
 
 const TaskModal = ({ 
   isOpen, 
@@ -12,6 +15,7 @@ const TaskModal = ({
   onDeleteTask,
   modalRef 
 }) => {
+  const { id: workspaceId } = useParams(); // Get workspace ID from URL
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -25,6 +29,7 @@ const TaskModal = ({
   
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [findingMatch, setFindingMatch] = useState(false);
   
   // Initialize form with task data if editing
   useEffect(() => {
@@ -53,14 +58,60 @@ const TaskModal = ({
     setFormData(prev => ({ ...prev, [name]: value }));
   };
   
+  // Update the findBestMatch function with increased timeout
+  const findBestMatch = async () => {
+    if (!formData.description) {
+      toast.error('Please provide a task description first');
+      return;
+    }
+    
+    setFindingMatch(true);
+    try {
+      console.log(`Finding match for workspace ${workspaceId} with description: ${formData.description.substring(0, 30)}...`);
+      
+      const response = await api.post('/api/match-profiles', {
+        workspace_id: workspaceId,
+        task_description: formData.description
+      }, {
+        timeout: 60000 // Increase timeout to 60 seconds
+      });
+      
+      if (response.data && response.data.length > 0) {
+        // Get the highest scoring member
+        const bestMatch = response.data[0];
+        
+        // Update the form with the best match
+        setFormData(prev => ({
+          ...prev,
+          assigned_to: bestMatch.id
+        }));
+        
+        toast.success(`${bestMatch.name} is the best match for this task`);
+        console.log('Match results:', response.data);
+      } else {
+        toast.error('No suitable team members found');
+      }
+    } catch (error) {
+      console.error('Error finding best match:', error);
+      if (error.code === 'ECONNABORTED') {
+        toast.error('Request timed out. The matching process is taking too long.');
+      } else {
+        const errorMessage = error.response?.data?.error || 'Could not find a matching team member';
+        toast.error(errorMessage);
+      }
+    } finally {
+      setFindingMatch(false);
+    }
+  };
+  
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Convert assigned_to to string if it's an object ID
     const taskToSubmit = {
-      ...formData, // Changed from taskData to formData
-      assigned_to: formData.assigned_to ? String(formData.assigned_to) : null // Changed from taskData to formData
+      ...formData,
+      assigned_to: formData.assigned_to ? String(formData.assigned_to) : null
     };
   
     try {
@@ -241,20 +292,41 @@ const TaskModal = ({
                   <label className="label">
                     <span className="label-text">Assigned To</span>
                   </label>
-                  <select
-                    name="assigned_to"
-                    className="select select-bordered w-full"
-                    value={formData.assigned_to}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="" disabled>Select a team member</option>
-                    {users.map(user => (
-                      <option key={user._id} value={String(user._id)}>
-                        {user.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <select
+                      name="assigned_to"
+                      className="select select-bordered w-full"
+                      value={formData.assigned_to}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="" disabled>Select a team member</option>
+                      {users.map(user => (
+                        <option key={user._id} value={String(user._id)}>
+                          {user.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className={`btn btn-secondary ${findingMatch ? 'loading' : ''}`}
+                      onClick={findBestMatch}
+                      disabled={findingMatch || !formData.description}
+                      title="Find the best team member for this task based on skills"
+                    >
+                      {findingMatch ? 
+                        'Matching...' : 
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                      }
+                    </button>
+                  </div>
+                  {formData.description && !findingMatch && (
+                    <label className="label">
+                      <span className="label-text-alt">Click the shield button to find the best match</span>
+                    </label>
+                  )}
                 </div>
                 <div className="form-control">
                   <label className="label">

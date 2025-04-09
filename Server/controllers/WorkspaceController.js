@@ -889,15 +889,3 @@ exports.getWorkspaceProjects = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-exports.getWorkspaceCount = async (req, res) => {
-  try {
-
-    const count = await Workspace.countDocuments();
-    res.status(200).json({ count });
-
-  } catch (err) {
-
-    console.error('Error fetching workspace count:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-};
