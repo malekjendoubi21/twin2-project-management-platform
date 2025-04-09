@@ -1,5 +1,6 @@
 const Project = require('../models/Project');
 const { validateProject } = require('../validators/validatorProject');
+const mongoose = require('mongoose'); // Add this import
 
 exports.getAllProjects = async (req, res) => {
   try {
@@ -14,6 +15,11 @@ exports.getAllProjects = async (req, res) => {
 exports.getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Add this validation to prevent the error
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid project ID format' });
+    }
     
     const project = await Project.findById(id)
       .populate('id_teamMembre')
@@ -34,15 +40,27 @@ exports.getProjectById = async (req, res) => {
 };
 
 exports.createProject = async (req, res) => {
-    const { error } = validateProject(req.body);
-    if (error) {
-      return res.status(400).json({ errors: error.details.map((err) => err.message) });
-    }
   try {
-    const newProject = await Project.create(req.body);
-    res.status(201).json(newProject);
-  } catch (err) {
-    res.status(400).json({ message: 'Failed to create project', error: err });
+    const { id } = req.params; // Workspace ID
+    
+    // Make sure to include ALL fields from the request body
+    const projectData = {
+      project_name: req.body.project_name,
+      description: req.body.description,
+      start_date: req.body.start_date,
+      end_date: req.body.end_date,
+      status: req.body.status || 'not started',
+      // Other fields as needed
+    };
+    
+    console.log("Project data being passed to validation:", JSON.stringify(projectData));
+    
+    // Use project controller directly
+    const projectController = require('./ProjectController');
+    return projectController.createProject(req, res);
+  } catch (error) {
+    console.error('Error creating project:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
@@ -69,4 +87,14 @@ exports.deleteProject = async (req, res) => {
     res.status(500).json({ message: 'Failed to delete project', error: err });
   }
 };
+exports.getProjectCount = async (req, res) => {
+  try {
+    const count = await Project.countDocuments();
+    res.status(200).json({ count });
+  } catch (err) {
+    console.error('Error fetching project count:', err);
+    res.status(500).json({ message: 'Server error', error: err });
+  }
+};
+
 

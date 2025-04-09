@@ -87,7 +87,6 @@ const AdminProfile = () => {
                     email: response.data.email || '',
                     phone_number: response.data.phone_number || '',
                     bio: response.data.bio || '',
-                    role: response.data.role || 'user',
                     two_factor_enabled: response.data.two_factor_enabled || false,
                     profile_picture: response.data.profile_picture || '',
                 });

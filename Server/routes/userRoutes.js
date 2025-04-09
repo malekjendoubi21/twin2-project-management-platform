@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {getUserWorkspacesCount,fixUserWorkspaces, profilePictureUpload, getBasicUserInfo, getMe, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getUserProfile} = require('../controllers/UserController');
+const {getUserWorkspacesCount,fixUserWorkspaces, profilePictureUpload, getBasicUserInfo, getMe, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword, getLoggedUser, updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getUserProfile ,getUserCount} = require('../controllers/UserController');
 const { protection, allowTo } =require('../controllers/AuthController');
 const User = require('../models/User');
 
@@ -19,6 +19,8 @@ router.get('/getMe',protection, getMe );
 router.put('/updateMyPassword', protection, updateLoggedUserPassword);
 router.put('/updateMe', protection, UpdateLoggeduserData);
 router.put('/deleteMe', protection, deleteLoggedUser);
+router.get('/count', getUserCount);
+
 router.patch('/:id/add-workspace',protection, async (req, res) => {
   try {
     const { workspaceId } = req.body;

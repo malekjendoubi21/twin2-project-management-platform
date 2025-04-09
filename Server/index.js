@@ -49,6 +49,81 @@ app.use('/api/certifications', certificationRoutes);
 app.use('/api/skills', skillsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.post('/api/match-profiles', async (req, res) => {
+  const { workspace_id, task_description } = req.body;
+  
+  try {
+    // Get absolute path to the Python script and virtual environment
+    const path = require('path');
+    const scriptPath = path.resolve(__dirname, '../Moetaz.py');
+    const pythonPath = 'C:\\Users\\moeta\\OneDrive\\Desktop\\pi\\project-management-platform\\venv\\Scripts\\python.exe';
+    
+    console.log(`Running Python script with:`, {
+      workspace_id,
+      task_description,
+      scriptPath,
+      pythonPath
+    });
+    
+    // Execute Python script with parameters using the virtual environment Python
+    const { spawn } = require('child_process');
+    const python = spawn(pythonPath, [
+      scriptPath,
+      '--workspace_id', workspace_id,
+      '--task_description', task_description
+    ]);
+    
+    let matchData = '';
+    let errorData = '';
+    
+    // Capture standard output - should be only JSON now
+    python.stdout.on('data', (data) => {
+      matchData += data.toString();
+    });
+    
+    // Capture error output - all logs should go here
+    python.stderr.on('data', (data) => {
+      errorData += data.toString();
+      console.error(`Python script log: ${data}`);
+    });
+    
+    python.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`Python process exited with code ${code}`);
+        return res.status(500).json({ 
+          error: 'Profile matching failed', 
+          details: errorData || 'Unknown error' 
+        });
+      }
+      
+      try {
+        // Clean up the output - try to extract just the JSON part
+        let jsonStr = matchData.trim();
+        
+        // If output contains log messages, try to extract just the JSON part
+        if (jsonStr.includes('[{') && jsonStr.includes('}]')) {
+          const jsonStart = jsonStr.indexOf('[{');
+          const jsonEnd = jsonStr.lastIndexOf('}]') + 2;
+          jsonStr = jsonStr.substring(jsonStart, jsonEnd);
+        }
+        
+        // Parse the output from the Python script
+        const results = JSON.parse(jsonStr);
+        res.json(results);
+      } catch (error) {
+        console.error('Failed to parse Python output:', error);
+        console.error('Raw output:', matchData);
+        return res.status(500).json({ 
+          error: 'Failed to parse matching results',
+          details: 'Check server logs for the raw output' 
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error executing Python script:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.get("/", (req, res) => {
   res.send("Project Management Platform Backend");

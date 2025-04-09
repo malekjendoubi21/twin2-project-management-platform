@@ -8,7 +8,12 @@ import api from '../../utils/Api';
 const Projects = () => {
   const { workspace, setWorkspace } = useOutletContext();
   const { id } = useParams();
-  const [newProject, setNewProject] = useState({ name: '', description: '' });
+  const [newProject, setNewProject] = useState({
+    project_name: '',
+    description: '',
+    start_date: new Date().toISOString().split('T')[0], // Today as default start date
+    end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Today + 7 days as default end date
+  });
   const [loading, setLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -134,20 +139,56 @@ const Projects = () => {
     setLoading(true);
     
     try {
-      const response = await api.post(`/api/workspaces/${id}/projects`, newProject);
+      // Validate required fields before submission
+      if (!newProject.project_name || !newProject.project_name.trim()) {
+        toast.error('Project name is required');
+        setLoading(false);
+        return;
+      }
       
-      // Update both local state and workspace context
+      // Create proper date objects to pass validation
+      // This will convert to ISO format which is more reliable
+      const startDate = new Date(newProject.start_date);
+      const endDate = new Date(newProject.end_date);
+      
+      // Create with formatted dates that will pass validation
+      const projectData = {
+        project_name: newProject.project_name.trim(),
+        description: newProject.description || '',
+        start_date: startDate.toISOString(), // Format as ISO string
+        end_date: endDate.toISOString()      // Format as ISO string
+      };
+      
+      console.log("Submitting project data:", projectData);
+      
+      const response = await api.post(`/api/workspaces/${id}/projects`, projectData);
+      
+      // IMMEDIATELY fetch projects again to ensure we get the latest data
+      const projectsResponse = await api.get(`/api/workspaces/${id}/projects`);
+      
       setWorkspace(prev => ({
         ...prev,
-        projects: [...prev.projects, response.data]
+        projects: projectsResponse.data // Use the freshly fetched projects
       }));
       
-      setNewProject({ name: '', description: '' });
+      setNewProject({
+        project_name: '',
+        description: '',
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      });
+      
       toast.success('Project created successfully!');
       setShowCreateForm(false);
       
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to create project');
+      console.error("Project creation error:", err);
+      
+      if (err.response?.data?.errors) {
+        toast.error(`Validation error: ${err.response.data.errors}`);
+      } else {
+        toast.error(err.response?.data?.message || 'Failed to create project');
+      }
     } finally {
       setLoading(false);
     }
@@ -389,21 +430,52 @@ const Projects = () => {
                       type="text"
                       placeholder="Enter project name"
                       className="input input-bordered"
-                      value={newProject.name}
-                      onChange={(e) => setNewProject({...newProject, name: e.target.value})}
+                      value={newProject.project_name}
+                      onChange={(e) => setNewProject({...newProject, project_name: e.target.value})}
                       required
                     />
                   </div>
+                  
                   <div className="form-control">
                     <label className="label">
                       <span className="label-text">Description</span>
                     </label>
                     <textarea
                       placeholder="Describe your project..."
-                      className="textarea textarea-bordered h-32"
+                      className="textarea textarea-bordered h-24"
                       value={newProject.description}
                       onChange={(e) => setNewProject({...newProject, description: e.target.value})}
                     ></textarea>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text">Start Date</span>
+                      </label>
+                      <input
+                        type="date"
+                        className="input input-bordered"
+                        value={newProject.start_date}
+                        min={new Date().toISOString().split('T')[0]} // Today as minimum
+                        onChange={(e) => setNewProject({...newProject, start_date: e.target.value})}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text">End Date</span>
+                      </label>
+                      <input
+                        type="date"
+                        className="input input-bordered"
+                        value={newProject.end_date}
+                        min={newProject.start_date || new Date().toISOString().split('T')[0]}
+                        onChange={(e) => setNewProject({...newProject, end_date: e.target.value})}
+                        required
+                      />
+                    </div>
                   </div>
                   
                   <div className="flex justify-end gap-3 mt-6">
@@ -586,11 +658,12 @@ const Projects = () => {
                   <div className="flex flex-col sm:flex-row justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-md ${statusColor} flex items-center justify-center text-white font-semibold`}>
-                          {project.name.charAt(0).toUpperCase()}
-                        </div>
+                      <div className={`w-10 h-10 rounded-md ${statusColor} flex items-center justify-center text-white font-semibold`}>
+  {(project.project_name || project.name) ? 
+    (project.project_name || project.name).charAt(0).toUpperCase() : 'P'}
+</div>
                         <div>
-                          <h3 className="font-bold text-lg text-primary">{project.name}</h3>
+                          <h3 className="font-bold text-lg text-primary">{project.project_name}</h3>
                           <div className="flex items-center gap-2">
                             <div className={`badge ${statusColor} badge-sm text-white capitalize`}>{status}</div>
                             <span className="text-xs">Created: {new Date(project.createdAt || Date.now()).toLocaleDateString()}</span>
