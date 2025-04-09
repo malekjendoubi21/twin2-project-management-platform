@@ -527,7 +527,7 @@ const Profile = () => {
         e.preventDefault();
         setIsSaving(true);
         try {
-            const response = await api.post('/api/experiences/addExperience', {
+            const response = await api.post('/api/experiences/add', {
                 job_title: newExperience.job_title,
                 company: newExperience.company,
                 start_date: newExperience.start_date,
@@ -570,7 +570,7 @@ const Profile = () => {
         setIsSaving(true);
         try {
             const response = await api.put(
-                `/api/experiences/updateExperience/${editingExperienceId}`,
+                `/api/experiences/update/${editingExperienceId}`,
                 {
                     job_title: editExperienceData.job_title,
                     company: editExperienceData.company,
@@ -1634,7 +1634,273 @@ const Profile = () => {
                                     )}
                                 </div>
                             )}
-                            {activeTab === 'Experience'}
+                            {activeTab === 'Experience' && (
+    <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
+        <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-primary">My Experiences</h2>
+            <button
+                onClick={() => {
+                    setShowExperienceForm(true);
+                    setEditingExperienceId(null);
+                    setNewExperience({
+                        job_title: '',
+                        company: '',
+                        start_date: '',
+                        end_date: '',
+                        description: ''
+                    });
+                }}
+                className="btn btn-primary gap-2"
+                disabled={showExperienceForm}
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                >
+                    <path
+                        fillRule="evenodd"
+                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                        clipRule="evenodd"
+                    />
+                </svg>
+                Add Experience
+            </button>
+        </div>
+
+        {showExperienceForm && (
+            <div className="card bg-base-200 shadow-lg mb-8">
+                <div className="card-body">
+                    <h3 className="card-title text-lg mb-4">
+                        {editingExperienceId ? 'Edit Experience' : 'New Experience'}
+                    </h3>
+                    <form
+                        onSubmit={editingExperienceId ? handleUpdateExperience : handleAddExperience}
+                        className="space-y-4"
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">Job Title*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editingExperienceId ? editExperienceData.job_title : newExperience.job_title}
+                                    onChange={(e) =>
+                                        editingExperienceId
+                                            ? setEditExperienceData({ ...editExperienceData, job_title: e.target.value })
+                                            : setNewExperience({ ...newExperience, job_title: e.target.value })
+                                    }
+                                    className="input input-bordered"
+                                    placeholder="Ex: Software Developer"
+                                    required
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">Company*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editingExperienceId ? editExperienceData.company : newExperience.company}
+                                    onChange={(e) =>
+                                        editingExperienceId
+                                            ? setEditExperienceData({ ...editExperienceData, company: e.target.value })
+                                            : setNewExperience({ ...newExperience, company: e.target.value })
+                                    }
+                                    className="input input-bordered"
+                                    placeholder="Ex: Tech Corp"
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">Start Date*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
+                                    onChange={(e) =>
+                                        editingExperienceId
+                                            ? setEditExperienceData({ ...editExperienceData, start_date: e.target.value })
+                                            : setNewExperience({ ...newExperience, start_date: e.target.value })
+                                    }
+                                    className="input input-bordered"
+                                    max={new Date().toISOString().split('T')[0]}
+                                    required
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">End Date</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={editingExperienceId ? editExperienceData.end_date : newExperience.end_date}
+                                    onChange={(e) =>
+                                        editingExperienceId
+                                            ? setEditExperienceData({ ...editExperienceData, end_date: e.target.value })
+                                            : setNewExperience({ ...newExperience, end_date: e.target.value })
+                                    }
+                                    className="input input-bordered"
+                                    max={new Date().toISOString().split('T')[0]}
+                                />
+                            </div>
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Description*</span>
+                            </label>
+                            <textarea
+                                value={editingExperienceId ? editExperienceData.description : newExperience.description}
+                                onChange={(e) =>
+                                    editingExperienceId
+                                        ? setEditExperienceData({ ...editExperienceData, description: e.target.value })
+                                        : setNewExperience({ ...newExperience, description: e.target.value })
+                                }
+                                className="textarea textarea-bordered h-24"
+                                placeholder="Describe your role and responsibilities..."
+                                required
+                            />
+                        </div>
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowExperienceForm(false);
+                                    setEditingExperienceId(null);
+                                    setEditExperienceData({
+                                        job_title: '',
+                                        company: '',
+                                        start_date: '',
+                                        end_date: '',
+                                        description: ''
+                                    });
+                                }}
+                                className="btn btn-ghost"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="btn btn-primary"
+                                disabled={isSaving}
+                            >
+                                {isSaving ? (
+                                    <>
+                                        <span className="loading loading-spinner loading-xs"></span>
+                                        {editingExperienceId ? 'Updating...' : 'Adding...'}
+                                    </>
+                                ) : (editingExperienceId ? 'Update' : 'Add')}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )}
+
+        {experiences.length === 0 && !showExperienceForm ? (
+            <div className="text-center py-12">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-12 w-12 mx-auto text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    />
+                </svg>
+                <h3 className="mt-4 text-lg font-medium text-gray-500">No experiences added yet</h3>
+                <p className="mt-1 text-gray-400">Add your professional experiences to display them here</p>
+                <button
+                    onClick={() => setShowExperienceForm(true)}
+                    className="btn btn-primary mt-6"
+                >
+                    Add Experience
+                </button>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {experiences.map((experience) => (
+                    <div
+                        key={experience._id}
+                        className="card bg-base-100 border border-base-300 hover:border-primary transition-colors h-full"
+                    >
+                        <div className="card-body p-4">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h3 className="card-title text-lg">{experience.job_title}</h3>
+                                    <p className="text-base-content/80">{experience.company}</p>
+                                    <p className="text-sm text-base-content/70 mt-1">
+                                        {new Date(experience.start_date).toLocaleDateString('fr-FR')} -{' '}
+                                        {experience.end_date
+                                            ? new Date(experience.end_date).toLocaleDateString('fr-FR')
+                                            : 'Present'}
+                                    </p>
+                                    {experience.description && (
+                                        <p className="mt-2 text-base-content/80 line-clamp-3">
+                                            {experience.description}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button
+                                    onClick={() => handleEditExperience(experience)}
+                                    className="btn btn-square btn-xs btn-ghost"
+                                    title="Edit"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="h-4 w-4"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                        />
+                                    </svg>
+                                </button>
+                                <button
+                                    onClick={() => handleDeleteExperience(experience._id)}
+                                    className="btn btn-square btn-xs btn-ghost text-error"
+                                    title="Delete"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="h-4 w-4"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                        />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        )}
+    </div>
+)}
                             {activeTab === 'security' && (
                                 <div className="space-y-8">
                                     <div>
