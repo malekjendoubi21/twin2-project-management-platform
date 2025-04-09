@@ -54,12 +54,14 @@ function App() {
           <Route path="/forgotPassword" element={<ForgotPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/home" element={<Home />} />
+
+          <Route path="/invitations/:token/accept" element={<InvitationResponse />} />
+          <Route path="/invitations" element={<Invitations />} />
+          {/* dashboard Routes */}
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/dashboard/listusers" element={<Listusers />} />
           <Route path="/dashboard/user/:id" element={<UserDetails />} />
-          <Route path="/invitations/:token/accept" element={<InvitationResponse />} />
-          <Route path="/invitations" element={<Invitations />} />
-
+          <Route path="/dashboard/AdminProfile" element={<AdminProfile />} />
           {/* Workspace Routes */}
           <Route 
             path="/workspace/:id" 
