@@ -21,9 +21,27 @@ const AdminProfile = () => {
         profile_picture: '',
     });
 
+    // Vérifier le token au chargement du composant
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            toast.error('Vous n\'êtes pas authentifié. Redirection vers la page de connexion.', {
+                style: {
+                    background: '#f44336',
+                    color: '#fff',
+                    padding: '16px',
+                    borderRadius: '0px'
+                }
+            });
+            navigate('/login');
+            return;
+        }
+    }, [navigate]);
+
     // Utiliser directement les données de session si disponibles
     useEffect(() => {
         if (user && !sessionLoading) {
+            console.log('User data from session:', user);
             setLocalUser(user);
             setFormData({
                 name: user.name || '',
@@ -35,50 +53,71 @@ const AdminProfile = () => {
                 profile_picture: user.profile_picture || '',
             });
             setLoading(false);
+        } else if (sessionError && !sessionLoading) {
+            console.error('Session error:', sessionError);
+            // Tentative de récupération des données malgré l'erreur de session
+            fetchUserDataDirectly();
         }
-    }, [user, sessionLoading]);
+    }, [user, sessionLoading, sessionError]);
 
     // N'essayer de récupérer manuellement les données que si useSession ne les a pas déjà
-    useEffect(() => {
-        const fetchUserData = async () => {
-            if (!user && !sessionLoading && !localUser) {
-                try {
-                    const response = await api.get('/api/users/getMe');
-                    if (response.data) {
-                        setLocalUser(response.data);
-                        setFormData({
-                            name: response.data.name || '',
-                            email: response.data.email || '',
-                            phone_number: response.data.phone_number || '',
-                            bio: response.data.bio || '',
-                            role: response.data.role || 'user',
-                            two_factor_enabled: response.data.two_factor_enabled || false,
-                            profile_picture: response.data.profile_picture || '',
-                        });
-                    }
-                } catch (error) {
-                    console.error("Error fetching user data:", error);
-                    // Ne pas rediriger immédiatement, permettre plusieurs tentatives
-                    if (error.response?.status === 401) {
-                        toast.error('Session expirée. Veuillez vous reconnecter.', {
-                            style: {
-                                background: '#f44336',
-                                color: '#fff',
-                                padding: '16px',
-                                borderRadius: '0px'
-                            }
-                        });
-                        // Délai avant redirection pour permettre à l'utilisateur de voir le message
-                        setTimeout(() => navigate('/login'), 2000);
-                    }
-                } finally {
-                    setLoading(false);
-                }
+    const fetchUserDataDirectly = async () => {
+        if (localUser) return; // Ne pas récupérer si nous avons déjà des données utilisateur
+        
+        try {
+            setLoading(true);
+            console.log('Fetching user data directly via API');
+            const token = localStorage.getItem('token');
+            
+            if (!token) {
+                throw new Error('No authentication token found');
             }
-        };
+            
+            const response = await api.get('/api/users/getMe', {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            
+            if (response.data) {
+                console.log('User data from direct API:', response.data);
+                setLocalUser(response.data);
+                setFormData({
+                    name: response.data.name || '',
+                    email: response.data.email || '',
+                    phone_number: response.data.phone_number || '',
+                    bio: response.data.bio || '',
+                    role: response.data.role || 'user',
+                    two_factor_enabled: response.data.two_factor_enabled || false,
+                    profile_picture: response.data.profile_picture || '',
+                });
+            }
+        } catch (error) {
+            console.error("Error fetching user data directly:", error);
+            if (error.response?.status === 401) {
+                toast.error('Session expirée. Veuillez vous reconnecter.', {
+                    style: {
+                        background: '#f44336',
+                        color: '#fff',
+                        padding: '16px',
+                        borderRadius: '0px'
+                    }
+                });
+                // Délai avant redirection pour permettre à l'utilisateur de voir le message
+                localStorage.removeItem('token'); // Supprimer le token invalide
+                setTimeout(() => navigate('/login'), 2000);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        fetchUserData();
-    }, [user, sessionLoading, localUser, navigate]);
+    // Essayer de récupérer les données directement si useSession échoue
+    useEffect(() => {
+        if (!user && !sessionLoading && !localUser) {
+            fetchUserDataDirectly();
+        }
+    }, [user, sessionLoading, localUser]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
