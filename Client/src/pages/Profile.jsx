@@ -86,6 +86,8 @@ const Profile = () => {
         category: 'Technical',
         tags: 50
     });
+    const [categoryFilter, setCategoryFilter] = useState('all');
+    const [levelFilter, setLevelFilter] = useState('all');
 
     // États pour les certifications
     const [certifications, setCertifications] = useState([]);
@@ -377,6 +379,7 @@ const Profile = () => {
     };
 
     // Gestion des certifications
+    const [sortOption, setSortOption] = useState('date-desc');
     const handleCertificationImageSelect = (e, isEditing = false) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1048,36 +1051,84 @@ const Profile = () => {
                                 </div>
                             )}
                             {activeTab === 'Skills' && (
-                                <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h2 className="text-2xl font-bold text-primary">My Skills</h2>
-                                        <button
-                                            onClick={() => {
-                                                setShowSkillForm(true);
-                                                setEditingSkillId(null);
-                                                setNewSkill({ name: '', description: '', category: 'Technical', tags: 50 });
-                                            }}
-                                            className="btn btn-primary gap-2"
-                                            disabled={showSkillForm}
-                                        >
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="h-5 w-5"
-                                                viewBox="0 0 20 20"
-                                                fill="currentColor"
-                                            >
-                                                <path
-                                                    fillRule="evenodd"
-                                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                                                    clipRule="evenodd"
-                                                />
-                                            </svg>
-                                            Add Skill
-                                        </button>
-                                    </div>
+    <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
+        <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-primary">My Skills</h2>
+            <button
+                onClick={() => {
+                    setShowSkillForm(true);
+                    setEditingSkillId(null);
+                    setNewSkill({ name: '', description: '', category: 'Technical', tags: 50 });
+                }}
+                className="btn btn-primary gap-2"
+                disabled={showSkillForm}
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                >
+                    <path
+                        fillRule="evenodd"
+                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                        clipRule="evenodd"
+                    />
+                </svg>
+                Add Skill
+            </button>
+        </div>
 
-                                    {showSkillForm && (
-                                        <div className="card bg-base-200 shadow-lg mb-8">
+        {/* Filtres ajoutés ici */}
+        <div className="mb-6 bg-base-200 p-4 rounded-lg">
+            <div className="flex flex-wrap gap-4 items-center">
+                <div className="form-control">
+                    <label className="label">
+                        <span className="label-text">Filter by Category</span>
+                    </label>
+                    <select
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                        className="select select-bordered"
+                        defaultValue="all"
+                    >
+                        <option value="all">All Categories</option>
+                        <option value="Technical">Technical</option>
+                        <option value="Soft Skill">Soft Skill</option>
+                        <option value="Management">Management</option>
+                    </select>
+                </div>
+
+                <div className="form-control">
+                    <label className="label">
+                        <span className="label-text">Filter by Skill Level</span>
+                    </label>
+                    <select
+                        onChange={(e) => setLevelFilter(e.target.value)}
+                        className="select select-bordered"
+                        defaultValue="all"
+                    >
+                        <option value="all">All Levels</option>
+                        <option value="expert">Expert (70-100)</option>
+                        <option value="advanced">Advanced (50-70)</option>
+                        <option value="intermediate">Intermediate (30-50)</option>
+                        <option value="beginner">Beginner (0-30)</option>
+                    </select>
+                </div>
+
+                <button 
+                    onClick={() => {
+                        setCategoryFilter('all');
+                        setLevelFilter('all');
+                    }}
+                    className="btn btn-ghost mt-6"
+                >
+                    Reset Filters
+                </button>
+            </div>
+        </div>
+
+        {showSkillForm && (
+            <div className="card bg-base-200 shadow-lg mb-8">
                                             <div className="card-body">
                                                 <h3 className="card-title text-lg mb-4">
                                                     {editingSkillId ? 'Edit Skill' : 'New Skill'}
@@ -1196,10 +1247,10 @@ const Profile = () => {
                                                 </form>
                                             </div>
                                         </div>
-                                    )}
+        )}
 
-                                    {skills.length === 0 && !showSkillForm ? (
-                                        <div className="text-center py-12">
+        {skills.length === 0 && !showSkillForm ? (
+            <div className="text-center py-12">
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"
                                                 className="h-12 w-12 mx-auto text-gray-400"
@@ -1223,9 +1274,34 @@ const Profile = () => {
                                                 Add Skill
                                             </button>
                                         </div>
-                                    ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {skills.map((skill) => {
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {skills
+                    .filter(skill => {
+                        // Filtre par catégorie
+                        if (categoryFilter !== 'all' && skill.category !== categoryFilter) {
+                            return false;
+                        }
+                        
+                        // Filtre par niveau
+                        if (levelFilter !== 'all') {
+                            switch(levelFilter) {
+                                case 'expert':
+                                    return skill.tags > 70;
+                                case 'advanced':
+                                    return skill.tags > 50 && skill.tags <= 70;
+                                case 'intermediate':
+                                    return skill.tags > 30 && skill.tags <= 50;
+                                case 'beginner':
+                                    return skill.tags <= 30;
+                                default:
+                                    return true;
+                            }
+                        }
+                        
+                        return true;
+                    })
+                    .map((skill) => {
                                                 const categoryColors = {
                                                     Technical: 'bg-blue-200 text-blue-800',
                                                     'Soft Skill': 'bg-green-200 text-green-800',
@@ -1333,48 +1409,67 @@ const Profile = () => {
                                                     </div>
                                                 );
                                             })}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+            </div>
+        )}
+    </div>
+)}
                             {activeTab === 'Certifications' && (
-                                <div className="mt-4 p-6 bg-base-100 text-base-content rounded-lg border border-base-300 shadow-lg">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h2 className="text-2xl font-bold text-primary">Mes Certifications</h2>
-                                        <button
-                                            onClick={() => {
-                                                setShowCertificationForm(true);
-                                                setEditingCertificationId(null);
-                                                setNewCertification({
-                                                    certifications_name: '',
-                                                    issued_by: '',
-                                                    obtained_date: '',
-                                                    description: '',
-                                                    image: null,
-                                                });
-                                                setCertificationImagePreview(null);
-                                                if (certificationFileInputRef.current) certificationFileInputRef.current.value = '';
-                                            }}
-                                            className="btn btn-primary gap-2 hover:bg-primary-focus transition-colors mb-4"
-                                            disabled={showCertificationForm}
-                                        >
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="h-5 w-5 text-white"
-                                                viewBox="0 0 20 20"
-                                                fill="currentColor"
-                                            >
-                                                <path
-                                                    fillRule="evenodd"
-                                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                                                    clipRule="evenodd"
-                                                />
-                                            </svg>
-                                            Add Certification
-                                        </button>
-                                    </div>
+    <div className="mt-4 p-6 bg-base-100 text-base-content rounded-lg border border-base-300 shadow-lg">
+        <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-primary">Mes Certifications</h2>
+            <div className="flex items-center gap-4">
+                {/* Ajout du sélecteur de tri */}
+                <div className="form-control">
+                    <label className="label">
+                        <span className="label-text">Sort by</span>
+                    </label>
+                    <select
+                        onChange={(e) => setSortOption(e.target.value)}
+                        className="select select-bordered select-sm"
+                        defaultValue="date-desc"
+                    >
+                        <option value="date-desc">Date (Newest first)</option>
+                        <option value="date-asc">Date (Oldest first)</option>
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                    </select>
+                </div>
 
-                                    {showCertificationForm && (
+                <button
+                    onClick={() => {
+                        setShowCertificationForm(true);
+                        setEditingCertificationId(null);
+                        setNewCertification({
+                            certifications_name: '',
+                            issued_by: '',
+                            obtained_date: '',
+                            description: '',
+                            image: null,
+                        });
+                        setCertificationImagePreview(null);
+                        if (certificationFileInputRef.current) certificationFileInputRef.current.value = '';
+                    }}
+                    className="btn btn-primary gap-2 hover:bg-primary-focus transition-colors mb-4"
+                    disabled={showCertificationForm}
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-white"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                    >
+                        <path
+                            fillRule="evenodd"
+                            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                            clipRule="evenodd"
+                        />
+                    </svg>
+                    Add Certification
+                </button>
+            </div>
+        </div>
+
+      {showCertificationForm && (
                                         <div className="bg-base-200 p-6 rounded-lg mb-8 shadow-sm">
                                             <h3 className="text-lg font-semibold mb-4">
                                                 {editingCertificationId ? 'Modifier la Certification' : 'Nouvelle Certification'}
@@ -1507,36 +1602,24 @@ const Profile = () => {
                                         </div>
                                     )}
 
-                                    {certifications.length === 0 && !showCertificationForm && (
-                                        <div className="text-center py-12 bg-base-200 rounded-lg shadow-sm">
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="h-12 w-12 mx-auto text-gray-400"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={1.5}
-                                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                                                />
-                                            </svg>
-                                            <h3 className="mt-4 text-lg font-medium text-gray-500">No certification added.</h3>
-                                            <p className="mt-1 text-gray-400">Add your certifications to display them here</p>
-                                            <button
-                                                onClick={() => setShowCertificationForm(true)}
-                                                className="btn btn-primary mt-6 hover:bg-primary-focus transition-colors"
-                                            >
-                                                Add Certification
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {certifications.length > 0 && !showCertificationForm && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {certifications.map((certification) => (
+        {certifications.length > 0 && !showCertificationForm && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {certifications
+                    .sort((a, b) => {
+                        switch(sortOption) {
+                            case 'date-desc':
+                                return new Date(b.obtained_date) - new Date(a.obtained_date);
+                            case 'date-asc':
+                                return new Date(a.obtained_date) - new Date(b.obtained_date);
+                            case 'name-asc':
+                                return a.certifications_name.localeCompare(b.certifications_name);
+                            case 'name-desc':
+                                return b.certifications_name.localeCompare(a.certifications_name);
+                            default:
+                                return 0;
+                        }
+                    })
+                     .map((certification) => (
                                                 <div
                                                     key={certification._id}
                                                     className="bg-base-100 border border-base-300 hover:border-primary transition-colors p-4 rounded-lg shadow-sm"
@@ -1630,10 +1713,10 @@ const Profile = () => {
                                                     </div>
                                                 </div>
                                             ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+            </div>
+        )}
+    </div>
+)}
                             {activeTab === 'Experience' && (
     <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
         <div className="flex justify-between items-center mb-6">
