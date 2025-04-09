@@ -270,21 +270,30 @@ exports.resetPassword = async (req, res) => {
 
 
 exports.initiateGoogleAuth = (req, res) => {
+    // Capture any client-side state info (like clientRedirect flag)
+    const clientRedirect = req.query.clientRedirect === 'true';
+    
     const params = new URLSearchParams({
         client_id: process.env.GOOGLE_CLIENT_ID,
         redirect_uri: `${process.env.BACKEND_URL}/api/auth/google/callback`,
         response_type: 'code',
         scope: 'profile email',
         access_type: 'offline',
-        prompt: 'consent'
+        prompt: 'consent',
+        // Store clientRedirect flag in state to retrieve it in callback
+        state: clientRedirect ? 'clientRedirect=true' : ''
     });
+    
     res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
 };
 
 exports.handleGoogleCallback = async (req, res) => {
     try {
-        const { code } = req.query;
+        const { code, state } = req.query;
         if (!code) return res.status(400).json({ error: 'Authorization code missing' });
+        
+        // Check if this was a client-initiated redirect
+        const clientRedirect = state && state.includes('clientRedirect=true');
 
         // Exchange code for tokens
         const { data: tokens } = await axios.post('https://oauth2.googleapis.com/token', {
@@ -307,7 +316,8 @@ exports.handleGoogleCallback = async (req, res) => {
                 google_id: profile.id,
                 email: profile.email,
                 name: profile.name,
-                authentication_method: 'google'
+                authentication_method: 'google',
+                role: 'user' // Default role for new users
             });
             await user.save();
         }
@@ -319,6 +329,7 @@ exports.handleGoogleCallback = async (req, res) => {
             { expiresIn: process.env.JWT_EXPIRE_TIME }
         );
 
+        // Set the cookie
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -326,11 +337,21 @@ exports.handleGoogleCallback = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000,
             domain: process.env.COOKIE_DOMAIN,
             path: '/',
-        }).redirect(process.env.CLIENT_URL + '/dashboard');
+        });
+
+        // Redirect based on the user's role
+        if (clientRedirect) {
+            // For client-initiated auth, return to login with success flag for frontend handling
+            res.redirect(`${process.env.CLIENT_URL}/login?googleAuth=success`);
+        } else {
+            // For server-side flow, redirect based on role
+            const redirectPath = user.role === 'admin' ? '/dashboard' : '/acceuil';
+            res.redirect(`${process.env.CLIENT_URL}${redirectPath}`);
+        }
 
     } catch (error) {
         console.error('Google OAuth error:', error);
-        res.redirect(process.env.CLIENT_URL + '/login?error=google_auth_failed');
+        res.redirect(`${process.env.CLIENT_URL}/login?error=google_auth_failed`);
     }
 };
 exports.verifyEmail = async (req, res) => {

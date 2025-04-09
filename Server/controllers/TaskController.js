@@ -1,37 +1,35 @@
 const Task = require('../models/Task');
+const Project = require('../models/Project');
 const taskValidator = require('../validators/taskValidator');
 
 const TaskController = {
     // Create a new task
     createTask: async (req, res) => {
         try {
-            // Validate request body
-            const { error } = taskValidator.createTask.validate(req.body, { abortEarly: false });
-            if (error) {
-                const errors = error.details.map(detail => ({
-                    field: detail.path[0],
-                    message: detail.message
-                }));
-                return res.status(400).json({
-                    success: false,
-                    errors: errors
-                });
-            }
-
-            const taskData = req.body;
+            const { projectId } = req.params;
+            const taskData = { ...req.body, project_id: projectId };
+            
             const task = new Task(taskData);
             await task.save();
             
-            res.status(201).json({
-                success: true,
-                data: task,
-                message: 'Task created successfully'
-            });
+            // Add task to project's tasks array - FIXED: Convert string ID to ObjectId if needed
+            await Project.findByIdAndUpdate(
+                projectId,
+                { $push: { id_tasks: task._id } }
+            );
+            
+            // Log to verify the operation
+            console.log(`Added task ${task._id} to project ${projectId}`);
+            
+            // Return the populated task
+            const populatedTask = await Task.findById(task._id)
+              .populate('assigned_to', 'name email profile_picture');
+              
+            res.status(201).json(populatedTask);
         } catch (error) {
-            res.status(400).json({
-                success: false,
-                message: error.message
-            });
+            console.error('Error creating task:', error);
+            console.error('Details:', error.stack);
+            res.status(500).json({ message: 'Server error', error: error.message });
         }
     },
 
@@ -55,24 +53,19 @@ const TaskController = {
     },
 
     // Get tasks by project ID
-    
     getTasksByProject: async (req, res) => {
         try {
             const { projectId } = req.params;
+            
             const tasks = await Task.find({ project_id: projectId })
-                .populate('assigned_to', 'name email')
-                .populate('project_id', 'name');
-
-            res.status(200).json({
-                success: true,
-                data: tasks
-            });
-        } catch (error) {
-            res.status(500).json({
-                success: false,
-                message: error.message
-            });
-        }
+              .populate('assigned_to', 'name email profile_picture')
+              .sort({ createdAt: -1 });
+            
+            res.status(200).json(tasks);
+          } catch (error) {
+            console.error('Error fetching tasks for project:', error);
+            res.status(500).json({ message: 'Server error', error: error.message });
+          }
     },
 
     // Get tasks assigned to a specific user
@@ -122,7 +115,6 @@ const TaskController = {
         }
     },
 
-    // Update a task
     updateTask: async (req, res) => {
         try {
             // Validate request body
@@ -137,24 +129,25 @@ const TaskController = {
                     errors: errors
                 });
             }
-
-            const { taskId } = req.params;
+    
+            // Change this line - use id instead of taskId to match the route parameter
+            const { id } = req.params;  // Was using taskId, needs to be id
             const updates = req.body;
-
+    
             const task = await Task.findByIdAndUpdate(
-                taskId,
+                id,  // Use id instead of taskId
                 updates,
                 { new: true, runValidators: true }
-            ).populate('assigned_to', 'name email')
+            ).populate('assigned_to', 'name email profile_picture')
              .populate('project_id', 'name');
-
+    
             if (!task) {
                 return res.status(404).json({
                     success: false,
                     message: 'Task not found'
                 });
             }
-
+    
             res.status(200).json({
                 success: true,
                 data: task,
@@ -183,24 +176,25 @@ const TaskController = {
                     errors: errors
                 });
             }
-
-            const { taskId } = req.params;
+    
+            // Change this line too
+            const { id } = req.params;  // Was using taskId, needs to be id
             const { status } = req.body;
-
+    
             const task = await Task.findByIdAndUpdate(
-                taskId,
+                id,  // Use id instead of taskId
                 { status },
                 { new: true, runValidators: true }
-            ).populate('assigned_to', 'name email')
+            ).populate('assigned_to', 'name email profile_picture')
              .populate('project_id', 'name');
-
+    
             if (!task) {
                 return res.status(404).json({
                     success: false,
                     message: 'Task not found'
                 });
             }
-
+    
             res.status(200).json({
                 success: true,
                 data: task,
@@ -217,16 +211,25 @@ const TaskController = {
     // Delete a task
     deleteTask: async (req, res) => {
         try {
-            const { taskId } = req.params;
-            const task = await Task.findByIdAndDelete(taskId);
-
+            // Change this line as well
+            const { id } = req.params;  // Was using taskId, needs to be id
+            const task = await Task.findById(id);
+    
             if (!task) {
                 return res.status(404).json({
                     success: false,
                     message: 'Task not found'
                 });
             }
-
+    
+            // Remove task from project's tasks array
+            await Project.findByIdAndUpdate(task.project_id, {
+              $pull: { id_tasks: id }  // Use id instead of taskId
+            });
+            
+            // Delete the task
+            await Task.findByIdAndDelete(id);  // Use id instead of taskId
+    
             res.status(200).json({
                 success: true,
                 message: 'Task deleted successfully'
@@ -240,4 +243,4 @@ const TaskController = {
     }
 };
 
-module.exports = TaskController; 
+module.exports = TaskController;

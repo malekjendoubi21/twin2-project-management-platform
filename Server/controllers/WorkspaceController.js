@@ -384,14 +384,9 @@ exports.createProject = async (req, res) => {
     // Now also add it to the workspace
     const workspace = await Workspace.findByIdAndUpdate(
       req.params.workspaceId,
-      { $push: { projects: {
-        _id: newStandaloneProject._id,
-        name: req.body.name,
-        description: req.body.description,
-        createdBy: req.user._id
-      }}},
+      { $push: { projects: newStandaloneProject._id }}, // Just store the ID reference
       { new: true, runValidators: true }
-    ).populate('projects.createdBy', 'name email');
+    );
 
     // Return the project in the format expected by the frontend
     const projectToReturn = {
@@ -862,5 +857,35 @@ exports.getUserWorkspaceStats = async (req, res) => {
       completedTasksCount: 0,
       contributionPercentage: 0
     });
+  }
+};
+
+exports.getWorkspaceProjects = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // First get the workspace with project IDs
+    const workspace = await Workspace.findById(id);
+    
+    if (!workspace) {
+      return res.status(404).json({ message: 'Workspace not found' });
+    }
+    
+    // Then fetch the complete projects with populated tasks using those IDs
+    const projectIds = workspace.projects;
+    const completeProjects = await Project.find({
+      _id: { $in: projectIds }
+    }).populate('id_tasks');
+    
+    // Debug task counts
+    console.log('Project task counts:', completeProjects.map(p => ({
+      project: p.project_name,
+      taskCount: p.id_tasks ? p.id_tasks.length : 0
+    })));
+    
+    res.status(200).json(completeProjects);
+  } catch (error) {
+    console.error('Error fetching workspace projects:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
