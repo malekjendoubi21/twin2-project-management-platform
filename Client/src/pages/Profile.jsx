@@ -555,7 +555,6 @@ const Profile = () => {
         if (certificationFileInputRef.current) certificationFileInputRef.current.value = null;
     };
 
-    // Gestion des expériences
    // Gestion des expériences
 const handleAddExperience = async (e) => {
     e.preventDefault();

@@ -23,7 +23,7 @@ const experienceSchema = new mongoose.Schema({
   },
   end_date: {
     type: Date,
-    required: true,
+  
   },
   description: {
     type: String,
