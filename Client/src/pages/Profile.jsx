@@ -1149,7 +1149,12 @@ const handleAddExperience = async (e) => {
                                             </svg>
                                             Edit Profile
                                         </button>
+
+                                        
                                     )}
+                                    
+
+                                   
                                 </div>
                                 {user?.bio && (
                                     <div className="mt-4 text-base-content opacity-90">
@@ -1158,6 +1163,31 @@ const handleAddExperience = async (e) => {
                                 )}
                             </div>
                         </div>
+                        <button
+      onClick={generateCV}
+      className="btn btn-sm"
+      style={{
+        background: 'linear-gradient(to right, #F5A7B7, #C084FC)', // Pink to Purple gradient
+        color: '#FFFFFF',
+        border: 'none',
+      }}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5 mr-1"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        />
+      </svg>
+      Générer le CV
+    </button>
                         <div className="tabs tabs-boxed bg-base-200 px-6">
                             <button
                                 className={`tab ${activeTab === 'profile' ? 'tab-active' : ''}`}
@@ -2063,6 +2093,7 @@ const handleAddExperience = async (e) => {
                                     )}
                                 </div>
                             )}
+                            
                            {activeTab === 'Experience' && (
   <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
     <div className="flex justify-between items-center mb-4">
@@ -2103,26 +2134,7 @@ const handleAddExperience = async (e) => {
         Add experience
       </button>
 
-      <button
-          onClick={generateCV}
-          className="btn btn-secondary gap-2"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          Générer le CV
-        </button>
+      
 
     </div>
 
@@ -2439,15 +2451,13 @@ const handleAddExperience = async (e) => {
         </button>
       </div>
     ) : (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {experiences
           .filter((experience) => {
-            // Filtrage par location_type
             if (locationFilter === 'Tous') return true;
             return experience.location_type === locationFilter;
           })
           .sort((a, b) => {
-            // Tri dynamique selon experienceSortOption
             const dateA = a.is_current ? new Date() : new Date(a.end_date);
             const dateB = b.is_current ? new Date() : new Date(b.end_date);
             return experienceSortOption === 'date-desc' ? dateB - dateA : dateA - dateB;
@@ -2462,26 +2472,89 @@ const handleAddExperience = async (e) => {
               durationYears > 0
                 ? `${durationYears} an${durationYears > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} mois` : ''}`
                 : `${durationMonths} mois`;
-            const maxDuration = 60;
+            const maxDuration = 120; // 10 years
             const durationPercentage = Math.min((durationMonths / maxDuration) * 100, 100);
-
+      
             return (
               <div
                 key={experience._id}
                 className={`card ${
                   experience.is_current
-                    ? 'bg-[#e4bdf3] text-gray-900' // Violet clair avec texte sombre
+                    ? 'bg-[#e4bdf3] text-gray-900'
                     : 'bg-base-100 text-base-content'
                 } border border-base-300 hover:border-primary transition-colors shadow-md`}
               >
-                <div className="card-body p-6">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="card-title text-xl font-semibold">{experience.job_title}</h3>
-                      <p className={`${experience.is_current ? 'text-gray-800' : 'text-base-content/80'} text-lg`}>
-                        {experience.company}
-                      </p>
+                <div className="card-body p-6 flex flex-row gap-4">
+                  {/* Left Side: Experience Details and More Details Button */}
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="card-title text-xl font-semibold">{experience.job_title}</h3>
+                        <p className={`${experience.is_current ? 'text-gray-800' : 'text-base-content/80'} text-lg`}>
+                          {experience.company}
+                        </p>
+                      </div>
                     </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'}`}>
+                        {experience.employment_type} • {experience.location_type}
+                      </span>
+                    </div>
+                    <p className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'} mb-2`}>
+                      {startDate.toLocaleDateString('fr-FR')} -{' '}
+                      {experience.is_current ? 'Présent' : endDate.toLocaleDateString('fr-FR')}
+                    </p>
+                    {experience.location && (
+                      <p className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'} mb-2`}>
+                        {experience.location}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => setSelectedExperience(experience)}
+                      className={`btn btn-outline btn-sm mt-2 ${
+                        experience.is_current
+                          ? 'text-gray-900 border-gray-900 hover:bg-gray-200 hover:border-gray-900'
+                          : 'text-base-content border-base-content hover:bg-base-200 hover:border-base-content'
+                      }`}
+                    >
+                      More details
+                    </button>
+                  </div>
+      
+                  {/* Right Side: Percentage Circle and Edit/Delete Buttons */}
+                  <div className="flex flex-col items-center justify-between">
+                    <div className="relative w-16 h-16 mb-4">
+                      <svg className="w-full h-full" viewBox="0 0 36 36">
+                        <path
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="#e5e7eb"
+                          strokeWidth="3.8"
+                        />
+                        <path
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="url(#gradient)"
+                          strokeWidth="3.8"
+                          strokeDasharray={`${durationPercentage}, 100`}
+                          strokeLinecap="round"
+                        />
+                        <defs>
+                          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style={{ stopColor: '#F5A7B7', stopOpacity: 1 }} />
+                            <stop offset="100%" style={{ stopColor: '#C084FC', stopOpacity: 1 }} />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className={`text-sm font-medium ${experience.is_current ? 'text-gray-900' : 'text-base-content'}`}>
+                          {Math.round(durationPercentage)}%
+                        </span>
+                      </div>
+                    </div>
+                    <span className={`text-sm mb-2 ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'}`}>
+                      {durationText}
+                    </span>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleEditExperience(experience)}
@@ -2525,55 +2598,6 @@ const handleAddExperience = async (e) => {
                       </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'}`}>
-                      {experience.employment_type} • {experience.location_type}
-                    </span>
-                    <div className="relative w-8 h-8">
-                      <svg className="w-full h-full" viewBox="0 0 36 36">
-                        <path
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="#e5e7eb"
-                          strokeWidth="3.8"
-                        />
-                        <path
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="#3b82f6"
-                          strokeWidth="3.8"
-                          strokeDasharray={`${durationPercentage}, 100`}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className={`text-xs font-medium ${experience.is_current ? 'text-gray-900' : 'text-base-content'}`}>
-                          {durationYears > 0 ? durationYears : remainingMonths}
-                        </span>
-                      </div>
-                    </div>
-                    <span className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'}`}>
-                      {durationText}
-                    </span>
-                  </div>
-                  <p className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'} mb-2`}>
-                    {startDate.toLocaleDateString('fr-FR')} -{' '}
-                    {experience.is_current ? 'Présent' : endDate.toLocaleDateString('fr-FR')}
-                  </p>
-                  {experience.location && (
-                    <p className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'} mb-2`}>
-                      {experience.location}
-                    </p>
-                  )}
-                  <button
-                    onClick={() => setSelectedExperience(experience)}
-                    className={`btn btn-outline btn-sm w-full mt-2 ${
-                      experience.is_current
-                        ? 'text-gray-900 border-gray-900 hover:bg-gray-200 hover:border-gray-900'
-                        : 'text-base-content border-base-content hover:bg-base-200 hover:border-base-content'
-                    }`}
-                  >
-                    More details
-                  </button>
                 </div>
               </div>
             );
