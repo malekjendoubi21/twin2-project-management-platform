@@ -59,6 +59,8 @@ const Profile = () => {
     const fileInputRef = useRef(null);
     const [selectedExperience, setSelectedExperience] = useState(null);
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'system');
+    const [locationFilter, setLocationFilter] = useState('Tous');
+    const [sortOrder, setSortOrder] = useState('newest'); // Par défaut, tri du plus récent au plus ancien
 
     const [formData, setFormData] = useState({
         name: '',
@@ -1803,60 +1805,80 @@ const handleAddExperience = async (e) => {
                                     )}
                                 </div>
                             )}
-                            {activeTab === 'Experience' && (
+                           {activeTab === 'Experience' && (
   <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
-    <div className="flex justify-between items-center mb-6">
+    <div className="flex justify-between items-center mb-4">
       <h2 className="text-2xl font-bold text-primary">My experiences</h2>
-      <div className="flex items-center gap-4">
-        {/* Sélecteur de tri */}
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text">Order by</span>
-          </label>
-          <select
-            onChange={(e) => setExperienceSortOption(e.target.value)}
-            className="select select-bordered select-sm"
-            value={experienceSortOption}
-          >
-            <option value="date-desc">Date (Newest first)</option>
-            <option value="date-asc">Date (Oldest first)</option>
-          </select>
-        </div>
-        <button
-          onClick={() => {
-            setShowExperienceForm(true);
-            setEditingExperienceId(null);
-            setNewExperience({
-              job_title: '',
-              company: '',
-              employment_type: 'Temps plein',
-              is_current: false,
-              start_date: '',
-              end_date: '',
-              location: '',
-              location_type: 'Sur place',
-              description: '',
-              profile_title: '',
-              job_source: '',
-            });
-          }}
-          className="btn btn-primary gap-2"
-          disabled={showExperienceForm}
+      <button
+        onClick={() => {
+          setShowExperienceForm(true);
+          setEditingExperienceId(null);
+          setNewExperience({
+            job_title: '',
+            company: '',
+            employment_type: 'Temps plein',
+            is_current: false,
+            start_date: '',
+            end_date: '',
+            location: '',
+            location_type: 'Sur place',
+            description: '',
+            profile_title: '',
+            job_source: '',
+          });
+        }}
+        className="btn btn-primary gap-2"
+        disabled={showExperienceForm}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5"
+          viewBox="0 0 20 20"
+          fill="currentColor"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fillRule="evenodd"
-              d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-              clipRule="evenodd"
-            />
-          </svg>
-          Add experience
-        </button>
+          <path
+            fillRule="evenodd"
+            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+            clipRule="evenodd"
+          />
+        </svg>
+        Add experience
+      </button>
+    </div>
+
+    {/* Interface de filtrage et de tri (déplacée en dessous du titre) */}
+    <div className="flex items-center gap-4 mb-6">
+      {/* Filtre par type de localisation */}
+      <div className="form-control">
+        <label className="label">
+          <span className="label-text">Filtrer par type de localisation</span>
+        </label>
+        <select
+          id="location-filter"
+          value={locationFilter}
+          onChange={(e) => setLocationFilter(e.target.value)}
+          className="select select-bordered select-sm"
+        >
+          <option value="Tous">Tous</option>
+          <option value="Sur place">Sur place</option>
+          <option value="Hybride">Hybride</option>
+          <option value="À distance">À distance</option>
+        </select>
+      </div>
+
+      {/* Sélecteur de tri */}
+      <div className="form-control">
+        <label className="label">
+          <span className="label-text">Order by</span>
+        </label>
+        <select
+          onChange={(e) => setExperienceSortOption(e.target.value)}
+          className="select select-bordered select-sm"
+          value={experienceSortOption}
+        >
+          <option value="date-desc">Date (Newest first)</option>
+          <option value="date-asc">Date (Oldest first)</option>
+        </select>
       </div>
     </div>
 
@@ -1901,13 +1923,12 @@ const handleAddExperience = async (e) => {
                   }
                   className="select select-bordered"
                 >
-                  <option value="Temps plein">time</option>
-                  <option value="Temps partiel">Part-time</option>
+                  <option value="Temps plein">Temps plein</option>
+                  <option value="Temps partiel">Temps partiel</option>
                   <option value="Freelance">Freelance</option>
-                  <option value="Stage">Internship</option>
-                  <option value="Contrat">Contract</option>
-                  <option value="Bénévolat">Volunteer</option>
-               
+                  <option value="Stage">Stage</option>
+                  <option value="Contrat">Contrat</option>
+                  <option value="Bénévolat">Bénévolat</option>
                 </select>
               </div>
             </div>
@@ -1960,9 +1981,9 @@ const handleAddExperience = async (e) => {
                   }
                   className="select select-bordered"
                 >
-                  <option value="Sur place">On-site</option>
-                  <option value="À distance">Remote</option>
-                  <option value="Hybride">Hybrid</option>
+                  <option value="Sur place">Sur place</option>
+                  <option value="À distance">À distance</option>
+                  <option value="Hybride">Hybride</option>
                 </select>
               </div>
               <div className="form-control">
@@ -2072,7 +2093,7 @@ const handleAddExperience = async (e) => {
               </select>
               <label className="label">
                 <span className="label-text-alt text-gray-500">
-                This information will be used to encourage gaining more experience.
+                  This information will be used to encourage gaining more experience.
                 </span>
               </label>
             </div>
@@ -2139,22 +2160,16 @@ const handleAddExperience = async (e) => {
     ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {experiences
+          .filter((experience) => {
+            // Filtrage par location_type
+            if (locationFilter === 'Tous') return true;
+            return experience.location_type === locationFilter;
+          })
           .sort((a, b) => {
-            // Priorité 1 : Les postes actuels (is_current: true) en haut
-            if (a.is_current && !b.is_current) return -1; // a est actuel, b ne l'est pas => a en premier
-            if (!a.is_current && b.is_current) return 1;  // b est actuel, a ne l'est pas => b en premier
-
-            // Priorité 2 : Si les deux sont actuels ou non actuels, trier par date
-            const dateA = new Date(a.start_date);
-            const dateB = new Date(b.start_date);
-            switch (experienceSortOption) {
-              case 'date-desc':
-                return dateB - dateA; // Plus récent d'abord
-              case 'date-asc':
-                return dateA - dateB; // Plus ancien d'abord
-              default:
-                return 0;
-            }
+            // Tri dynamique selon experienceSortOption
+            const dateA = a.is_current ? new Date() : new Date(a.end_date);
+            const dateB = b.is_current ? new Date() : new Date(b.end_date);
+            return experienceSortOption === 'date-desc' ? dateB - dateA : dateA - dateB;
           })
           .map((experience) => {
             const startDate = new Date(experience.start_date);
@@ -2172,13 +2187,19 @@ const handleAddExperience = async (e) => {
             return (
               <div
                 key={experience._id}
-                className="card bg-base-100 border border-base-300 hover:border-primary transition-colors shadow-md"
+                className={`card ${
+                  experience.is_current
+                    ? 'bg-[#e4bdf3] text-gray-900' // Violet clair avec texte sombre
+                    : 'bg-base-100 text-base-content'
+                } border border-base-300 hover:border-primary transition-colors shadow-md`}
               >
                 <div className="card-body p-6">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h3 className="card-title text-xl font-semibold">{experience.job_title}</h3>
-                      <p className="text-base-content/80 text-lg">{experience.company}</p>
+                      <p className={`${experience.is_current ? 'text-gray-800' : 'text-base-content/80'} text-lg`}>
+                        {experience.company}
+                      </p>
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -2224,23 +2245,19 @@ const handleAddExperience = async (e) => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm text-base-content/70">
+                    <span className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'}`}>
                       {experience.employment_type} • {experience.location_type}
                     </span>
                     <div className="relative w-8 h-8">
                       <svg className="w-full h-full" viewBox="0 0 36 36">
                         <path
-                          d="M18 2.0845
-                            a 15.9155 15.9155 0 0 1 0 31.831
-                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                           fill="none"
                           stroke="#e5e7eb"
                           strokeWidth="3.8"
                         />
                         <path
-                          d="M18 2.0845
-                            a 15.9155 15.9155 0 0 1 0 31.831
-                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                           fill="none"
                           stroke="#3b82f6"
                           strokeWidth="3.8"
@@ -2248,25 +2265,33 @@ const handleAddExperience = async (e) => {
                         />
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xs font-medium text-base-content">
+                        <span className={`text-xs font-medium ${experience.is_current ? 'text-gray-900' : 'text-base-content'}`}>
                           {durationYears > 0 ? durationYears : remainingMonths}
                         </span>
                       </div>
                     </div>
-                    <span className="text-sm text-base-content/70">{durationText}</span>
+                    <span className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'}`}>
+                      {durationText}
+                    </span>
                   </div>
-                  <p className="text-sm text-base-content/70 mb-2">
+                  <p className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'} mb-2`}>
                     {startDate.toLocaleDateString('fr-FR')} -{' '}
                     {experience.is_current ? 'Présent' : endDate.toLocaleDateString('fr-FR')}
                   </p>
                   {experience.location && (
-                    <p className="text-sm text-base-content/70 mb-2">{experience.location}</p>
+                    <p className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'} mb-2`}>
+                      {experience.location}
+                    </p>
                   )}
                   <button
                     onClick={() => setSelectedExperience(experience)}
-                    className="btn btn-outline btn-sm w-full mt-2"
+                    className={`btn btn-outline btn-sm w-full mt-2 ${
+                      experience.is_current
+                        ? 'text-gray-900 border-gray-900 hover:bg-gray-200 hover:border-gray-900'
+                        : 'text-base-content border-base-content hover:bg-base-200 hover:border-base-content'
+                    }`}
                   >
-                    Afficher les détails
+                    More details
                   </button>
                 </div>
               </div>
