@@ -10,6 +10,8 @@ const ProgressCircle = ({ percentage, size = 80, strokeWidth = 8 }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
+   
+  
 
     let strokeColor;
     if (percentage < 30) strokeColor = '#ef4444'; // red
@@ -113,6 +115,9 @@ const Profile = () => {
 
 
     // États pour les expériences
+ 
+     const [locationTypeFilter, setLocationTypeFilter] = useState('Tous');
+     const [experienceSortOption, setExperienceSortOption] = useState('date-desc');
     const [experiences, setExperiences] = useState([]);
     const [showExperienceForm, setShowExperienceForm] = useState(false);
     const [newExperience, setNewExperience] = useState({
@@ -196,17 +201,15 @@ const Profile = () => {
 
         const fetchUserExperiences = async () => {
             try {
-                const response = await api.get('/api/experiences/');
-                const sortedExperiences = Array.isArray(response.data)
-                    ? response.data.sort((a, b) => new Date(b.start_date) - new Date(a.start_date)) // Tri décroissant par défaut
-                    : [];
-                setExperiences(sortedExperiences);
+              const response = await api.get('/api/experiences/');
+              const fetchedExperiences = Array.isArray(response.data) ? response.data : [];
+              setExperiences(fetchedExperiences); // On ne trie pas ici, on le fera dynamiquement
             } catch (error) {
-                console.error('Error fetching user experiences:', error.response?.data || error.message);
-                setExperiences([]);
-                toast.error('Failed to load experiences: ' + (error.response?.data?.message || error.message));
+              console.error('Error fetching user experiences:', error.response?.data || error.message);
+              setExperiences([]);
+              toast.error('Failed to load experiences: ' + (error.response?.data?.message || error.message));
             }
-        };
+          };
       
         const fetchCertifications = async () => {
           try {
@@ -687,7 +690,8 @@ const handleAddExperience = async (e) => {
             toast.error(`Échec de la suppression: ${error.response?.data?.message || error.message}`);
         }
     };
-
+    //Find the current position
+    const currentPosition = experiences.find((exp) => exp.is_current) || null;
     if (loading) {
         return (
             <div className="min-h-screen bg-base-200 flex items-center justify-center">
@@ -699,7 +703,7 @@ const handleAddExperience = async (e) => {
         );
     }
 
-    return (
+     return (
         <div className="min-h-screen bg-base-200 font-poppins">
             <nav className="navbar bg-base-100 shadow-lg px-4 lg:px-8">
                 <div className="flex-1">
@@ -718,7 +722,7 @@ const handleAddExperience = async (e) => {
                                 d="M10 19l-7-7m0 0l7-7m-7 7h18"
                             />
                         </svg>
-                        PlaniFy
+                       PlaniFy
                     </Link>
                 </div>
                 <div className="flex-none gap-4">
@@ -744,7 +748,7 @@ const handleAddExperience = async (e) => {
                         >
                             <li className="px-4 py-2 border-b">
                                 <span className="font-bold">{user?.name || 'User'}</span>
-                                <span className="text-sm block opacity-70">{user?.email || 'user@example.com'}</span>
+                               
                             </li>
                             <li>
                                 <Link to="/acceuil">Dashboard</Link>
@@ -833,6 +837,16 @@ const handleAddExperience = async (e) => {
                                     <div>
                                         <h1 className="text-3xl font-bold">{user?.name || 'User'}</h1>
                                         <p className="text-base-content opacity-75">{user?.email || 'user@example.com'}</p>
+
+                                        {currentPosition ? (
+  <span className="  text-sl block opacity-90 font-medium bg-yellow-100 px-2 py-1 rounded-md ">
+    {currentPosition.job_title} at {currentPosition.company}
+  </span>
+) : (
+  <span className="text-sl block opacity-50 italic bg-base-300/50 px-2 py-1 rounded-md ">
+    No current position
+  </span>
+)}
                                         <div className="mt-1 flex items-center gap-2">
                                             <span className="badge badge-primary">{user?.role || 'user'}</span>
                                             {skills
@@ -1789,270 +1803,322 @@ const handleAddExperience = async (e) => {
                                     )}
                                 </div>
                             )}
-{activeTab === 'Experience' && (
+                            {activeTab === 'Experience' && (
   <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
     <div className="flex justify-between items-center mb-6">
-      <h2 className="text-2xl font-bold text-primary">Mes Expériences Professionnelles</h2>
-      <button
-        onClick={() => {
-          setShowExperienceForm(true);
-          setEditingExperienceId(null);
-          setNewExperience({
-            job_title: '',
-            company: '',
-            employment_type: 'Temps plein',
-            is_current: false,
-            start_date: '',
-            end_date: '',
-            location: '',
-            location_type: 'Sur place',
-            description: '',
-    
-            job_source: '',
-          });
-        }}
-        className="btn btn-primary gap-2"
-        disabled={showExperienceForm}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
+      <h2 className="text-2xl font-bold text-primary">My experiences</h2>
+      <div className="flex items-center gap-4">
+        {/* Sélecteur de tri */}
+        <div className="form-control">
+          <label className="label">
+            <span className="label-text">Order by</span>
+          </label>
+          <select
+            onChange={(e) => setExperienceSortOption(e.target.value)}
+            className="select select-bordered select-sm"
+            value={experienceSortOption}
+          >
+            <option value="date-desc">Date (Newest first)</option>
+            <option value="date-asc">Date (Oldest first)</option>
+          </select>
+        </div>
+        <button
+          onClick={() => {
+            setShowExperienceForm(true);
+            setEditingExperienceId(null);
+            setNewExperience({
+              job_title: '',
+              company: '',
+              employment_type: 'Temps plein',
+              is_current: false,
+              start_date: '',
+              end_date: '',
+              location: '',
+              location_type: 'Sur place',
+              description: '',
+              profile_title: '',
+              job_source: '',
+            });
+          }}
+          className="btn btn-primary gap-2"
+          disabled={showExperienceForm}
         >
-          <path
-            fillRule="evenodd"
-            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-            clipRule="evenodd"
-          />
-        </svg>
-        Ajouter une expérience
-      </button>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+          Add experience
+        </button>
+      </div>
     </div>
 
-    {/* Formulaire d'ajout/modification */}
     {showExperienceForm && (
-      <div className="card bg-base-200 shadow-lg mb-8 p-6">
-        <h3 className="text-xl font-semibold mb-6">
-          {editingExperienceId ? 'Modifier une expérience' : 'Nouvelle expérience'}
-        </h3>
-        <form
-          onSubmit={editingExperienceId ? handleUpdateExperience : handleAddExperience}
-          className="space-y-6"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Intitulé du poste*</span>
-              </label>
-              <input
-                type="text"
-                value={editingExperienceId ? editExperienceData.job_title : newExperience.job_title}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, job_title: e.target.value })
-                    : setNewExperience({ ...newExperience, job_title: e.target.value })
-                }
-                className="input input-bordered"
-                placeholder="Ex: Développeur Full Stack"
-                required
-              />
-            </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Entreprise*</span>
-              </label>
-              <input
-                type="text"
-                value={editingExperienceId ? editExperienceData.company : newExperience.company}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, company: e.target.value })
-                    : setNewExperience({ ...newExperience, company: e.target.value })
-                }
-                className="input input-bordered"
-                placeholder="Ex: Tech Solutions"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Type d'emploi</span>
-              </label>
-              <select
-                value={editingExperienceId ? editExperienceData.employment_type : newExperience.employment_type}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, employment_type: e.target.value })
-                    : setNewExperience({ ...newExperience, employment_type: e.target.value })
-                }
-                className="select select-bordered"
-              >
-                <option value="Temps plein">Temps plein</option>
-                <option value="Temps partiel">Temps partiel</option>
-                <option value="Freelance">Freelance</option>
-                <option value="Stage">Stage</option>
-                <option value="Contrat">Contrat</option>
-              </select>
-            </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Type de lieu</span>
-              </label>
-              <select
-                value={editingExperienceId ? editExperienceData.location_type : newExperience.location_type}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, location_type: e.target.value })
-                    : setNewExperience({ ...newExperience, location_type: e.target.value })
-                }
-                className="select select-bordered"
-              >
-                <option value="Sur place">Sur place</option>
-                <option value="À distance">À distance</option>
-                <option value="Hybride">Hybride</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Lieu</span>
-            </label>
-            <input
-              type="text"
-              value={editingExperienceId ? editExperienceData.location : newExperience.location}
-              onChange={(e) =>
-                editingExperienceId
-                  ? setEditExperienceData({ ...editExperienceData, location: e.target.value })
-                  : setNewExperience({ ...newExperience, location: e.target.value })
-              }
-              className="input input-bordered"
-              placeholder="Ex: Paris, France"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Date de début*</span>
-              </label>
-              <input
-                type="date"
-                value={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, start_date: e.target.value })
-                    : setNewExperience({ ...newExperience, start_date: e.target.value })
-                }
-                className="input input-bordered"
-                max={new Date().toISOString().split('T')[0]}
-                required
-              />
-            </div>
-            <div className="form-control">
-              <label className="label cursor-pointer">
-                <span className="label-text font-medium">Poste actuel</span>
+      <div className="card bg-base-200 shadow-lg mb-8">
+        <div className="card-body">
+          <h3 className="card-title text-lg mb-4">
+            {editingExperienceId ? 'Modifier une expérience' : 'New Experience'}
+          </h3>
+          <form
+            onSubmit={editingExperienceId ? handleUpdateExperience : handleAddExperience}
+            className="space-y-4"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Job Title*</span>
+                </label>
                 <input
-                  type="checkbox"
-                  checked={editingExperienceId ? editExperienceData.is_current : newExperience.is_current}
+                  type="text"
+                  value={editingExperienceId ? editExperienceData.job_title : newExperience.job_title}
                   onChange={(e) =>
                     editingExperienceId
-                      ? setEditExperienceData({ ...editExperienceData, is_current: e.target.checked })
-                      : setNewExperience({ ...newExperience, is_current: e.target.checked })
+                      ? setEditExperienceData({ ...editExperienceData, job_title: e.target.value })
+                      : setNewExperience({ ...newExperience, job_title: e.target.value })
                   }
-                  className="checkbox checkbox-primary"
+                  className="input input-bordered"
+                  placeholder="Ex: Software Developer"
+                  required
                 />
-              </label>
-              {!editingExperienceId && !newExperience.is_current && (
-                <input
-                  type="date"
-                  value={newExperience.end_date}
-                  onChange={(e) => setNewExperience({ ...newExperience, end_date: e.target.value })}
-                  className="input input-bordered mt-2"
-                  max={new Date().toISOString().split('T')[0]}
-                />
-              )}
-              {editingExperienceId && !editExperienceData.is_current && (
-                <input
-                  type="date"
-                  value={editExperienceData.end_date}
-                  onChange={(e) => setEditExperienceData({ ...editExperienceData, end_date: e.target.value })}
-                  className="input input-bordered mt-2"
-                  max={new Date().toISOString().split('T')[0]}
-                />
-              )}
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Employment Type</span>
+                </label>
+                <select
+                  value={editingExperienceId ? editExperienceData.employment_type : newExperience.employment_type}
+                  onChange={(e) =>
+                    editingExperienceId
+                      ? setEditExperienceData({ ...editExperienceData, employment_type: e.target.value })
+                      : setNewExperience({ ...newExperience, employment_type: e.target.value })
+                  }
+                  className="select select-bordered"
+                >
+                  <option value="Temps plein">time</option>
+                  <option value="Temps partiel">Part-time</option>
+                  <option value="Freelance">Freelance</option>
+                  <option value="Stage">Internship</option>
+                  <option value="Contrat">Contract</option>
+                  <option value="Bénévolat">Volunteer</option>
+               
+                </select>
+              </div>
             </div>
-          </div>
-
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Description*</span>
-            </label>
-            <textarea
-              value={editingExperienceId ? editExperienceData.description : newExperience.description}
-              onChange={(e) =>
-                editingExperienceId
-                  ? setEditExperienceData({ ...editExperienceData, description: e.target.value })
-                  : setNewExperience({ ...newExperience, description: e.target.value })
-              }
-              className="textarea textarea-bordered h-32"
-              placeholder="Décrivez vos responsabilités et réalisations..."
-              required
-            />
-          </div>
-
-          <div className="flex justify-end gap-4">
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowExperienceForm(false);
-                setEditingExperienceId(null);
-                setEditExperienceData({
-                  job_title: '',
-                  company: '',
-                  employment_type: 'Temps plein',
-                  is_current: false,
-                  start_date: '',
-                  end_date: '',
-                  location: '',
-                  location_type: 'Sur place',
-                  description: '',
-             
-                  job_source: '',
-                });
-              }}
-              className="btn btn-outline"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <>
-                  <span className="loading loading-spinner loading-xs"></span>
-                  Enregistrement...
-                </>
-              ) : editingExperienceId ? 'Modifier' : 'Ajouter'}
-            </button>
-          </div>
-        </form>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Company or Organization*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingExperienceId ? editExperienceData.company : newExperience.company}
+                  onChange={(e) =>
+                    editingExperienceId
+                      ? setEditExperienceData({ ...editExperienceData, company: e.target.value })
+                      : setNewExperience({ ...newExperience, company: e.target.value })
+                  }
+                  className="input input-bordered"
+                  placeholder="Ex: Tech Corp"
+                  required
+                />
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Company Location</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingExperienceId ? editExperienceData.location : newExperience.location}
+                  onChange={(e) =>
+                    editingExperienceId
+                      ? setEditExperienceData({ ...editExperienceData, location: e.target.value })
+                      : setNewExperience({ ...newExperience, location: e.target.value })
+                  }
+                  className="input input-bordered"
+                  placeholder="Ex: Paris, France"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Type of Location</span>
+                </label>
+                <select
+                  value={editingExperienceId ? editExperienceData.location_type : newExperience.location_type}
+                  onChange={(e) =>
+                    editingExperienceId
+                      ? setEditExperienceData({ ...editExperienceData, location_type: e.target.value })
+                      : setNewExperience({ ...newExperience, location_type: e.target.value })
+                  }
+                  className="select select-bordered"
+                >
+                  <option value="Sur place">On-site</option>
+                  <option value="À distance">Remote</option>
+                  <option value="Hybride">Hybrid</option>
+                </select>
+              </div>
+              <div className="form-control">
+                <label className="label cursor-pointer">
+                  <span className="label-text">I currently work in this position</span>
+                  <input
+                    type="checkbox"
+                    checked={editingExperienceId ? editExperienceData.is_current : newExperience.is_current}
+                    onChange={(e) =>
+                      editingExperienceId
+                        ? setEditExperienceData({ ...editExperienceData, is_current: e.target.checked })
+                        : setNewExperience({ ...newExperience, is_current: e.target.checked })
+                    }
+                    className="checkbox checkbox-primary"
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Start Date*</span>
+                </label>
+                <input
+                  type="date"
+                  value={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
+                  onChange={(e) =>
+                    editingExperienceId
+                      ? setEditExperienceData({ ...editExperienceData, start_date: e.target.value })
+                      : setNewExperience({ ...newExperience, start_date: e.target.value })
+                  }
+                  className="input input-bordered"
+                  max={new Date().toISOString().split('T')[0]}
+                  required
+                />
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">End Date</span>
+                </label>
+                <input
+                  type="date"
+                  value={editingExperienceId ? editExperienceData.end_date : newExperience.end_date}
+                  onChange={(e) =>
+                    editingExperienceId
+                      ? setEditExperienceData({ ...editExperienceData, end_date: e.target.value })
+                      : setNewExperience({ ...newExperience, end_date: e.target.value })
+                  }
+                  className="input input-bordered"
+                  max={new Date().toISOString().split('T')[0]}
+                  disabled={editingExperienceId ? editExperienceData.is_current : newExperience.is_current}
+                />
+              </div>
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Description*</span>
+              </label>
+              <textarea
+                value={editingExperienceId ? editExperienceData.description : newExperience.description}
+                onChange={(e) =>
+                  editingExperienceId
+                    ? setEditExperienceData({ ...editExperienceData, description: e.target.value })
+                    : setNewExperience({ ...newExperience, description: e.target.value })
+                }
+                className="textarea textarea-bordered h-24"
+                placeholder="Describe your responsibilities..."
+                required
+              />
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Profile Title</span>
+              </label>
+              <input
+                type="text"
+                value={editingExperienceId ? editExperienceData.profile_title : newExperience.profile_title}
+                onChange={(e) =>
+                  editingExperienceId
+                    ? setEditExperienceData({ ...editExperienceData, profile_title: e.target.value })
+                    : setNewExperience({ ...newExperience, profile_title: e.target.value })
+                }
+                className="input input-bordered"
+                placeholder="Appears below your name at the top of the profile"
+              />
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Where did you find this job offer?</span>
+              </label>
+              <select
+                value={editingExperienceId ? editExperienceData.job_source : newExperience.job_source}
+                onChange={(e) =>
+                  editingExperienceId
+                    ? setEditExperienceData({ ...editExperienceData, job_source: e.target.value })
+                    : setNewExperience({ ...newExperience, job_source: e.target.value })
+                }
+                className="select select-bordered"
+              >
+                <option value="">Please Select</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="Indeed">Indeed</option>
+                <option value="Glassdoor">Glassdoor</option>
+                <option value="Directement sur le site de l'entreprise">Directly on the company's website</option>
+                <option value="Recommandation">Recommandation</option>
+                <option value="Autre">Other</option>
+              </select>
+              <label className="label">
+                <span className="label-text-alt text-gray-500">
+                This information will be used to encourage gaining more experience.
+                </span>
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExperienceForm(false);
+                  setEditingExperienceId(null);
+                  setEditExperienceData({
+                    job_title: '',
+                    company: '',
+                    employment_type: 'Temps plein',
+                    is_current: false,
+                    start_date: '',
+                    end_date: '',
+                    location: '',
+                    location_type: 'Sur place',
+                    description: '',
+                    profile_title: '',
+                    job_source: '',
+                  });
+                }}
+                className="btn btn-ghost"
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs"></span>
+                    {editingExperienceId ? 'Modification...' : 'Ajout...'}
+                  </>
+                ) : editingExperienceId ? 'Saves Changes' : 'Add Experience'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     )}
 
-    {/* Liste des expériences */}
     {experiences.length === 0 && !showExperienceForm ? (
-      <div className="text-center py-12 bg-base-200 rounded-lg">
+      <div className="text-center py-12">
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-16 w-16 mx-auto text-gray-400"
+          className="h-12 w-12 mx-auto text-gray-400"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -2064,147 +2130,185 @@ const handleAddExperience = async (e) => {
             d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
           />
         </svg>
-        <h3 className="mt-4 text-xl font-medium text-gray-500">Aucune expérience</h3>
-        <p className="mt-2 text-gray-400">Ajoutez vos expériences pour enrichir votre profil</p>
+        <h3 className="mt-4 text-lg font-medium text-gray-500">Aucune expérience ajoutée</h3>
+        <p className="mt-1 text-gray-400">Ajoutez vos expériences professionnelles pour les afficher ici</p>
+        <button onClick={() => setShowExperienceForm(true)} className="btn btn-primary mt-6">
+          Add Experience
+        </button>
       </div>
     ) : (
-      <div className="space-y-6">
-        {experiences.map((experience) => {
-          const startDate = new Date(experience.start_date);
-          const endDate = experience.is_current ? new Date() : new Date(experience.end_date);
-          const durationMonths = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24 * 30));
-          const durationYears = Math.floor(durationMonths / 12);
-          const remainingMonths = durationMonths % 12;
-          const durationText = durationYears > 0
-            ? `${durationYears} an${durationYears > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} mois` : ''}`
-            : `${durationMonths} mois`;
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {experiences
+          .sort((a, b) => {
+            // Priorité 1 : Les postes actuels (is_current: true) en haut
+            if (a.is_current && !b.is_current) return -1; // a est actuel, b ne l'est pas => a en premier
+            if (!a.is_current && b.is_current) return 1;  // b est actuel, a ne l'est pas => b en premier
 
-          return (
-            <div
-              key={experience._id}
-              className="card bg-base-100 border border-base-300 hover:shadow-lg transition-shadow p-6 rounded-lg"
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-primary">{experience.job_title}</h3>
-                  <p className="text-lg text-base-content/80">{experience.company}</p>
-                  <p className="text-sm text-base-content/70 mt-1">
-                    {startDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })} -{' '}
-                    {experience.is_current ? 'Présent' : endDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })} 
-                    {` • ${durationText}`}
-                  </p>
-                  {experience.location && (
-                    <p className="text-sm text-base-content/70 mt-1">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 inline mr-1"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      {experience.location} • {experience.location_type}
-                    </p>
-                  )}
-                  <p className="text-sm text-base-content/70 mt-1">{experience.employment_type}</p>
-                  {experience.description && (
-                    <div className="mt-4">
-                      <p className="text-base-content/80 line-clamp-3">{experience.description}</p>
+            // Priorité 2 : Si les deux sont actuels ou non actuels, trier par date
+            const dateA = new Date(a.start_date);
+            const dateB = new Date(b.start_date);
+            switch (experienceSortOption) {
+              case 'date-desc':
+                return dateB - dateA; // Plus récent d'abord
+              case 'date-asc':
+                return dateA - dateB; // Plus ancien d'abord
+              default:
+                return 0;
+            }
+          })
+          .map((experience) => {
+            const startDate = new Date(experience.start_date);
+            const endDate = experience.is_current ? new Date() : new Date(experience.end_date);
+            const durationMonths = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24 * 30));
+            const durationYears = Math.floor(durationMonths / 12);
+            const remainingMonths = durationMonths % 12;
+            const durationText =
+              durationYears > 0
+                ? `${durationYears} an${durationYears > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} mois` : ''}`
+                : `${durationMonths} mois`;
+            const maxDuration = 60;
+            const durationPercentage = Math.min((durationMonths / maxDuration) * 100, 100);
+
+            return (
+              <div
+                key={experience._id}
+                className="card bg-base-100 border border-base-300 hover:border-primary transition-colors shadow-md"
+              >
+                <div className="card-body p-6">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="card-title text-xl font-semibold">{experience.job_title}</h3>
+                      <p className="text-base-content/80 text-lg">{experience.company}</p>
+                    </div>
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => setSelectedExperience(experience)}
-                        className="btn btn-link btn-sm text-primary p-0 mt-2"
+                        onClick={() => handleEditExperience(experience)}
+                        className="btn btn-square btn-sm btn-ghost"
+                        title="Modifier"
                       >
-                        Voir plus
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteExperience(experience._id)}
+                        className="btn btn-square btn-sm btn-ghost text-error"
+                        title="Supprimer"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
                       </button>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm text-base-content/70">
+                      {experience.employment_type} • {experience.location_type}
+                    </span>
+                    <div className="relative w-8 h-8">
+                      <svg className="w-full h-full" viewBox="0 0 36 36">
+                        <path
+                          d="M18 2.0845
+                            a 15.9155 15.9155 0 0 1 0 31.831
+                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="#e5e7eb"
+                          strokeWidth="3.8"
+                        />
+                        <path
+                          d="M18 2.0845
+                            a 15.9155 15.9155 0 0 1 0 31.831
+                            a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="3.8"
+                          strokeDasharray={`${durationPercentage}, 100`}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-xs font-medium text-base-content">
+                          {durationYears > 0 ? durationYears : remainingMonths}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-sm text-base-content/70">{durationText}</span>
+                  </div>
+                  <p className="text-sm text-base-content/70 mb-2">
+                    {startDate.toLocaleDateString('fr-FR')} -{' '}
+                    {experience.is_current ? 'Présent' : endDate.toLocaleDateString('fr-FR')}
+                  </p>
+                  {experience.location && (
+                    <p className="text-sm text-base-content/70 mb-2">{experience.location}</p>
                   )}
-                </div>
-                <div className="flex gap-2 ml-4">
                   <button
-                    onClick={() => handleEditExperience(experience)}
-                    className="btn btn-sm btn-ghost"
-                    title="Modifier"
+                    onClick={() => setSelectedExperience(experience)}
+                    className="btn btn-outline btn-sm w-full mt-2"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteExperience(experience._id)}
-                    className="btn btn-sm btn-ghost text-error"
-                    title="Supprimer"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
+                    Afficher les détails
                   </button>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
     )}
 
-    {/* Modal pour les détails */}
+    {/* Modal pour afficher les détails */}
     {selectedExperience && (
       <div className="modal modal-open">
-        <div className="modal-box max-w-3xl">
-          <h3 className="font-bold text-2xl text-primary mb-2">{selectedExperience.job_title}</h3>
+        <div className="modal-box max-w-2xl">
+          <h3 className="font-bold text-xl mb-4">{selectedExperience.job_title}</h3>
           <p className="text-lg text-base-content/80 mb-2">{selectedExperience.company}</p>
-          <div className="space-y-2 text-base-content/70">
-            <p>
-              {new Date(selectedExperience.start_date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })} -{' '}
-              {selectedExperience.is_current ? 'Présent' : new Date(selectedExperience.end_date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-            </p>
-            <p>{selectedExperience.employment_type} • {selectedExperience.location_type}</p>
-            {selectedExperience.location && <p>Lieu: {selectedExperience.location}</p>}
-          </div>
+          {selectedExperience.profile_title && (
+            <p className="text-sm text-base-content/60 mb-2">{selectedExperience.profile_title}</p>
+          )}
+          <p className="text-sm text-base-content/70 mb-2">
+            {selectedExperience.employment_type} • {selectedExperience.location_type}
+          </p>
+          <p className="text-sm text-base-content/70 mb-2">
+            {new Date(selectedExperience.start_date).toLocaleDateString('fr-FR')} -{' '}
+            {selectedExperience.is_current
+              ? 'Présent'
+              : new Date(selectedExperience.end_date).toLocaleDateString('fr-FR')}
+          </p>
+          {selectedExperience.location && (
+            <p className="text-sm text-base-content/70 mb-2">{selectedExperience.location}</p>
+          )}
           {selectedExperience.description && (
-            <div className="mt-6">
-              <h4 className="font-semibold text-lg mb-2">Description</h4>
-              <p className="text-base-content/80 whitespace-pre-wrap">{selectedExperience.description}</p>
+            <div className="mt-4">
+              <h4 className="font-semibold text-base mb-2">Descriptif</h4>
+              <p className="text-base-content/80">{selectedExperience.description}</p>
             </div>
           )}
-          <div className="modal-action mt-6">
-            <button
-              onClick={() => setSelectedExperience(null)}
-              className="btn btn-primary"
-            >
+          {selectedExperience.job_source && (
+            <p className="text-sm text-base-content/60 mt-4">
+              Source : {selectedExperience.job_source}
+            </p>
+          )}
+          <div className="modal-action">
+            <button onClick={() => setSelectedExperience(null)} className="btn btn-ghost">
               Fermer
             </button>
           </div>
@@ -2213,6 +2317,7 @@ const handleAddExperience = async (e) => {
     )}
   </div>
 )}
+
                             {activeTab === 'security' && (
                                 <div className="space-y-8">
                                     <div>
