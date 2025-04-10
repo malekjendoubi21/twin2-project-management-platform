@@ -4,12 +4,15 @@ import api from '../utils/Api';
 import { toast } from 'react-hot-toast';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
-
+import { jsPDF } from 'jspdf';
+import { useParams } from 'react-router-dom';
 // Composant pour le cercle de progression
 const ProgressCircle = ({ percentage, size = 80, strokeWidth = 8 }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
+   
+  
 
     let strokeColor;
     if (percentage < 30) strokeColor = '#ef4444'; // red
@@ -47,6 +50,8 @@ const ProgressCircle = ({ percentage, size = 80, strokeWidth = 8 }) => {
 };
 
 const Profile = () => {
+    const { id } = useParams(); // Extract `id` from the URL
+   
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -57,6 +62,10 @@ const Profile = () => {
     const fileInputRef = useRef(null);
     const [selectedExperience, setSelectedExperience] = useState(null);
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'system');
+    const [locationFilter, setLocationFilter] = useState('Tous');
+    const [sortOrder, setSortOrder] = useState('newest'); // Par défaut, tri du plus récent au plus ancien
+    const [projects, setProjects] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const [formData, setFormData] = useState({
         name: '',
@@ -113,6 +122,9 @@ const Profile = () => {
 
 
     // États pour les expériences
+ 
+     const [locationTypeFilter, setLocationTypeFilter] = useState('Tous');
+     const [experienceSortOption, setExperienceSortOption] = useState('date-desc');
     const [experiences, setExperiences] = useState([]);
     const [showExperienceForm, setShowExperienceForm] = useState(false);
     const [newExperience, setNewExperience] = useState({
@@ -144,95 +156,347 @@ const Profile = () => {
     job_source: ''
     });
 
-    useEffect(() => {
-        const fetchUser = async () => {
-          try {
-            const response = await api.get('/api/users/getMe');
-            if (!response.data || !response.data._id) {
-              throw new Error('Invalid user data received');
-            }
-            setUser(response.data);
-            setFormData({
-              name: response.data?.name || '',
-              email: response.data?.email || '',
-              phone_number: response.data?.phone_number || '',
-              bio: response.data?.bio || '',
-              role: response.data?.role || 'user',
-              two_factor_enabled: response.data?.two_factor_enabled || false,
-              profile_picture: response.data?.profile_picture || '',
-              password: '',
-              newPassword: '',
-              confirmPassword: '',
-            });
-            setImagePreview(response.data?.profile_picture || null);
-      
-            await Promise.all([
-                fetchUserSkills(),
-                fetchUserExperiences(), // Ajout ici
-                fetchCertifications(),
-            ]);
-          } catch (error) {
-            console.error('Error fetching user:', error.response?.data || error.message);
-            setError(error.response?.data?.message || error.message);
-            toast.error('Failed to load profile: ' + (error.response?.data?.message || error.message));
-            if (error.response?.status === 401) {
-              navigate('/login');
-            }
-          } finally {
-            setLoading(false);
-          }
-        };
-      
-        const fetchUserSkills = async () => {
-          try {
-            const response = await api.get('/api/skills/');
-            setSkills(Array.isArray(response.data) ? response.data : []);
-          } catch (error) {
-            console.error('Error fetching user skills:', error.response?.data || error.message);
-            setSkills([]);
-            toast.error('Failed to load skills: ' + (error.response?.data?.message || error.message));
-          }
-        };
 
-        const fetchUserExperiences = async () => {
-            try {
-                const response = await api.get('/api/experiences/');
-                const sortedExperiences = Array.isArray(response.data)
-                    ? response.data.sort((a, b) => new Date(b.start_date) - new Date(a.start_date)) // Tri décroissant par défaut
-                    : [];
-                setExperiences(sortedExperiences);
-            } catch (error) {
-                console.error('Error fetching user experiences:', error.response?.data || error.message);
-                setExperiences([]);
-                toast.error('Failed to load experiences: ' + (error.response?.data?.message || error.message));
-            }
-        };
+    const generateCV = async () => {
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4',
+        });
       
-        const fetchCertifications = async () => {
+        const marginLeft = 15;
+        const marginRight = 15;
+        const marginTop = 15;
+        const pageWidth = 210; // A4 width in mm
+        const sidebarWidth = 60; // Left sidebar for personal info
+        const mainContentWidth = pageWidth - marginLeft - marginRight - sidebarWidth - 5; // Main content area
+        let currentY = marginTop;
+        let mainContentY = marginTop;
+      
+        // Helper to convert image URL to base64
+        const getBase64Image = async (url) => {
           try {
-            const response = await api.get('/api/certifications');
-            const validCertifications = Array.isArray(response.data)
-              ? response.data.map(cert => ({
-                  _id: cert._id || '',
-                  certifications_name: cert.certifications_name || 'Unnamed Certification',
-                  issued_by: cert.issued_by || 'Unknown Issuer',
-                  obtained_date: cert.obtained_date || new Date().toISOString().split('T')[0],
-                  description: cert.description || '',
-                  image: cert.image || null,
-                }))
-              : [];
-            setCertifications(validCertifications);
+            const response = await fetch(url);
+            const blob = await response.blob();
+            return new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
           } catch (error) {
-            console.error('Error fetching certifications:', error.response?.data || error.message);
-            toast.error('Failed to load certifications');
-            setCertifications([]);
+            console.error('Error fetching profile picture:', error);
+            return null;
           }
         };
       
-        fetchUser();
-        fetchCertifications();
-        fetchUserExperiences();
-      }, [navigate]);
+        // Add Sidebar Background
+        doc.setFillColor(0, 51, 102); // Dark blue
+        doc.rect(marginLeft, 0, sidebarWidth, 297, 'F'); // Full height sidebar
+      
+        // Profile Picture
+        let profileImage = null;
+        if (formData.profile_picture) {
+          profileImage = await getBase64Image(formData.profile_picture);
+        }
+        if (profileImage) {
+          try {
+            doc.addImage(profileImage, 'JPEG', marginLeft + 10, currentY, 40, 40, undefined, 'FAST'); // 40x40mm image
+            currentY += 45;
+          } catch (error) {
+            console.error('Error adding profile picture to PDF:', error);
+            currentY += 5; // Space even if image fails
+          }
+        } else {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(12);
+          doc.setTextColor(255, 255, 255);
+          doc.text('Photo indisponible', marginLeft + 10, currentY + 10);
+          currentY += 15;
+        }
+      
+        // Name and Tagline in Sidebar
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(18);
+        doc.setTextColor(255, 255, 255); // White text
+        const nameLines = doc.splitTextToSize(formData.name || 'Nom Prénom', sidebarWidth - 10);
+        nameLines.forEach((line) => {
+          doc.text(line, marginLeft + 5, currentY);
+          currentY += 6;
+        });
+      
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(10);
+        doc.setTextColor(200, 200, 200); // Light gray
+        doc.text('Développeur Full Stack', marginLeft + 5, currentY); // Example tagline
+        currentY += 10;
+      
+        // Contact Info in Sidebar
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(255, 255, 255);
+        doc.text('Email:', marginLeft + 5, currentY);
+        doc.setTextColor(173, 216, 230); // Light blue for clickable link
+        doc.textWithLink(formData.email || 'email@example.com', marginLeft + 15, currentY, {
+          url: `mailto:${formData.email || 'email@example.com'}`,
+        });
+        currentY += 6;
+        doc.setTextColor(255, 255, 255);
+        doc.text(`Téléphone: ${formData.phone_number || '+33 123 456 789'}`, marginLeft + 5, currentY);
+        currentY += 10;
+      
+        // Skills in Sidebar
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(255, 255, 255);
+        doc.text('Compétences', marginLeft + 5, currentY);
+        currentY += 6;
+      
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(200, 200, 200);
+        if (skills.length === 0) {
+          doc.text('Aucune compétence', marginLeft + 5, currentY);
+          currentY += 5;
+        } else {
+          const skillsText = skills.map((skill) => skill.name).join(', ');
+          const skillsLines = doc.splitTextToSize(skillsText, sidebarWidth - 10);
+          skillsLines.forEach((line) => {
+            doc.text(line, marginLeft + 5, currentY);
+            currentY += 5;
+          });
+        }
+      
+        // Main Content Area (Right Side)
+        const mainContentX = marginLeft + sidebarWidth + 5;
+      
+        // Helper to add section header in main content
+        const addSectionHeader = (title) => {
+          doc.setFillColor(240, 240, 240); // Light gray background
+          doc.rect(mainContentX, mainContentY, mainContentWidth, 6, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(14);
+          doc.setTextColor(0, 51, 102);
+          doc.text(title, mainContentX, mainContentY + 4);
+          mainContentY += 8;
+        };
+      
+        // Helper to add a divider
+        const addDivider = () => {
+          doc.setDrawColor(0, 51, 102);
+          doc.setLineWidth(0.3);
+          doc.line(mainContentX, mainContentY, mainContentX + mainContentWidth, mainContentY);
+          mainContentY += 3;
+        };
+      
+        // Expériences Professionnelles
+        addSectionHeader('Expériences Professionnelles');
+        if (experiences.length === 0) {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          doc.text('Aucune expérience enregistrée', mainContentX, mainContentY);
+          mainContentY += 5;
+        } else {
+          experiences.forEach((exp) => {
+            const startDate = new Date(exp.start_date).toLocaleDateString('fr-FR');
+            const endDate = exp.is_current ? 'Présent' : new Date(exp.end_date).toLocaleDateString('fr-FR');
+      
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.setTextColor(0, 51, 102);
+            doc.text(`${exp.job_title} - ${exp.company}`, mainContentX, mainContentY);
+            mainContentY += 5;
+      
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(9);
+            doc.setTextColor(50, 50, 50);
+            doc.text(`${startDate} - ${endDate} | ${exp.employment_type} (${exp.location_type})`, mainContentX, mainContentY);
+            mainContentY += 5;
+      
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            const descriptionLines = doc.splitTextToSize(exp.description || 'Aucune description', mainContentWidth);
+            descriptionLines.forEach((line) => {
+              doc.text(line, mainContentX, mainContentY);
+              mainContentY += 4;
+            });
+      
+            mainContentY += 3;
+            if (mainContentY > 260) {
+              doc.addPage();
+              mainContentY = marginTop;
+            }
+          });
+        }
+      
+        // Certifications
+        mainContentY += 5;
+        addSectionHeader('Certifications');
+        if (certifications.length === 0) {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          doc.text('Aucune certification enregistrée', mainContentX, mainContentY);
+          mainContentY += 5;
+        } else {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(50, 50, 50);
+          certifications.forEach((cert) => {
+            doc.text(
+              `• ${cert.certifications_name} - ${cert.issued_by} (${new Date(cert.obtained_date).toLocaleDateString('fr-FR')})`,
+              mainContentX,
+              mainContentY
+            );
+            mainContentY += 5;
+      
+            if (mainContentY > 260) {
+              doc.addPage();
+              mainContentY = marginTop;
+            }
+          });
+        }
+      
+        // Projets
+        mainContentY += 5;
+        addSectionHeader('Projets');
+        if (projects.length === 0) {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          doc.text('Aucun projet associé à cet utilisateur', mainContentX, mainContentY);
+          mainContentY += 5;
+        } else {
+          projects.forEach((project) => {
+            const startDate = new Date(project.start_date).toLocaleDateString('fr-FR');
+            const endDate = new Date(project.end_date).toLocaleDateString('fr-FR');
+      
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.setTextColor(0, 51, 102);
+            doc.text(project.project_name, mainContentX, mainContentY);
+            mainContentY += 5;
+      
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(9);
+            doc.setTextColor(50, 50, 50);
+            doc.text(`${startDate} - ${endDate}`, mainContentX, mainContentY);
+            mainContentY += 5;
+      
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            const descriptionLines = doc.splitTextToSize(project.description || 'Aucune description', mainContentWidth);
+            descriptionLines.forEach((line) => {
+              doc.text(line, mainContentX, mainContentY);
+              mainContentY += 4;
+            });
+      
+            mainContentY += 3;
+            if (mainContentY > 260) {
+              doc.addPage();
+              mainContentY = marginTop;
+            }
+          });
+        }
+      
+        // Footer
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Généré le ' + new Date().toLocaleDateString('fr-FR'), marginLeft, 280);
+        doc.text('Page 1', pageWidth - marginRight - 10, 280);
+      
+        doc.save('CV.pdf');
+      };
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await api.get('/api/users/getMe');
+        if (!response.data || !response.data._id) {
+          throw new Error('Invalid user data received');
+        }
+        setUser(response.data);
+        setFormData({
+          name: response.data?.name || '',
+          email: response.data?.email || '',
+          phone_number: response.data?.phone_number || '',
+          bio: response.data?.bio || '',
+          role: response.data?.role || 'user',
+          two_factor_enabled: response.data?.two_factor_enabled || false,
+          profile_picture: response.data?.profile_picture || '',
+          password: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+        setImagePreview(response.data?.profile_picture || null);
+
+        await Promise.all([
+          fetchUserSkills(),
+          fetchUserExperiences(),
+          fetchCertifications(),
+          //fetchUserProjects(), // Add projects fetching
+        ]);
+      } catch (error) {
+        console.error('Error fetching user:', error.response?.data || error.message);
+        toast.error('Failed to load profile: ' + (error.response?.data?.message || error.message));
+        if (error.response?.status === 401) {
+          navigate('/login');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchUserSkills = async () => {
+      try {
+        const response = await api.get('/api/skills/');
+        setSkills(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        console.error('Error fetching user skills:', error.response?.data || error.message);
+        setSkills([]);
+        toast.error('Failed to load skills: ' + (error.response?.data?.message || error.message));
+      }
+    };
+
+    const fetchUserExperiences = async () => {
+      try {
+        const response = await api.get('/api/experiences/');
+        const fetchedExperiences = Array.isArray(response.data) ? response.data : [];
+        setExperiences(fetchedExperiences);
+      } catch (error) {
+        console.error('Error fetching user experiences:', error.response?.data || error.message);
+        setExperiences([]);
+        toast.error('Failed to load experiences: ' + (error.response?.data?.message || error.message));
+      }
+    };
+
+    const fetchCertifications = async () => {
+      try {
+        const response = await api.get('/api/certifications');
+        const validCertifications = Array.isArray(response.data)
+          ? response.data.map((cert) => ({
+              _id: cert._id || '',
+              certifications_name: cert.certifications_name || 'Unnamed Certification',
+              issued_by: cert.issued_by || 'Unknown Issuer',
+              obtained_date: cert.obtained_date || new Date().toISOString().split('T')[0],
+              description: cert.description || '',
+              image: cert.image || null,
+            }))
+          : [];
+        setCertifications(validCertifications);
+      } catch (error) {
+        console.error('Error fetching certifications:', error.response?.data || error.message);
+        toast.error('Failed to load certifications');
+        setCertifications([]);
+      }
+    };
+
+   
+     
+   // fetchCertifications();
+  //  fetchUserExperiences();
+    fetchUser();
+  }, [navigate]);
     useEffect(() => {
         if (theme === 'system') {
             const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -367,7 +631,7 @@ const Profile = () => {
             setSkills([...skills, response.data]);
             setNewSkill({ name: '', description: '', category: 'Technical', tags: 50 });
             setShowSkillForm(false);
-            toast.success('Compétence ajoutée avec succès');
+            toast.success('Skill added successfully');
         } catch (error) {
             console.error('Error adding skill:', error.response?.data || error.message);
             toast.error(`Échec de l'ajout: ${error.response?.data?.message || error.message}`);
@@ -393,10 +657,10 @@ const Profile = () => {
             setEditingSkillId(null);
             setEditSkillData({ name: '', description: '', category: 'Technical', tags: 50 });
             setShowSkillForm(false);
-            toast.success('Compétence mise à jour avec succès');
+            toast.success('Skill updated successfully');
         } catch (error) {
             console.error('Error updating skill:', error.response?.data || error.message);
-            toast.error(`Échec de la mise à jour: ${error.response?.data?.message || error.message}`);
+            toast.error(`Failed to update skill: ${error.response?.data?.message || error.message}`);
         }
     };
 
@@ -404,10 +668,10 @@ const Profile = () => {
         try {
             await api.delete(`/api/skills/${skillId}`);
             setSkills(skills.filter((skill) => skill._id !== skillId));
-            toast.success('Compétence supprimée avec succès');
+            toast.success('Skill deleted successfully');
         } catch (error) {
             console.error('Error deleting skill:', error.response?.data || error.message);
-            toast.error(`Échec de la suppression: ${error.response?.data?.message || error.message}`);
+            toast.error(`Failed to delete skill: ${error.response?.data?.message || error.message}`);
         }
     };
 
@@ -600,10 +864,10 @@ const handleAddExperience = async (e) => {
         job_source: '',
       });
       setShowExperienceForm(false);
-      toast.success('Expérience ajoutée avec succès');
+      toast.success('Experience added successfully');
     } catch (error) {
-      console.error('Erreur lors de l\'ajout de l\'expérience:', error.response?.data || error.message);
-      toast.error(`Échec de l'ajout: ${error.response?.data?.message || error.message}`);
+      console.error('Error adding experience:', error.response?.data || error.message);
+      toast.error(`Failed to add experience: ${error.response?.data?.message || error.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -668,10 +932,10 @@ const handleAddExperience = async (e) => {
                 job_source: '',
               });
             setShowExperienceForm(false);
-            toast.success('Expérience mise à jour avec succès');
+            toast.success('Experience updated successfully');
         } catch (error) {
             console.error('Error updating experience:', error);
-            toast.error(`Échec de la mise à jour: ${error.response?.data?.message || error.message}`);
+            toast.error(`Failed to update experience: ${error.response?.data?.message || error.message}`);
         } finally {
             setIsSaving(false);
         }
@@ -681,13 +945,14 @@ const handleAddExperience = async (e) => {
         try {
             await api.delete(`/api/experiences/${experienceId}`);
             setExperiences(experiences.filter(exp => exp._id !== experienceId));
-            toast.success('Expérience supprimée avec succès');
+            toast.success('Experience deleted successfully');
         } catch (error) {
             console.error('Error deleting experience:', error);
-            toast.error(`Échec de la suppression: ${error.response?.data?.message || error.message}`);
+            toast.error(`Failed to delete experience: ${error.response?.data?.message || error.message}`);
         }
     };
-
+    //Find the current position
+    const currentPosition = experiences.find((exp) => exp.is_current) || null;
     if (loading) {
         return (
             <div className="min-h-screen bg-base-200 flex items-center justify-center">
@@ -699,7 +964,7 @@ const handleAddExperience = async (e) => {
         );
     }
 
-    return (
+     return (
         <div className="min-h-screen bg-base-200 font-poppins">
             <nav className="navbar bg-base-100 shadow-lg px-4 lg:px-8">
                 <div className="flex-1">
@@ -718,7 +983,7 @@ const handleAddExperience = async (e) => {
                                 d="M10 19l-7-7m0 0l7-7m-7 7h18"
                             />
                         </svg>
-                        PlaniFy
+                       PlaniFy
                     </Link>
                 </div>
                 <div className="flex-none gap-4">
@@ -744,7 +1009,7 @@ const handleAddExperience = async (e) => {
                         >
                             <li className="px-4 py-2 border-b">
                                 <span className="font-bold">{user?.name || 'User'}</span>
-                                <span className="text-sm block opacity-70">{user?.email || 'user@example.com'}</span>
+                               
                             </li>
                             <li>
                                 <Link to="/acceuil">Dashboard</Link>
@@ -833,6 +1098,16 @@ const handleAddExperience = async (e) => {
                                     <div>
                                         <h1 className="text-3xl font-bold">{user?.name || 'User'}</h1>
                                         <p className="text-base-content opacity-75">{user?.email || 'user@example.com'}</p>
+
+                                        {currentPosition ? (
+  <span className="  text-sl block opacity-90 font-medium bg-yellow-100 px-2 py-1 rounded-md ">
+    {currentPosition.job_title} at {currentPosition.company}
+  </span>
+) : (
+  <span className="text-sl block opacity-50 italic bg-base-300/50 px-2 py-1 rounded-md ">
+    No current position
+  </span>
+)}
                                         <div className="mt-1 flex items-center gap-2">
                                             <span className="badge badge-primary">{user?.role || 'user'}</span>
                                             {skills
@@ -875,7 +1150,12 @@ const handleAddExperience = async (e) => {
                                             </svg>
                                             Edit Profile
                                         </button>
+
+                                        
                                     )}
+                                    
+
+                                   
                                 </div>
                                 {user?.bio && (
                                     <div className="mt-4 text-base-content opacity-90">
@@ -884,6 +1164,31 @@ const handleAddExperience = async (e) => {
                                 )}
                             </div>
                         </div>
+                        <button
+      onClick={generateCV}
+      className="btn btn-sm"
+      style={{
+        background: 'linear-gradient(to right, #F5A7B7, #C084FC)', // Pink to Purple gradient
+        color: '#FFFFFF',
+        border: 'none',
+      }}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5 mr-1"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        />
+      </svg>
+      Générer le CV
+    </button>
                         <div className="tabs tabs-boxed bg-base-200 px-6">
                             <button
                                 className={`tab ${activeTab === 'profile' ? 'tab-active' : ''}`}
@@ -1789,10 +2094,11 @@ const handleAddExperience = async (e) => {
                                     )}
                                 </div>
                             )}
-{activeTab === 'Experience' && (
+                            
+                           {activeTab === 'Experience' && (
   <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
-    <div className="flex justify-between items-center mb-6">
-      <h2 className="text-2xl font-bold text-primary">Mes Expériences Professionnelles</h2>
+    <div className="flex justify-between items-center mb-4">
+      <h2 className="text-2xl font-bold text-primary">My experiences</h2>
       <button
         onClick={() => {
           setShowExperienceForm(true);
@@ -1807,7 +2113,7 @@ const handleAddExperience = async (e) => {
             location: '',
             location_type: 'Sur place',
             description: '',
-    
+            profile_title: '',
             job_source: '',
           });
         }}
@@ -1826,233 +2132,308 @@ const handleAddExperience = async (e) => {
             clipRule="evenodd"
           />
         </svg>
-        Ajouter une expérience
+        Add experience
       </button>
+
+      
+
     </div>
 
-    {/* Formulaire d'ajout/modification */}
-    {showExperienceForm && (
-      <div className="card bg-base-200 shadow-lg mb-8 p-6">
-        <h3 className="text-xl font-semibold mb-6">
-          {editingExperienceId ? 'Modifier une expérience' : 'Nouvelle expérience'}
-        </h3>
-        <form
-          onSubmit={editingExperienceId ? handleUpdateExperience : handleAddExperience}
-          className="space-y-6"
+    {/* Interface de filtrage et de tri (déplacée en dessous du titre) */}
+    <div className="flex items-center gap-4 mb-6">
+      {/* Filtre par type de localisation */}
+      <div className="form-control">
+        <label className="label">
+          <span className="label-text">Filter by location type
+</span>
+        </label>
+        <select
+          id="location-filter"
+          value={locationFilter}
+          onChange={(e) => setLocationFilter(e.target.value)}
+          className="select select-bordered select-sm"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Intitulé du poste*</span>
-              </label>
-              <input
-                type="text"
-                value={editingExperienceId ? editExperienceData.job_title : newExperience.job_title}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, job_title: e.target.value })
-                    : setNewExperience({ ...newExperience, job_title: e.target.value })
-                }
-                className="input input-bordered"
-                placeholder="Ex: Développeur Full Stack"
-                required
-              />
-            </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Entreprise*</span>
-              </label>
-              <input
-                type="text"
-                value={editingExperienceId ? editExperienceData.company : newExperience.company}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, company: e.target.value })
-                    : setNewExperience({ ...newExperience, company: e.target.value })
-                }
-                className="input input-bordered"
-                placeholder="Ex: Tech Solutions"
-                required
-              />
-            </div>
-          </div>
+          <option value="Tous">Tous</option>
+          <option value="Sur place">Sur place</option>
+          <option value="Hybride">Hybride</option>
+          <option value="À distance">À distance</option>
+        </select>
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Type d'emploi</span>
-              </label>
-              <select
-                value={editingExperienceId ? editExperienceData.employment_type : newExperience.employment_type}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, employment_type: e.target.value })
-                    : setNewExperience({ ...newExperience, employment_type: e.target.value })
-                }
-                className="select select-bordered"
-              >
-                <option value="Temps plein">Temps plein</option>
-                <option value="Temps partiel">Temps partiel</option>
-                <option value="Freelance">Freelance</option>
-                <option value="Stage">Stage</option>
-                <option value="Contrat">Contrat</option>
-              </select>
-            </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Type de lieu</span>
-              </label>
-              <select
-                value={editingExperienceId ? editExperienceData.location_type : newExperience.location_type}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, location_type: e.target.value })
-                    : setNewExperience({ ...newExperience, location_type: e.target.value })
-                }
-                className="select select-bordered"
-              >
-                <option value="Sur place">Sur place</option>
-                <option value="À distance">À distance</option>
-                <option value="Hybride">Hybride</option>
-              </select>
-            </div>
-          </div>
+      {/* Sélecteur de tri */}
+      <div className="form-control">
+        <label className="label">
+          <span className="label-text">Order by</span>
+        </label>
+        <select
+          onChange={(e) => setExperienceSortOption(e.target.value)}
+          className="select select-bordered select-sm"
+          value={experienceSortOption}
+        >
+          <option value="date-desc">Date (Newest first)</option>
+          <option value="date-asc">Date (Oldest first)</option>
+        </select>
+      </div>
+    </div>
 
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Lieu</span>
-            </label>
-            <input
-              type="text"
-              value={editingExperienceId ? editExperienceData.location : newExperience.location}
-              onChange={(e) =>
-                editingExperienceId
-                  ? setEditExperienceData({ ...editExperienceData, location: e.target.value })
-                  : setNewExperience({ ...newExperience, location: e.target.value })
-              }
-              className="input input-bordered"
-              placeholder="Ex: Paris, France"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Date de début*</span>
-              </label>
-              <input
-                type="date"
-                value={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, start_date: e.target.value })
-                    : setNewExperience({ ...newExperience, start_date: e.target.value })
-                }
-                className="input input-bordered"
-                max={new Date().toISOString().split('T')[0]}
-                required
-              />
-            </div>
-            <div className="form-control">
-              <label className="label cursor-pointer">
-                <span className="label-text font-medium">Poste actuel</span>
+    {showExperienceForm && (
+      <div className="card bg-base-200 shadow-lg mb-8">
+        <div className="card-body">
+          <h3 className="card-title text-lg mb-4">
+            {editingExperienceId ? 'Modifier une expérience' : 'New Experience'}
+          </h3>
+          <form
+            onSubmit={editingExperienceId ? handleUpdateExperience : handleAddExperience}
+            className="space-y-4"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Job Title*</span>
+                </label>
                 <input
-                  type="checkbox"
-                  checked={editingExperienceId ? editExperienceData.is_current : newExperience.is_current}
+                  type="text"
+                  value={editingExperienceId ? editExperienceData.job_title : newExperience.job_title}
                   onChange={(e) =>
                     editingExperienceId
-                      ? setEditExperienceData({ ...editExperienceData, is_current: e.target.checked })
-                      : setNewExperience({ ...newExperience, is_current: e.target.checked })
+                      ? setEditExperienceData({ ...editExperienceData, job_title: e.target.value })
+                      : setNewExperience({ ...newExperience, job_title: e.target.value })
                   }
-                  className="checkbox checkbox-primary"
+                  className="input input-bordered"
+                  placeholder="Ex: Software Developer"
+                  required
                 />
-              </label>
-              {!editingExperienceId && !newExperience.is_current && (
-                <input
-                  type="date"
-                  value={newExperience.end_date}
-                  onChange={(e) => setNewExperience({ ...newExperience, end_date: e.target.value })}
-                  className="input input-bordered mt-2"
-                  max={new Date().toISOString().split('T')[0]}
-                />
-              )}
-              {editingExperienceId && !editExperienceData.is_current && (
-                <input
-                  type="date"
-                  value={editExperienceData.end_date}
-                  onChange={(e) => setEditExperienceData({ ...editExperienceData, end_date: e.target.value })}
-                  className="input input-bordered mt-2"
-                  max={new Date().toISOString().split('T')[0]}
-                />
-              )}
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Employment Type</span>
+                </label>
+                <select
+                  value={editingExperienceId ? editExperienceData.employment_type : newExperience.employment_type}
+                  onChange={(e) =>
+                    editingExperienceId
+                      ? setEditExperienceData({ ...editExperienceData, employment_type: e.target.value })
+                      : setNewExperience({ ...newExperience, employment_type: e.target.value })
+                  }
+                  className="select select-bordered"
+                >
+                  <option value="Temps plein">Temps plein</option>
+                  <option value="Temps partiel">Temps partiel</option>
+                  <option value="Freelance">Freelance</option>
+                  <option value="Stage">Stage</option>
+                  <option value="Contrat">Contrat</option>
+                  <option value="Bénévolat">Bénévolat</option>
+                </select>
+              </div>
             </div>
-          </div>
-
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Description*</span>
-            </label>
-            <textarea
-              value={editingExperienceId ? editExperienceData.description : newExperience.description}
-              onChange={(e) =>
-                editingExperienceId
-                  ? setEditExperienceData({ ...editExperienceData, description: e.target.value })
-                  : setNewExperience({ ...newExperience, description: e.target.value })
-              }
-              className="textarea textarea-bordered h-32"
-              placeholder="Décrivez vos responsabilités et réalisations..."
-              required
-            />
-          </div>
-
-          <div className="flex justify-end gap-4">
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowExperienceForm(false);
-                setEditingExperienceId(null);
-                setEditExperienceData({
-                  job_title: '',
-                  company: '',
-                  employment_type: 'Temps plein',
-                  is_current: false,
-                  start_date: '',
-                  end_date: '',
-                  location: '',
-                  location_type: 'Sur place',
-                  description: '',
-             
-                  job_source: '',
-                });
-              }}
-              className="btn btn-outline"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <>
-                  <span className="loading loading-spinner loading-xs"></span>
-                  Enregistrement...
-                </>
-              ) : editingExperienceId ? 'Modifier' : 'Ajouter'}
-            </button>
-          </div>
-        </form>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Company or Organization*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingExperienceId ? editExperienceData.company : newExperience.company}
+                  onChange={(e) =>
+                    editingExperienceId
+                      ? setEditExperienceData({ ...editExperienceData, company: e.target.value })
+                      : setNewExperience({ ...newExperience, company: e.target.value })
+                  }
+                  className="input input-bordered"
+                  placeholder="Ex: Tech Corp"
+                  required
+                />
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Company Location</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingExperienceId ? editExperienceData.location : newExperience.location}
+                  onChange={(e) =>
+                    editingExperienceId
+                      ? setEditExperienceData({ ...editExperienceData, location: e.target.value })
+                      : setNewExperience({ ...newExperience, location: e.target.value })
+                  }
+                  className="input input-bordered"
+                  placeholder="Ex: Paris, France"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Type of Location</span>
+                </label>
+                <select
+                  value={editingExperienceId ? editExperienceData.location_type : newExperience.location_type}
+                  onChange={(e) =>
+                    editingExperienceId
+                      ? setEditExperienceData({ ...editExperienceData, location_type: e.target.value })
+                      : setNewExperience({ ...newExperience, location_type: e.target.value })
+                  }
+                  className="select select-bordered"
+                >
+                  <option value="Sur place">Sur place</option>
+                  <option value="À distance">À distance</option>
+                  <option value="Hybride">Hybride</option>
+                </select>
+              </div>
+              <div className="form-control">
+                <label className="label cursor-pointer">
+                  <span className="label-text">I currently work in this position</span>
+                  <input
+                    type="checkbox"
+                    checked={editingExperienceId ? editExperienceData.is_current : newExperience.is_current}
+                    onChange={(e) =>
+                      editingExperienceId
+                        ? setEditExperienceData({ ...editExperienceData, is_current: e.target.checked })
+                        : setNewExperience({ ...newExperience, is_current: e.target.checked })
+                    }
+                    className="checkbox checkbox-primary"
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Start Date*</span>
+                </label>
+                <input
+                  type="date"
+                  value={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
+                  onChange={(e) =>
+                    editingExperienceId
+                      ? setEditExperienceData({ ...editExperienceData, start_date: e.target.value })
+                      : setNewExperience({ ...newExperience, start_date: e.target.value })
+                  }
+                  className="input input-bordered"
+                  max={new Date().toISOString().split('T')[0]}
+                  required
+                />
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">End Date</span>
+                </label>
+                <input
+                  type="date"
+                  value={editingExperienceId ? editExperienceData.end_date : newExperience.end_date}
+                  onChange={(e) =>
+                    editingExperienceId
+                      ? setEditExperienceData({ ...editExperienceData, end_date: e.target.value })
+                      : setNewExperience({ ...newExperience, end_date: e.target.value })
+                  }
+                  className="input input-bordered"
+                  max={new Date().toISOString().split('T')[0]}
+                  disabled={editingExperienceId ? editExperienceData.is_current : newExperience.is_current}
+                />
+              </div>
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Description*</span>
+              </label>
+              <textarea
+                value={editingExperienceId ? editExperienceData.description : newExperience.description}
+                onChange={(e) =>
+                  editingExperienceId
+                    ? setEditExperienceData({ ...editExperienceData, description: e.target.value })
+                    : setNewExperience({ ...newExperience, description: e.target.value })
+                }
+                className="textarea textarea-bordered h-24"
+                placeholder="Describe your responsibilities..."
+                required
+              />
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Profile Title</span>
+              </label>
+              <input
+                type="text"
+                value={editingExperienceId ? editExperienceData.profile_title : newExperience.profile_title}
+                onChange={(e) =>
+                  editingExperienceId
+                    ? setEditExperienceData({ ...editExperienceData, profile_title: e.target.value })
+                    : setNewExperience({ ...newExperience, profile_title: e.target.value })
+                }
+                className="input input-bordered"
+                placeholder="Appears below your name at the top of the profile"
+              />
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Where did you find this job offer?</span>
+              </label>
+              <select
+                value={editingExperienceId ? editExperienceData.job_source : newExperience.job_source}
+                onChange={(e) =>
+                  editingExperienceId
+                    ? setEditExperienceData({ ...editExperienceData, job_source: e.target.value })
+                    : setNewExperience({ ...newExperience, job_source: e.target.value })
+                }
+                className="select select-bordered"
+              >
+                <option value="">Please Select</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="Indeed">Indeed</option>
+                <option value="Glassdoor">Glassdoor</option>
+                <option value="Directement sur le site de l'entreprise">Directly on the company's website</option>
+                <option value="Recommandation">Recommandation</option>
+                <option value="Autre">Other</option>
+              </select>
+              <label className="label">
+                <span className="label-text-alt text-gray-500">
+                  This information will be used to encourage gaining more experience.
+                </span>
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExperienceForm(false);
+                  setEditingExperienceId(null);
+                  setEditExperienceData({
+                    job_title: '',
+                    company: '',
+                    employment_type: 'Temps plein',
+                    is_current: false,
+                    start_date: '',
+                    end_date: '',
+                    location: '',
+                    location_type: 'Sur place',
+                    description: '',
+                    profile_title: '',
+                    job_source: '',
+                  });
+                }}
+                className="btn btn-ghost"
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs"></span>
+                    {editingExperienceId ? 'Modification...' : 'Ajout...'}
+                  </>
+                ) : editingExperienceId ? 'Saves Changes' : 'Add Experience'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     )}
 
-    {/* Liste des expériences */}
     {experiences.length === 0 && !showExperienceForm ? (
-      <div className="text-center py-12 bg-base-200 rounded-lg">
+      <div className="text-center py-12">
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-16 w-16 mx-auto text-gray-400"
+          className="h-12 w-12 mx-auto text-gray-400"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -2064,147 +2445,201 @@ const handleAddExperience = async (e) => {
             d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
           />
         </svg>
-        <h3 className="mt-4 text-xl font-medium text-gray-500">Aucune expérience</h3>
-        <p className="mt-2 text-gray-400">Ajoutez vos expériences pour enrichir votre profil</p>
+        <h3 className="mt-4 text-lg font-medium text-gray-500">Aucune expérience ajoutée</h3>
+        <p className="mt-1 text-gray-400">Ajoutez vos expériences professionnelles pour les afficher ici</p>
+        <button onClick={() => setShowExperienceForm(true)} className="btn btn-primary mt-6">
+          Add Experience
+        </button>
       </div>
     ) : (
-      <div className="space-y-6">
-        {experiences.map((experience) => {
-          const startDate = new Date(experience.start_date);
-          const endDate = experience.is_current ? new Date() : new Date(experience.end_date);
-          const durationMonths = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24 * 30));
-          const durationYears = Math.floor(durationMonths / 12);
-          const remainingMonths = durationMonths % 12;
-          const durationText = durationYears > 0
-            ? `${durationYears} an${durationYears > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} mois` : ''}`
-            : `${durationMonths} mois`;
-
-          return (
-            <div
-              key={experience._id}
-              className="card bg-base-100 border border-base-300 hover:shadow-lg transition-shadow p-6 rounded-lg"
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-primary">{experience.job_title}</h3>
-                  <p className="text-lg text-base-content/80">{experience.company}</p>
-                  <p className="text-sm text-base-content/70 mt-1">
-                    {startDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })} -{' '}
-                    {experience.is_current ? 'Présent' : endDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })} 
-                    {` • ${durationText}`}
-                  </p>
-                  {experience.location && (
-                    <p className="text-sm text-base-content/70 mt-1">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 inline mr-1"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      {experience.location} • {experience.location_type}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {experiences
+          .filter((experience) => {
+            if (locationFilter === 'Tous') return true;
+            return experience.location_type === locationFilter;
+          })
+          .sort((a, b) => {
+            const dateA = a.is_current ? new Date() : new Date(a.end_date);
+            const dateB = b.is_current ? new Date() : new Date(b.end_date);
+            return experienceSortOption === 'date-desc' ? dateB - dateA : dateA - dateB;
+          })
+          .map((experience) => {
+            const startDate = new Date(experience.start_date);
+            const endDate = experience.is_current ? new Date() : new Date(experience.end_date);
+            const durationMonths = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24 * 30));
+            const durationYears = Math.floor(durationMonths / 12);
+            const remainingMonths = durationMonths % 12;
+            const durationText =
+              durationYears > 0
+                ? `${durationYears} an${durationYears > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} mois` : ''}`
+                : `${durationMonths} mois`;
+            const maxDuration = 120; // 10 years
+            const durationPercentage = Math.min((durationMonths / maxDuration) * 100, 100);
+      
+            return (
+              <div
+                key={experience._id}
+                className={`card ${
+                  experience.is_current
+                    ? 'bg-[#e4bdf3] text-gray-900'
+                    : 'bg-base-100 text-base-content'
+                } border border-base-300 hover:border-primary transition-colors shadow-md`}
+              >
+                <div className="card-body p-6 flex flex-row gap-4">
+                  {/* Left Side: Experience Details and More Details Button */}
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="card-title text-xl font-semibold">{experience.job_title}</h3>
+                        <p className={`${experience.is_current ? 'text-gray-800' : 'text-base-content/80'} text-lg`}>
+                          {experience.company}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'}`}>
+                        {experience.employment_type} • {experience.location_type}
+                      </span>
+                    </div>
+                    <p className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'} mb-2`}>
+                      {startDate.toLocaleDateString('fr-FR')} -{' '}
+                      {experience.is_current ? 'Présent' : endDate.toLocaleDateString('fr-FR')}
                     </p>
-                  )}
-                  <p className="text-sm text-base-content/70 mt-1">{experience.employment_type}</p>
-                  {experience.description && (
-                    <div className="mt-4">
-                      <p className="text-base-content/80 line-clamp-3">{experience.description}</p>
+                    {experience.location && (
+                      <p className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'} mb-2`}>
+                        {experience.location}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => setSelectedExperience(experience)}
+                      className={`btn btn-outline btn-sm mt-2 ${
+                        experience.is_current
+                          ? 'text-gray-900 border-gray-900 hover:bg-gray-200 hover:border-gray-900'
+                          : 'text-base-content border-base-content hover:bg-base-200 hover:border-base-content'
+                      }`}
+                    >
+                      More details
+                    </button>
+                  </div>
+      
+                  {/* Right Side: Percentage Circle and Edit/Delete Buttons */}
+                  <div className="flex flex-col items-center justify-between">
+                    <div className="relative w-16 h-16 mb-4">
+                      <svg className="w-full h-full" viewBox="0 0 36 36">
+                        <path
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="#e5e7eb"
+                          strokeWidth="3.8"
+                        />
+                        <path
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="url(#gradient)"
+                          strokeWidth="3.8"
+                          strokeDasharray={`${durationPercentage}, 100`}
+                          strokeLinecap="round"
+                        />
+                        <defs>
+                          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style={{ stopColor: '#F5A7B7', stopOpacity: 1 }} />
+                            <stop offset="100%" style={{ stopColor: '#C084FC', stopOpacity: 1 }} />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className={`text-sm font-medium ${experience.is_current ? 'text-gray-900' : 'text-base-content'}`}>
+                          {Math.round(durationPercentage)}%
+                        </span>
+                      </div>
+                    </div>
+                    <span className={`text-sm mb-2 ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'}`}>
+                      {durationText}
+                    </span>
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => setSelectedExperience(experience)}
-                        className="btn btn-link btn-sm text-primary p-0 mt-2"
+                        onClick={() => handleEditExperience(experience)}
+                        className="btn btn-square btn-sm btn-ghost"
+                        title="Modifier"
                       >
-                        Voir plus
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteExperience(experience._id)}
+                        className="btn btn-square btn-sm btn-ghost text-error"
+                        title="Supprimer"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
                       </button>
                     </div>
-                  )}
-                </div>
-                <div className="flex gap-2 ml-4">
-                  <button
-                    onClick={() => handleEditExperience(experience)}
-                    className="btn btn-sm btn-ghost"
-                    title="Modifier"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteExperience(experience._id)}
-                    className="btn btn-sm btn-ghost text-error"
-                    title="Supprimer"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
     )}
 
-    {/* Modal pour les détails */}
+    {/* Modal pour afficher les détails */}
     {selectedExperience && (
       <div className="modal modal-open">
-        <div className="modal-box max-w-3xl">
-          <h3 className="font-bold text-2xl text-primary mb-2">{selectedExperience.job_title}</h3>
+        <div className="modal-box max-w-2xl">
+          <h3 className="font-bold text-xl mb-4">{selectedExperience.job_title}</h3>
           <p className="text-lg text-base-content/80 mb-2">{selectedExperience.company}</p>
-          <div className="space-y-2 text-base-content/70">
-            <p>
-              {new Date(selectedExperience.start_date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })} -{' '}
-              {selectedExperience.is_current ? 'Présent' : new Date(selectedExperience.end_date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-            </p>
-            <p>{selectedExperience.employment_type} • {selectedExperience.location_type}</p>
-            {selectedExperience.location && <p>Lieu: {selectedExperience.location}</p>}
-          </div>
+          {selectedExperience.profile_title && (
+            <p className="text-sm text-base-content/60 mb-2">{selectedExperience.profile_title}</p>
+          )}
+          <p className="text-sm text-base-content/70 mb-2">
+            {selectedExperience.employment_type} • {selectedExperience.location_type}
+          </p>
+          <p className="text-sm text-base-content/70 mb-2">
+            {new Date(selectedExperience.start_date).toLocaleDateString('fr-FR')} -{' '}
+            {selectedExperience.is_current
+              ? 'Présent'
+              : new Date(selectedExperience.end_date).toLocaleDateString('fr-FR')}
+          </p>
+          {selectedExperience.location && (
+            <p className="text-sm text-base-content/70 mb-2">{selectedExperience.location}</p>
+          )}
           {selectedExperience.description && (
-            <div className="mt-6">
-              <h4 className="font-semibold text-lg mb-2">Description</h4>
-              <p className="text-base-content/80 whitespace-pre-wrap">{selectedExperience.description}</p>
+            <div className="mt-4">
+              <h4 className="font-semibold text-base mb-2">Descriptif</h4>
+              <p className="text-base-content/80">{selectedExperience.description}</p>
             </div>
           )}
-          <div className="modal-action mt-6">
-            <button
-              onClick={() => setSelectedExperience(null)}
-              className="btn btn-primary"
-            >
+          {selectedExperience.job_source && (
+            <p className="text-sm text-base-content/60 mt-4">
+              Source : {selectedExperience.job_source}
+            </p>
+          )}
+          <div className="modal-action">
+            <button onClick={() => setSelectedExperience(null)} className="btn btn-ghost">
               Fermer
             </button>
           </div>
@@ -2213,6 +2648,7 @@ const handleAddExperience = async (e) => {
     )}
   </div>
 )}
+
                             {activeTab === 'security' && (
                                 <div className="space-y-8">
                                     <div>
