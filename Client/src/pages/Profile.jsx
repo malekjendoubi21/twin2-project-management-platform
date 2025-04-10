@@ -4,7 +4,8 @@ import api from '../utils/Api';
 import { toast } from 'react-hot-toast';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
-
+import { jsPDF } from 'jspdf';
+import { useParams } from 'react-router-dom';
 // Composant pour le cercle de progression
 const ProgressCircle = ({ percentage, size = 80, strokeWidth = 8 }) => {
     const radius = (size - strokeWidth) / 2;
@@ -49,6 +50,8 @@ const ProgressCircle = ({ percentage, size = 80, strokeWidth = 8 }) => {
 };
 
 const Profile = () => {
+    const { id } = useParams(); // Extract `id` from the URL
+   
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -61,6 +64,7 @@ const Profile = () => {
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'system');
     const [locationFilter, setLocationFilter] = useState('Tous');
     const [sortOrder, setSortOrder] = useState('newest'); // Par défaut, tri du plus récent au plus ancien
+    const [projects, setProjects] = useState([]);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -151,93 +155,347 @@ const Profile = () => {
     job_source: ''
     });
 
-    useEffect(() => {
-        const fetchUser = async () => {
-          try {
-            const response = await api.get('/api/users/getMe');
-            if (!response.data || !response.data._id) {
-              throw new Error('Invalid user data received');
-            }
-            setUser(response.data);
-            setFormData({
-              name: response.data?.name || '',
-              email: response.data?.email || '',
-              phone_number: response.data?.phone_number || '',
-              bio: response.data?.bio || '',
-              role: response.data?.role || 'user',
-              two_factor_enabled: response.data?.two_factor_enabled || false,
-              profile_picture: response.data?.profile_picture || '',
-              password: '',
-              newPassword: '',
-              confirmPassword: '',
-            });
-            setImagePreview(response.data?.profile_picture || null);
-      
-            await Promise.all([
-                fetchUserSkills(),
-                fetchUserExperiences(), // Ajout ici
-                fetchCertifications(),
-            ]);
-          } catch (error) {
-            console.error('Error fetching user:', error.response?.data || error.message);
-            setError(error.response?.data?.message || error.message);
-            toast.error('Failed to load profile: ' + (error.response?.data?.message || error.message));
-            if (error.response?.status === 401) {
-              navigate('/login');
-            }
-          } finally {
-            setLoading(false);
-          }
-        };
-      
-        const fetchUserSkills = async () => {
-          try {
-            const response = await api.get('/api/skills/');
-            setSkills(Array.isArray(response.data) ? response.data : []);
-          } catch (error) {
-            console.error('Error fetching user skills:', error.response?.data || error.message);
-            setSkills([]);
-            toast.error('Failed to load skills: ' + (error.response?.data?.message || error.message));
-          }
-        };
 
-        const fetchUserExperiences = async () => {
-            try {
-              const response = await api.get('/api/experiences/');
-              const fetchedExperiences = Array.isArray(response.data) ? response.data : [];
-              setExperiences(fetchedExperiences); // On ne trie pas ici, on le fera dynamiquement
-            } catch (error) {
-              console.error('Error fetching user experiences:', error.response?.data || error.message);
-              setExperiences([]);
-              toast.error('Failed to load experiences: ' + (error.response?.data?.message || error.message));
-            }
-          };
+    const generateCV = async () => {
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4',
+        });
       
-        const fetchCertifications = async () => {
+        const marginLeft = 15;
+        const marginRight = 15;
+        const marginTop = 15;
+        const pageWidth = 210; // A4 width in mm
+        const sidebarWidth = 60; // Left sidebar for personal info
+        const mainContentWidth = pageWidth - marginLeft - marginRight - sidebarWidth - 5; // Main content area
+        let currentY = marginTop;
+        let mainContentY = marginTop;
+      
+        // Helper to convert image URL to base64
+        const getBase64Image = async (url) => {
           try {
-            const response = await api.get('/api/certifications');
-            const validCertifications = Array.isArray(response.data)
-              ? response.data.map(cert => ({
-                  _id: cert._id || '',
-                  certifications_name: cert.certifications_name || 'Unnamed Certification',
-                  issued_by: cert.issued_by || 'Unknown Issuer',
-                  obtained_date: cert.obtained_date || new Date().toISOString().split('T')[0],
-                  description: cert.description || '',
-                  image: cert.image || null,
-                }))
-              : [];
-            setCertifications(validCertifications);
+            const response = await fetch(url);
+            const blob = await response.blob();
+            return new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
           } catch (error) {
-            console.error('Error fetching certifications:', error.response?.data || error.message);
-            toast.error('Failed to load certifications');
-            setCertifications([]);
+            console.error('Error fetching profile picture:', error);
+            return null;
           }
         };
       
-        fetchUser();
-        fetchCertifications();
-        fetchUserExperiences();
-      }, [navigate]);
+        // Add Sidebar Background
+        doc.setFillColor(0, 51, 102); // Dark blue
+        doc.rect(marginLeft, 0, sidebarWidth, 297, 'F'); // Full height sidebar
+      
+        // Profile Picture
+        let profileImage = null;
+        if (formData.profile_picture) {
+          profileImage = await getBase64Image(formData.profile_picture);
+        }
+        if (profileImage) {
+          try {
+            doc.addImage(profileImage, 'JPEG', marginLeft + 10, currentY, 40, 40, undefined, 'FAST'); // 40x40mm image
+            currentY += 45;
+          } catch (error) {
+            console.error('Error adding profile picture to PDF:', error);
+            currentY += 5; // Space even if image fails
+          }
+        } else {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(12);
+          doc.setTextColor(255, 255, 255);
+          doc.text('Photo indisponible', marginLeft + 10, currentY + 10);
+          currentY += 15;
+        }
+      
+        // Name and Tagline in Sidebar
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(18);
+        doc.setTextColor(255, 255, 255); // White text
+        const nameLines = doc.splitTextToSize(formData.name || 'Nom Prénom', sidebarWidth - 10);
+        nameLines.forEach((line) => {
+          doc.text(line, marginLeft + 5, currentY);
+          currentY += 6;
+        });
+      
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(10);
+        doc.setTextColor(200, 200, 200); // Light gray
+        doc.text('Développeur Full Stack', marginLeft + 5, currentY); // Example tagline
+        currentY += 10;
+      
+        // Contact Info in Sidebar
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(255, 255, 255);
+        doc.text('Email:', marginLeft + 5, currentY);
+        doc.setTextColor(173, 216, 230); // Light blue for clickable link
+        doc.textWithLink(formData.email || 'email@example.com', marginLeft + 15, currentY, {
+          url: `mailto:${formData.email || 'email@example.com'}`,
+        });
+        currentY += 6;
+        doc.setTextColor(255, 255, 255);
+        doc.text(`Téléphone: ${formData.phone_number || '+33 123 456 789'}`, marginLeft + 5, currentY);
+        currentY += 10;
+      
+        // Skills in Sidebar
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(255, 255, 255);
+        doc.text('Compétences', marginLeft + 5, currentY);
+        currentY += 6;
+      
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(200, 200, 200);
+        if (skills.length === 0) {
+          doc.text('Aucune compétence', marginLeft + 5, currentY);
+          currentY += 5;
+        } else {
+          const skillsText = skills.map((skill) => skill.name).join(', ');
+          const skillsLines = doc.splitTextToSize(skillsText, sidebarWidth - 10);
+          skillsLines.forEach((line) => {
+            doc.text(line, marginLeft + 5, currentY);
+            currentY += 5;
+          });
+        }
+      
+        // Main Content Area (Right Side)
+        const mainContentX = marginLeft + sidebarWidth + 5;
+      
+        // Helper to add section header in main content
+        const addSectionHeader = (title) => {
+          doc.setFillColor(240, 240, 240); // Light gray background
+          doc.rect(mainContentX, mainContentY, mainContentWidth, 6, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(14);
+          doc.setTextColor(0, 51, 102);
+          doc.text(title, mainContentX, mainContentY + 4);
+          mainContentY += 8;
+        };
+      
+        // Helper to add a divider
+        const addDivider = () => {
+          doc.setDrawColor(0, 51, 102);
+          doc.setLineWidth(0.3);
+          doc.line(mainContentX, mainContentY, mainContentX + mainContentWidth, mainContentY);
+          mainContentY += 3;
+        };
+      
+        // Expériences Professionnelles
+        addSectionHeader('Expériences Professionnelles');
+        if (experiences.length === 0) {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          doc.text('Aucune expérience enregistrée', mainContentX, mainContentY);
+          mainContentY += 5;
+        } else {
+          experiences.forEach((exp) => {
+            const startDate = new Date(exp.start_date).toLocaleDateString('fr-FR');
+            const endDate = exp.is_current ? 'Présent' : new Date(exp.end_date).toLocaleDateString('fr-FR');
+      
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.setTextColor(0, 51, 102);
+            doc.text(`${exp.job_title} - ${exp.company}`, mainContentX, mainContentY);
+            mainContentY += 5;
+      
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(9);
+            doc.setTextColor(50, 50, 50);
+            doc.text(`${startDate} - ${endDate} | ${exp.employment_type} (${exp.location_type})`, mainContentX, mainContentY);
+            mainContentY += 5;
+      
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            const descriptionLines = doc.splitTextToSize(exp.description || 'Aucune description', mainContentWidth);
+            descriptionLines.forEach((line) => {
+              doc.text(line, mainContentX, mainContentY);
+              mainContentY += 4;
+            });
+      
+            mainContentY += 3;
+            if (mainContentY > 260) {
+              doc.addPage();
+              mainContentY = marginTop;
+            }
+          });
+        }
+      
+        // Certifications
+        mainContentY += 5;
+        addSectionHeader('Certifications');
+        if (certifications.length === 0) {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          doc.text('Aucune certification enregistrée', mainContentX, mainContentY);
+          mainContentY += 5;
+        } else {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(50, 50, 50);
+          certifications.forEach((cert) => {
+            doc.text(
+              `• ${cert.certifications_name} - ${cert.issued_by} (${new Date(cert.obtained_date).toLocaleDateString('fr-FR')})`,
+              mainContentX,
+              mainContentY
+            );
+            mainContentY += 5;
+      
+            if (mainContentY > 260) {
+              doc.addPage();
+              mainContentY = marginTop;
+            }
+          });
+        }
+      
+        // Projets
+        mainContentY += 5;
+        addSectionHeader('Projets');
+        if (projects.length === 0) {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          doc.text('Aucun projet associé à cet utilisateur', mainContentX, mainContentY);
+          mainContentY += 5;
+        } else {
+          projects.forEach((project) => {
+            const startDate = new Date(project.start_date).toLocaleDateString('fr-FR');
+            const endDate = new Date(project.end_date).toLocaleDateString('fr-FR');
+      
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.setTextColor(0, 51, 102);
+            doc.text(project.project_name, mainContentX, mainContentY);
+            mainContentY += 5;
+      
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(9);
+            doc.setTextColor(50, 50, 50);
+            doc.text(`${startDate} - ${endDate}`, mainContentX, mainContentY);
+            mainContentY += 5;
+      
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            const descriptionLines = doc.splitTextToSize(project.description || 'Aucune description', mainContentWidth);
+            descriptionLines.forEach((line) => {
+              doc.text(line, mainContentX, mainContentY);
+              mainContentY += 4;
+            });
+      
+            mainContentY += 3;
+            if (mainContentY > 260) {
+              doc.addPage();
+              mainContentY = marginTop;
+            }
+          });
+        }
+      
+        // Footer
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Généré le ' + new Date().toLocaleDateString('fr-FR'), marginLeft, 280);
+        doc.text('Page 1', pageWidth - marginRight - 10, 280);
+      
+        doc.save('CV.pdf');
+      };
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await api.get('/api/users/getMe');
+        if (!response.data || !response.data._id) {
+          throw new Error('Invalid user data received');
+        }
+        setUser(response.data);
+        setFormData({
+          name: response.data?.name || '',
+          email: response.data?.email || '',
+          phone_number: response.data?.phone_number || '',
+          bio: response.data?.bio || '',
+          role: response.data?.role || 'user',
+          two_factor_enabled: response.data?.two_factor_enabled || false,
+          profile_picture: response.data?.profile_picture || '',
+          password: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+        setImagePreview(response.data?.profile_picture || null);
+
+        await Promise.all([
+          fetchUserSkills(),
+          fetchUserExperiences(),
+          fetchCertifications(),
+          //fetchUserProjects(), // Add projects fetching
+        ]);
+      } catch (error) {
+        console.error('Error fetching user:', error.response?.data || error.message);
+        toast.error('Failed to load profile: ' + (error.response?.data?.message || error.message));
+        if (error.response?.status === 401) {
+          navigate('/login');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchUserSkills = async () => {
+      try {
+        const response = await api.get('/api/skills/');
+        setSkills(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        console.error('Error fetching user skills:', error.response?.data || error.message);
+        setSkills([]);
+        toast.error('Failed to load skills: ' + (error.response?.data?.message || error.message));
+      }
+    };
+
+    const fetchUserExperiences = async () => {
+      try {
+        const response = await api.get('/api/experiences/');
+        const fetchedExperiences = Array.isArray(response.data) ? response.data : [];
+        setExperiences(fetchedExperiences);
+      } catch (error) {
+        console.error('Error fetching user experiences:', error.response?.data || error.message);
+        setExperiences([]);
+        toast.error('Failed to load experiences: ' + (error.response?.data?.message || error.message));
+      }
+    };
+
+    const fetchCertifications = async () => {
+      try {
+        const response = await api.get('/api/certifications');
+        const validCertifications = Array.isArray(response.data)
+          ? response.data.map((cert) => ({
+              _id: cert._id || '',
+              certifications_name: cert.certifications_name || 'Unnamed Certification',
+              issued_by: cert.issued_by || 'Unknown Issuer',
+              obtained_date: cert.obtained_date || new Date().toISOString().split('T')[0],
+              description: cert.description || '',
+              image: cert.image || null,
+            }))
+          : [];
+        setCertifications(validCertifications);
+      } catch (error) {
+        console.error('Error fetching certifications:', error.response?.data || error.message);
+        toast.error('Failed to load certifications');
+        setCertifications([]);
+      }
+    };
+
+   
+     
+   // fetchCertifications();
+  //  fetchUserExperiences();
+    fetchUser();
+  }, [navigate]);
     useEffect(() => {
         if (theme === 'system') {
             const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -1844,6 +2102,28 @@ const handleAddExperience = async (e) => {
         </svg>
         Add experience
       </button>
+
+      <button
+          onClick={generateCV}
+          className="btn btn-secondary gap-2"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+          Générer le CV
+        </button>
+
     </div>
 
     {/* Interface de filtrage et de tri (déplacée en dessous du titre) */}
@@ -1851,7 +2131,8 @@ const handleAddExperience = async (e) => {
       {/* Filtre par type de localisation */}
       <div className="form-control">
         <label className="label">
-          <span className="label-text">Filtrer par type de localisation</span>
+          <span className="label-text">Filter by location type
+</span>
         </label>
         <select
           id="location-filter"
