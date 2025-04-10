@@ -65,6 +65,7 @@ const Profile = () => {
     const [locationFilter, setLocationFilter] = useState('Tous');
     const [sortOrder, setSortOrder] = useState('newest'); // Par défaut, tri du plus récent au plus ancien
     const [projects, setProjects] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const [formData, setFormData] = useState({
         name: '',
@@ -630,7 +631,7 @@ const Profile = () => {
             setSkills([...skills, response.data]);
             setNewSkill({ name: '', description: '', category: 'Technical', tags: 50 });
             setShowSkillForm(false);
-            toast.success('Compétence ajoutée avec succès');
+            toast.success('Skill added successfully');
         } catch (error) {
             console.error('Error adding skill:', error.response?.data || error.message);
             toast.error(`Échec de l'ajout: ${error.response?.data?.message || error.message}`);
@@ -656,10 +657,10 @@ const Profile = () => {
             setEditingSkillId(null);
             setEditSkillData({ name: '', description: '', category: 'Technical', tags: 50 });
             setShowSkillForm(false);
-            toast.success('Compétence mise à jour avec succès');
+            toast.success('Skill updated successfully');
         } catch (error) {
             console.error('Error updating skill:', error.response?.data || error.message);
-            toast.error(`Échec de la mise à jour: ${error.response?.data?.message || error.message}`);
+            toast.error(`Failed to update skill: ${error.response?.data?.message || error.message}`);
         }
     };
 
@@ -667,10 +668,10 @@ const Profile = () => {
         try {
             await api.delete(`/api/skills/${skillId}`);
             setSkills(skills.filter((skill) => skill._id !== skillId));
-            toast.success('Compétence supprimée avec succès');
+            toast.success('Skill deleted successfully');
         } catch (error) {
             console.error('Error deleting skill:', error.response?.data || error.message);
-            toast.error(`Échec de la suppression: ${error.response?.data?.message || error.message}`);
+            toast.error(`Failed to delete skill: ${error.response?.data?.message || error.message}`);
         }
     };
 
@@ -863,10 +864,10 @@ const handleAddExperience = async (e) => {
         job_source: '',
       });
       setShowExperienceForm(false);
-      toast.success('Expérience ajoutée avec succès');
+      toast.success('Experience added successfully');
     } catch (error) {
-      console.error('Erreur lors de l\'ajout de l\'expérience:', error.response?.data || error.message);
-      toast.error(`Échec de l'ajout: ${error.response?.data?.message || error.message}`);
+      console.error('Error adding experience:', error.response?.data || error.message);
+      toast.error(`Failed to add experience: ${error.response?.data?.message || error.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -931,10 +932,10 @@ const handleAddExperience = async (e) => {
                 job_source: '',
               });
             setShowExperienceForm(false);
-            toast.success('Expérience mise à jour avec succès');
+            toast.success('Experience updated successfully');
         } catch (error) {
             console.error('Error updating experience:', error);
-            toast.error(`Échec de la mise à jour: ${error.response?.data?.message || error.message}`);
+            toast.error(`Failed to update experience: ${error.response?.data?.message || error.message}`);
         } finally {
             setIsSaving(false);
         }
@@ -944,10 +945,10 @@ const handleAddExperience = async (e) => {
         try {
             await api.delete(`/api/experiences/${experienceId}`);
             setExperiences(experiences.filter(exp => exp._id !== experienceId));
-            toast.success('Expérience supprimée avec succès');
+            toast.success('Experience deleted successfully');
         } catch (error) {
             console.error('Error deleting experience:', error);
-            toast.error(`Échec de la suppression: ${error.response?.data?.message || error.message}`);
+            toast.error(`Failed to delete experience: ${error.response?.data?.message || error.message}`);
         }
     };
     //Find the current position
