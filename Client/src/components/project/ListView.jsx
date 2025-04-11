@@ -2,10 +2,24 @@ import { motion } from 'framer-motion';
 import { format, isPast, isToday } from 'date-fns';
 
 const ListView = ({ tasks, onEditTask, getStatusColor, users }) => {
-  // Helper to get user info
-  const getUserInfo = (userId) => {
-    const user = users.find(u => u._id === userId);
-    return user ? user : { name: 'Unassigned' };
+  // Updated helper to get user info - handles both object and ID reference cases
+  const getUserInfo = (assignedTo) => {
+    // Case 1: No assignment
+    if (!assignedTo) return { name: 'Unassigned' };
+    
+    // Case 2: Already a populated user object
+    if (typeof assignedTo === 'object' && assignedTo.name) {
+      return assignedTo;
+    }
+    
+    // Case 3: It's an ID reference and users array exists
+    if (users?.length > 0) {
+      const user = users.find(u => String(u._id) === String(assignedTo));
+      if (user) return user;
+    }
+    
+    // Fallback
+    return { name: 'Unassigned' };
   };
   
   // Helper for priority badge styling
@@ -54,6 +68,7 @@ const ListView = ({ tasks, onEditTask, getStatusColor, users }) => {
             <tbody>
               {tasks.map((task, index) => {
                 const deadlineStatus = getDeadlineStatus(task.deadline);
+                const assignee = getUserInfo(task.assigned_to);
                 
                 return (
                   <motion.tr 
@@ -83,16 +98,23 @@ const ListView = ({ tasks, onEditTask, getStatusColor, users }) => {
                       </div>
                     </td>
                     
-                    {/* Assignee */}
+                    {/* Assignee - Updated implementation */}
                     <td>
                       <div className="flex items-center gap-2">
                         <div className="avatar">
                           <div className="w-8 rounded-full">
-                            <img src={`https://ui-avatars.com/api/?name=${getUserInfo(task.assigned_to).name}&background=random`} alt="Avatar" />
+                            {assignee.profile_picture ? (
+                              <img src={assignee.profile_picture} alt={assignee.name} />
+                            ) : (
+                              <img 
+                                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(assignee.name)}&background=random`} 
+                                alt={assignee.name} 
+                              />
+                            )}
                           </div>
                         </div>
                         <div className="text-xs">
-                          {getUserInfo(task.assigned_to).name}
+                          {assignee.name}
                         </div>
                       </div>
                     </td>

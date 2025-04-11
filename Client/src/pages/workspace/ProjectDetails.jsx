@@ -68,20 +68,62 @@ const ProjectDetails = () => {
   };
 
   // Handle task update
-  const handleUpdateTask = async (taskId, taskData) => {
-    try {
-      const response = await api.put(`/api/tasks/${taskId}`, taskData);
-      
-      setTasks(tasks.map(task => 
-        task._id === taskId ? response.data : task
-      ));
-      setShowTaskModal(false);
-      toast.success('Task updated successfully');
-    } catch (error) {
-      console.error('Error updating task:', error);
-      toast.error('Failed to update task');
+// Update the handleUpdateTask function with better debugging
+
+const handleUpdateTask = async (taskId, taskData) => {
+  try {
+    // Ensure taskId is a string
+    const idToUse = String(taskId);
+    
+    // Debug log
+    console.log('ProjectDetails - Updating task:', {
+      url: `/api/tasks/${idToUse}`,
+      data: taskData
+    });
+    
+    // For simplicity, extract only fields that might be expected by the API
+    const apiTaskData = {
+      title: taskData.title,
+      description: taskData.description,
+      status: taskData.status,
+      priority: taskData.priority,
+      estimated_time: Number(taskData.estimated_time),
+      actual_time: Number(taskData.actual_time || 0),
+      assigned_to: taskData.assigned_to,
+      deadline: taskData.deadline,
+      // Try including or removing project_id based on API requirements
+      // Some APIs expect it, others don't want it during updates
+      project_id: taskData.project_id
+    };
+    
+    // Add request headers that might be needed
+    const response = await api.put(`/api/tasks/${idToUse}`, apiTaskData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    setTasks(tasks.map(task => 
+      String(task._id) === idToUse ? response.data : task
+    ));
+    setShowTaskModal(false);
+    toast.success('Task updated successfully');
+  } catch (error) {
+    console.error('Error updating task:', error);
+    
+    // Enhanced error reporting
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+      const errorMsg = error.response.data?.message || 
+                      error.response.data?.error || 
+                      'Failed to update task';
+      toast.error(errorMsg);
+    } else {
+      toast.error('Network error while updating task');
     }
-  };
+  }
+};
 
   // Handle task deletion
   const handleDeleteTask = async (taskId) => {
