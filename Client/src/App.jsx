@@ -25,6 +25,8 @@ import socketService from './utils/SocketService';
 import useSession from './hooks/useSession';
 import ProjectDetails from './pages/workspace/ProjectDetails.jsx';
 import AdminProfile from "./dashboard/AdminProfile.jsx";
+import ResourceDetails from './pages/workspace/ResourceDetails.jsx';
+
 
 function App() {
   const { user } = useSession();
@@ -76,6 +78,7 @@ function App() {
             <Route path="overview" element={<WorkspaceOverview />}  />
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:projectId" element={<ProjectDetails />} />
+            <Route path="projects/:projectId/resources/:resourceId" element={<ResourceDetails />} />
             <Route path="members" element={<WorkspaceMembers />} />
             <Route path="settings" element={<WorkspaceSettings />} />
           </Route>

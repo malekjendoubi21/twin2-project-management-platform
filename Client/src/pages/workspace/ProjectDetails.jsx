@@ -6,6 +6,8 @@ import { toast } from 'react-hot-toast';
 import KanbanBoard from '../../components/project/KanbanBoard';
 import ListView from '../../components/project/ListView';
 import TaskModal from '../../components/project/TaskModal';
+import ResourceModal from '../../components/project/ResourceModal';
+import ResourceList from '../../components/project/ResourceList';
 import api from '../../utils/Api';
 
 const ProjectDetails = () => {
@@ -13,11 +15,14 @@ const ProjectDetails = () => {
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
+  const [resources, setResources] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('kanban'); // 'kanban' or 'list'
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showResourceModal, setShowResourceModal] = useState(false);
   const [currentTask, setCurrentTask] = useState(null);
+  const [currentResource, setCurrentResource] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
@@ -35,6 +40,10 @@ const ProjectDetails = () => {
         // Then get the tasks for this project
         const tasksResponse = await api.get(`/api/projects/${projectId}/tasks`);
         setTasks(tasksResponse.data || []);
+        
+        // Fetch resources for this project
+        const resourcesResponse = await api.get(`/api/ressources?project_id=${projectId}`);
+        setResources(resourcesResponse.data || []);
         
         // Fetch workspace members
         const workspaceResponse = await api.get(`/api/workspaces/${id}/members`);
@@ -203,10 +212,57 @@ const handleUpdateTask = async (taskId, taskData) => {
     }
   };
 
+  // Handle resource creation
+  const handleCreateResource = async (resourceData) => {
+    try {
+      const response = await api.post('/api/ressources/addRessource', resourceData);
+      setResources([...resources, response.data]);
+      setShowResourceModal(false);
+      toast.success('Resource created successfully');
+    } catch (error) {
+      console.error('Error creating resource:', error);
+      toast.error('Failed to create resource');
+    }
+  };
+
+  // Handle resource update
+  const handleUpdateResource = async (resourceId, resourceData) => {
+    try {
+      const response = await api.put(`/api/ressources/updateRessource/${resourceId}`, resourceData);
+      setResources(resources.map(resource => 
+        resource._id === resourceId ? response.data : resource
+      ));
+      setShowResourceModal(false);
+      toast.success('Resource updated successfully');
+    } catch (error) {
+      console.error('Error updating resource:', error);
+      toast.error('Failed to update resource');
+    }
+  };
+
+  // Handle resource deletion
+  const handleDeleteResource = async (resourceId) => {
+    try {
+      await api.delete(`/api/ressources/${resourceId}`);
+      setResources(resources.filter(resource => resource._id !== resourceId));
+      setShowResourceModal(false);
+      toast.success('Resource deleted successfully');
+    } catch (error) {
+      console.error('Error deleting resource:', error);
+      toast.error('Failed to delete resource');
+    }
+  };
+
   // Open task modal for creating or editing
   const openTaskModal = (task = null) => {
     setCurrentTask(task);
     setShowTaskModal(true);
+  };
+
+  // Open resource modal for creating or editing
+  const openResourceModal = (resource = null) => {
+    setCurrentResource(resource);
+    setShowResourceModal(true);
   };
 
   // Calculate project completion percentage
@@ -503,7 +559,7 @@ const handleUpdateTask = async (taskId, taskData) => {
                 >
                   <div className="flex items-center justify-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2-2h-2a2 2 0 01-2-2v-2z" />
                     </svg>
                     <span className={viewMode === 'kanban' ? 'font-bold text-base-content' : 'text-base-content/60'}>Kanban</span>
                   </div>
@@ -546,6 +602,27 @@ const handleUpdateTask = async (taskId, taskData) => {
         />
       )}
       
+      {/* Resources Section */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">Resources</h2>
+          <button
+            className="btn btn-secondary btn-sm md:btn-md gap-2"
+            onClick={() => openResourceModal()}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Resource
+          </button>
+        </div>
+        
+        <ResourceList
+          resources={resources}
+          onEditResource={openResourceModal}
+        />
+      </div>
+      
       {/* Task Modal */}
       <AnimatePresence>
         {showTaskModal && (
@@ -558,6 +635,22 @@ const handleUpdateTask = async (taskId, taskData) => {
             onCreateTask={handleCreateTask}
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
+            modalRef={modalRef}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Resource Modal */}
+      <AnimatePresence>
+        {showResourceModal && (
+          <ResourceModal
+            isOpen={showResourceModal}
+            onClose={() => setShowResourceModal(false)}
+            resource={currentResource}
+            projectId={projectId}
+            onCreateResource={handleCreateResource}
+            onUpdateResource={handleUpdateResource}
+            onDeleteResource={handleDeleteResource}
             modalRef={modalRef}
           />
         )}
