@@ -3,8 +3,11 @@ const { validateRessource } = require("../validators/validatorRessource");
 
 // Créer une nouvelle ressource
 exports.createRessource = async (req, res) => {
+  console.log('Request body:', req.body); // Debug log
+
   const { error } = validateRessource(req.body);
   if (error) {
+    console.log('Validation error:', error.details); // Debug log
     return res
       .status(400)
       .json({ errors: error.details.map((err) => err.message) });
@@ -12,10 +15,12 @@ exports.createRessource = async (req, res) => {
 
   try {
     const newRessource = new Ressource(req.body);
+    console.log('New resource before save:', newRessource); // Debug log
     await newRessource.save();
     res.status(201).json(newRessource);
   } catch (err) {
-    res.status(500).json({ message: "Failed to create resource", error: err });
+    console.error('Error details:', err); // Debug log
+    res.status(500).json({ message: "Failed to create resource", error: err.message });
   }
 };
 
