@@ -33,7 +33,7 @@ pipeline {
                         sleep 5
 
                         // Vérifier si le serveur écoute sur le port 3000
-                        def isRunning = sh(script: "netstat -tln | grep ':3000 '", returnStatus: true) == 0
+                        def isRunning = sh(script: " netstat -tln | grep ':3000 '", returnStatus: true) == 0
 
                         if (!isRunning) {
                             error "L'application n'a pas démarré correctement !"

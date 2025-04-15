@@ -1571,7 +1571,7 @@ const showToast = (message, type = 'success') => {
   </div>
   
   {/* Animation styles unchanged */}
-  <style jsx>{`
+  <style>{`
     @keyframes pulse-slow {
       0%, 100% { transform: scale(1); opacity: 0.1; }
       50% { transform: scale(1.2); opacity: 0.3; }
