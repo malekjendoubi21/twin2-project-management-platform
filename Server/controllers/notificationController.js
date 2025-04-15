@@ -18,7 +18,7 @@ exports.createNotification = async (data) => {
     await notification.save();
 
     // Get socket.io instance
-    const io = socketUtils.getIO();
+    // const io = socketUtils.getIO();
     const recipientId = data.recipient.toString();
     
     console.log(`Creating notification for user ${recipientId}:`, data.message);

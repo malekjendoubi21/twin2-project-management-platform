@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const workspaceController = require('../controllers/WorkspaceController');
-const { protection, allowTo } =require('../controllers/AuthController');
+const { protection } =require('../controllers/AuthController');
 
 router.post('/addWorkspace', workspaceController.addWorkspace);
 router.get('/', workspaceController.getAllWorkspaces);

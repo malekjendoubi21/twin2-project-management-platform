@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const taskController = require('../controllers/TaskController');
-const { protection, allowTo } =require('../controllers/AuthController');
+const { protection } =require('../controllers/AuthController');
 
 // Get tasks by project
 router.get('/projects/:projectId/tasks', protection, taskController.getTasksByProject);

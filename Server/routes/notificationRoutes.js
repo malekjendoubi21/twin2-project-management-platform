@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const notificationController = require('../controllers/notificationController');
-const { protection, allowTo } =require('../controllers/AuthController');
+const { protection } =require('../controllers/AuthController');
 
 // Get all notifications for the authenticated user
 router.get('/', protection, notificationController.getNotifications);

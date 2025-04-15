@@ -41,7 +41,7 @@ exports.getProjectById = async (req, res) => {
 
 exports.createProject = async (req, res) => {
   try {
-    const { id } = req.params; // Workspace ID
+    // const { id } = req.params; // Workspace ID
     
     // Make sure to include ALL fields from the request body
     const projectData = {

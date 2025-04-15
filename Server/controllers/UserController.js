@@ -3,8 +3,8 @@ const bcrypt = require('bcrypt');
 const { validateUser, validateUpdateUser } = require('../validators/validators');
 const mongoose = require('mongoose'); // Add this import
 const Workspace = require('../models/Workspace');
-const Project = require('../models/Project'); // This was missing
-const Task = require('../models/Task'); // This was missing
+// const Project = require('../models/Project'); // This was missing
+// const Task = require('../models/Task'); // This was missing
 const jwt = require('jsonwebtoken'); // Add this line to import JWT
 
 const getAllUsers = async (req, res) => {
@@ -98,7 +98,7 @@ const updateUser = async (req, res) => {
      
 
         const { id } = req.params;
-        const { error, value } = validateUser(req.body);
+        const { error } = validateUser(req.body);
         if (error) {
             return res.status(400).json({ errors: error.details.map(err => err.message) });
         }
@@ -169,7 +169,7 @@ const getLoggedUser = async (req, res, next) => {
     next();
 };
 
-const updateLoggedUserPassword = async (req, res, next) => {
+const updateLoggedUserPassword = async (req, res, ) => {
     const user = await User.findByIdAndUpdate(
         req.user._id, 
         { password: await bcrypt.hash(req.body.password, 10),
@@ -317,16 +317,7 @@ const getUserProfile = async (req, res) => {
   } catch (error) {
     console.error('Error fetching user profile:', error);
     // Return default profile instead of error
-    return res.status(200).json({
-      profile: {
-        _id: userId,
-        name: "User",
-        email: "",
-        bio: 'No bio available',
-        profile_picture: null,
-        createdAt: new Date().toISOString()
-      }
-    });
+
   }
 };
 const getUserWorkspacesCount = async (req, res) => {

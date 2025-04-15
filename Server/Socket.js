@@ -1,6 +1,5 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
-const User = require('./models/User');
 const cookie = require('cookie');
 
 let io;

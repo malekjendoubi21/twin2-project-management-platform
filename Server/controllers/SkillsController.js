@@ -76,7 +76,7 @@ exports.deleteSkill = async (req, res) => {
     const skill = await Skill.findOne({ _id: req.params.id, userId: req.user._id });
     if (!skill) return res.status(404).json({ message: 'Skill not found or unauthorized' });
 
-    const deletedSkill = await Skill.findByIdAndDelete(req.params.id);
+    // const deletedSkill = await Skill.findByIdAndDelete(req.params.id);
     res.status(200).json({ message: 'Skill deleted successfully' });
   } catch (err) {
     console.error('Error deleting skill:', err.message);

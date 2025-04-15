@@ -4,8 +4,8 @@ const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const { validateUser } = require('../validators/validators');
 const sendEmail = require('../utils/sendEmail');
-const { OAuth2Client } = require('google-auth-library');
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+// const { OAuth2Client } = require('google-auth-library');
+// const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const axios = require('axios');
 
 

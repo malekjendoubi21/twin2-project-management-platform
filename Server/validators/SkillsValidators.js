@@ -13,7 +13,8 @@ const skillSchema = Joi.object({
     'any.only': 'Category must be either Technical, Soft Skill, or Management',
     'any.required': 'Category is required',
   }),
-  tags: Joi.array().items(Joi.string().trim()).default([]),tags: Joi.number().min(0).max(100).default(0).messages({
+  
+  tags: Joi.number().min(0).max(100).default(0).messages({
     'number.base': 'Tags must be a number',
     'number.min': 'Tags must be at least 0',
     'number.max': 'Tags must not exceed 100',
