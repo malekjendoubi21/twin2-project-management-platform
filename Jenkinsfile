@@ -14,7 +14,7 @@ pipeline {
         stage('Build Server') {
             steps {
                 dir('Server') {
-                    sh 'npm install'
+                    sh 'npm install --legacy-peer-deps'
                 }
             }
         }
