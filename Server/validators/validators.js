@@ -94,6 +94,11 @@ const updateUserSchema = Joi.object({
   bio: Joi.string()
     .allow('')
     .optional(),
+
+      // Add the skills array validation
+  skills: Joi.array()
+  .items(Joi.string().trim())
+  .optional(),
 });
 
 // Export the schema
