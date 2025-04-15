@@ -41,7 +41,7 @@ pipeline {
             steps {
         dir('Server') {
             sh 'npm install --legacy-peer-deps'
-            sh 'npm install @eslint/js --save-dev'
+            sh 'npm install @eslint/js --save-dev --legacy-peer-deps'
             sh 'npx eslint --version'
             sh 'npm run lint'
         }
