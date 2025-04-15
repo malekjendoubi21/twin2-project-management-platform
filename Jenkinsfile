@@ -43,6 +43,9 @@ pipeline {
             // Install dependencies with legacy-peer-deps
             sh 'npm install --legacy-peer-deps'
             
+            // Install ESLint v8 (which supports --use-eslintrc)
+            sh 'npm install eslint@8 --save-dev'
+            
             // Run ESLint with --use-eslintrc flag
             sh 'npx eslint . --use-eslintrc'
         }
