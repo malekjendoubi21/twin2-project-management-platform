@@ -32,10 +32,7 @@ const Projects = () => {
       try {
         // First get basic projects from workspace
         const response = await api.get(`/api/workspaces/${id}/projects`);
-        
-        // Log the raw response data to see what we have
-        console.log("Raw project data:", JSON.stringify(response.data[0]));
-        
+
         // Replace setWorkspace with a direct approach that ensures full data refresh
         const updatedProjects = await Promise.all(response.data.map(async project => {
           // For each project, get its detailed information including populated tasks
@@ -49,13 +46,13 @@ const Projects = () => {
         }));
         
         // Log projects after fetching complete data
-        console.log("Projects with verified task counts:", 
-          updatedProjects.map(p => ({
-            name: p.project_name,
-            taskIdsLength: p.id_tasks ? p.id_tasks.length : 'none',
-            taskIds: p.id_tasks
-          }))
-        );
+          // console.log("Projects with verified task counts:", 
+          //   // updatedProjects.map(p => ({
+          //   //   name: p.project_name,
+          //   //   taskIdsLength: p.id_tasks ? p.id_tasks.length : 'none',
+          //   //   taskIds: p.id_tasks
+          //   // }))
+          // );
         
         // Update workspace state with the fetched project data
         setWorkspace(prevState => ({
@@ -237,12 +234,12 @@ const Projects = () => {
 
   // Add a debugging log to check task counts
   const logProjectTaskCounts = (projects) => {
-    console.log("Projects with task counts:", 
-      projects.map(p => ({
-        name: p.name || p.project_name,
-        taskCount: p.id_tasks?.length || 0
-      }))
-    );
+    // console.log("Projects with task counts:", 
+    //   projects.map(p => ({
+    //     name: p.name || p.project_name,
+    //     taskCount: p.id_tasks?.length || 0
+    //   }))
+    // );
   };
 
   // Add this call before rendering to debug task counts

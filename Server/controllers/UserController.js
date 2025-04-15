@@ -5,7 +5,7 @@ const mongoose = require('mongoose'); // Add this import
 const Workspace = require('../models/Workspace');
 const Project = require('../models/Project'); // This was missing
 const Task = require('../models/Task'); // This was missing
-
+const jwt = require('jsonwebtoken'); // Add this line to import JWT
 
 const getAllUsers = async (req, res) => {
     await User.find()
@@ -188,28 +188,28 @@ const updateLoggedUserPassword = async (req, res, next) => {
 };
 
 const UpdateLoggeduserData = async (req, res) => {
-    try {
-        const { error, value } = validateUpdateUser(req.body);
-        if (error) {
-            return res.status(400).json({ errors: error.details.map(err => err.message) });
-        }
-
-        const user = await User.findByIdAndUpdate(
-            req.user._id,
-            { 
-                name: value.name, 
-                email: value.email, 
-                phone_number: value.phone_number, 
-                bio: value.bio, 
-                profile_picture: value.profile_picture 
-            },
-            { new: true }
-        );
-
-        res.json({ status: 'success', message: 'User updated successfully', user });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+  try {
+    // Validate the request body
+    const { error } = validateUpdateUser(req.body);
+    if (error) {
+      return res.status(400).json({ errors: error.details.map(detail => detail.message) });
     }
+    
+    // Log what fields are being processed for debugging
+    console.log('Updating user with fields:', Object.keys(req.body));
+    
+    // Update the user
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id, 
+      req.body,
+      { new: true, runValidators: true }
+    );
+    
+    res.status(200).json(updatedUser);
+  } catch (err) {
+    console.error('Error updating user:', err);
+    res.status(500).json({ message: 'Server error while updating user' });
+  }
 };
 
 const deleteLoggedUser = async (req, res) => {

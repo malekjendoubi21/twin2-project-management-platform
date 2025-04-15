@@ -27,6 +27,7 @@ import ProjectDetails from './pages/workspace/ProjectDetails.jsx';
 import AdminProfile from "./dashboard/AdminProfile.jsx";
 import ResourceDetails from './pages/workspace/ResourceDetails.jsx';
 
+import WorkspaceTasks from './pages/workspace/WorkspaceTasks.jsx';
 
 function App() {
   const { user } = useSession();
@@ -60,11 +61,7 @@ function App() {
 
           <Route path="/invitations/:token/accept" element={<InvitationResponse />} />
           <Route path="/invitations" element={<Invitations />} />
-          {/* dashboard Routes */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/listusers" element={<Listusers />} />
-          <Route path="/dashboard/user/:id" element={<UserDetails />} />
-          <Route path="/dashboard/AdminProfile" element={<AdminProfile />} />
+
           {/* Workspace Routes */}
           <Route 
             path="/workspace/:id" 
@@ -77,6 +74,7 @@ function App() {
             <Route index element={<Navigate to="overview" replace />} />
             <Route path="overview" element={<WorkspaceOverview />}  />
             <Route path="projects" element={<Projects />} />
+            <Route path="tasks" element={<WorkspaceTasks />} />
             <Route path="projects/:projectId" element={<ProjectDetails />} />
             <Route path="projects/:projectId/resources/:resourceId" element={<ResourceDetails />} />
             <Route path="members" element={<WorkspaceMembers />} />
@@ -93,7 +91,29 @@ function App() {
               <Profile />
             </ProtectedRoute>
           } />
-            
+          
+          {/* dashboard Routes */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/listusers" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Listusers />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/user/:id" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <UserDetails />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/AdminProfile" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminProfile />
+            </ProtectedRoute>
+          } />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </SocketProvider>

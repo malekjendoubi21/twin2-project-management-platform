@@ -363,36 +363,7 @@ useEffect(() => {
         </div>
       </div>
       
-      {/* Appearance */}
-      <div className="card bg-base-200 shadow-xl mb-8">
-        <div className="card-body">
-          <h2 className="card-title text-xl mb-4">Appearance</h2>
-          
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold mb-2">Theme</h3>
-              <div className="flex gap-3">
-                <button className="btn btn-sm btn-outline">Light</button>
-                <button className="btn btn-sm btn-outline">Dark</button>
-                <button className="btn btn-sm btn-outline">System</button>
-              </div>
-            </div>
-            
 
-            <div>
-              <h3 className="font-semibold mb-2">Accent Color</h3>
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary cursor-pointer border-2 border-base-content"></div>
-                <div className="w-8 h-8 rounded-full bg-secondary cursor-pointer"></div>
-                <div className="w-8 h-8 rounded-full bg-accent cursor-pointer"></div>
-                <div className="w-8 h-8 rounded-full bg-info cursor-pointer"></div>
-                <div className="w-8 h-8 rounded-full bg-success cursor-pointer"></div>
-                <div className="w-8 h-8 rounded-full bg-warning cursor-pointer"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
