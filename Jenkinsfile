@@ -43,8 +43,11 @@ pipeline {
             // Install dependencies with legacy-peer-deps
             sh 'npm install --legacy-peer-deps'
             
-            // Install ESLint v8 (which supports --use-eslintrc)
-            sh 'npm install eslint@8 --save-dev'
+            // Install ESLint v8
+            sh 'npm install eslint@8 --save-dev --legacy-peer-deps'
+            
+            // Remove any conflicting eslint.config.js/mjs file if it exists
+            sh 'rm -f eslint.config.js eslint.config.mjs'
             
             // Run ESLint with --use-eslintrc flag
             sh 'npx eslint . --use-eslintrc'
