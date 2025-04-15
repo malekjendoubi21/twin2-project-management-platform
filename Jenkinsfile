@@ -9,8 +9,18 @@ pipeline {
         // Define environment variables if needed
         NODE_ENV = 'production'
     }
+    
 
     stages {
+
+        stage('Debug Environment') {
+    steps {
+        sh 'node -v'
+        sh 'npm -v'
+    }
+}
+
+
         stage('Build Server') {
             steps {
                 dir('Server') {
@@ -29,16 +39,13 @@ pipeline {
 
         stage('Verify Code Quality') {
             steps {
-                dir('Server') {
-                    sh 'npm install --legacy-peer-deps'
-                    sh 'npm run lint'
-                }
-                dir('Client') {
-                    sh 'npm install --legacy-peer-deps'
-                    sh 'npm run lint'
-                }
-            }
+        dir('Server') {
+            sh 'npm install --legacy-peer-deps'
+            sh 'ls -la node_modules/.bin'
+            sh 'npx eslint --version'
+            sh 'npm run lint'
         }
+        }}
 
         stage('Build Frontend') {
             steps {
