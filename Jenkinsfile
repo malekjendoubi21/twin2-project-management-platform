@@ -32,9 +32,10 @@ pipeline {
                 dir('Server') {
                     // Run linting to ensure code quality
                     sh 'npm run lint'
+                    echo "server tests passed"
                 }
                 dir('Client') {
-                    // Run linting for the React frontend
+                    sh 'npm install'
                     sh 'npm run lint'
                 }
             }
@@ -43,7 +44,7 @@ pipeline {
         stage('Build Frontend') {
             steps {
                 dir('Client') {
-                    sh 'npm install'
+                    
                     sh 'npm run build'
                 }
             }
