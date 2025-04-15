@@ -40,10 +40,11 @@ pipeline {
         stage('Verify Code Quality') {
             steps {
         dir('Server') {
-            sh 'npm install --legacy-peer-deps'
-            sh 'npm install @eslint/js --save-dev --legacy-peer-deps'
-            sh 'npx eslint --version'
-            sh 'npm run lint'
+            // Install dependencies
+            sh 'npm install'
+            
+            // Run ESLint using npx (which will find it in the local node_modules)
+            sh 'npx eslint .'
         }
         }}
 
