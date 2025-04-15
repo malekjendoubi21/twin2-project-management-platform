@@ -5,7 +5,7 @@
   "scripts": {
     "test": "echo \"No tests defined\"",
     "start": "nodemon index.js",
-    "lint": "npx eslint ."
+    "lint": "eslint ."
   },
   "keywords": [],
   "author": "",
