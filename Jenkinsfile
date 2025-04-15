@@ -5,6 +5,11 @@ pipeline {
         nodejs 'NodeJS v18'
     }
 
+    environment {
+        // Define environment variables if needed
+        NODE_ENV = 'production'
+    }
+
     stages {
         stage('Build Server') {
             steps {
@@ -22,30 +27,64 @@ pipeline {
             }
         }
 
-        stage('Check if Application Runs') {
+        stage('Verify Code Quality') {
             steps {
                 dir('Server') {
-                    script {
-                        // Lancer l'application en arrière-plan
-                        sh 'nohup npm start > server.log 2>&1 &'
-                        
-                        // Attendre 5 secondes pour s'assurer que l'application démarre
-                        sleep 5
-
-                        // Vérifier si le serveur écoute sur le port 3000
-                        def isRunning = sh(script: " netstat -tln | grep ':3000 '", returnStatus: true) == 0
-
-                        if (!isRunning) {
-                            error "L'application n'a pas démarré correctement !"
-                        } else {
-                            echo "✅ L'application tourne bien sur le port 3000."
-                        }
-
-                        // Tuer le processus pour ne pas bloquer Jenkins
-                        sh "pkill -f 'node index.js'"
-                    }
+                    // Run linting to ensure code quality
+                    sh 'npm run lint'
+                }
+                dir('Client') {
+                    // Run linting for the React frontend
+                    sh 'npm run lint'
                 }
             }
+        }
+
+        stage('Build Frontend') {
+            steps {
+                dir('Client') {
+                    sh 'npm install'
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                script {
+                    // Build Docker images for the backend and frontend
+                    sh 'docker build -t mern-backend ./Server'
+                    sh 'docker build -t mern-frontend ./Client'
+                }
+            }
+        }
+
+        stage('Deploy to Docker') {
+            steps {
+                script {
+                    // Run MongoDB container
+                    sh 'docker run -d --name mongodb -p 27017:27017 mongo'
+
+                    // Run Backend container
+                    sh 'docker run -d --name mern-backend --link mongodb -p 3000:3000 mern-backend'
+
+                    // Run Frontend container
+                    sh 'docker run -d --name mern-frontend -p 80:80 mern-frontend'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Cleaning up workspace..."
+            cleanWs()
+        }
+        success {
+            echo "✅ Build and deployment completed successfully!"
+        }
+        failure {
+            echo "❌ Build or deployment failed. Check the logs for details."
         }
     }
 }
