@@ -11,8 +11,8 @@ const ProgressCircle = ({ percentage, size = 80, strokeWidth = 8 }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
-   
-  
+
+
 
     let strokeColor;
     if (percentage < 30) strokeColor = '#ef4444'; // red
@@ -51,7 +51,7 @@ const ProgressCircle = ({ percentage, size = 80, strokeWidth = 8 }) => {
 
 const Profile = () => {
     const { id } = useParams(); // Extract `id` from the URL
-   
+
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -98,7 +98,116 @@ const Profile = () => {
     });
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [levelFilter, setLevelFilter] = useState('all');
+    // État pour le quiz
+    const [currentQuiz, setCurrentQuiz] = useState(null);
+    const [isQuizLoading, setIsQuizLoading] = useState(false); // Nouvel état pour gérer le chargement
+    const [userAnswers, setUserAnswers] = useState({}); // Nouvel état pour les réponses de l'utilisateur
+    // Fonction pour générer un quiz
+    const generateQuiz = async (skillName) => {
+        if (isQuizLoading) {
+            toast.info('Veuillez attendre avant de générer un autre quiz.');
+            return;
+        }
 
+        setIsQuizLoading(true);
+        try {
+            const response = await fetch('https://opentdb.com/api.php?amount=20&category=18&type=multiple'); // Augmente à 20 pour avoir plus de choix
+            const data = await response.json();
+            console.log('Données brutes reçues:', data);
+
+            if (!response.ok || data.response_code !== 0 || !data.results.length) {
+                throw new Error('Aucune question trouvée dans la base de données');
+            }
+
+            // Filtrer les questions contenant le nom de la compétence (par exemple, "Java")
+            const filteredQuestions = data.results.filter(result =>
+                result.question.toLowerCase().includes(skillName.toLowerCase())
+            );
+
+            // Si pas assez de questions spécifiques, utiliser toutes les questions de la catégorie
+            const questionsToUse = filteredQuestions.length >= 10
+                ? filteredQuestions.slice(0, 10)
+                : data.results.slice(0, 10);
+
+            const questions = questionsToUse.map(q => ({
+                question: q.question,
+                options: {
+                    a: q.incorrect_answers[0],
+                    b: q.incorrect_answers[1],
+                    c: q.incorrect_answers[2],
+                    d: q.correct_answer,
+                },
+                correct_answer: 'd', // Bonne réponse à la dernière position
+            }));
+
+            if (questions.length < 10) {
+                console.warn('Moins de 10 questions pertinentes trouvées, utilisant des questions générales.');
+            }
+
+            setCurrentQuiz({
+                skill: skillName,
+                questions: questions,
+            });
+            setUserAnswers({}); // Réinitialiser les réponses
+            toast.success(`Quiz généré pour ${skillName} !`);
+        } catch (error) {
+            console.error('Erreur lors de la génération du quiz:', error);
+            toast.error(error.message || 'Échec de la génération du quiz');
+        } finally {
+            setTimeout(() => setIsQuizLoading(false), 2000);
+        }
+    };
+
+    // Fonction pour soumettre le quiz et mettre à jour les tags
+    const submitQuiz = async () => {
+        if (!currentQuiz) return;
+
+        let correctAnswers = 0;
+        currentQuiz.questions.forEach((question, index) => {
+            const userAnswer = userAnswers[index];
+            if (userAnswer === question.correct_answer) {
+                correctAnswers++;
+            }
+        });
+
+        toast.success(`Score : ${correctAnswers}/10`);
+
+        if (correctAnswers > 8) {
+            const skillToUpdate = skills.find(skill => skill.name === currentQuiz.skill);
+            if (skillToUpdate) {
+                const newTags = Math.min(100, skillToUpdate.tags + 20);
+                console.log('Mise à jour tags:', { skillId: skillToUpdate._id, oldTags: skillToUpdate.tags, newTags });
+                try {
+                    const response = await api.put(`/api/skills/update/${skillToUpdate._id}`, {
+                        tags: newTags,
+                        userId: skillToUpdate.userId, // Ajout conditionnel
+                    });
+                    setSkills(skills.map(skill =>
+                        skill._id === skillToUpdate._id ? response.data : skill
+                    ));
+                    toast.success(`Maîtrise de ${currentQuiz.skill} augmentée à ${newTags}% !`);
+                } catch (error) {
+                    console.error('Erreur lors de la mise à jour des tags:', {
+                        message: error.message,
+                        response: error.response?.data,
+                        status: error.response?.status,
+                        config: error.config,
+                    });
+                    toast.error('Échec de la mise à jour de la maîtrise: ' + (error.response?.data?.message || error.message));
+                }
+            }
+        }
+
+        setCurrentQuiz(null);
+    };
+
+    // Gestion des réponses de l'utilisateur
+    const handleAnswerChange = (questionIndex, answer) => {
+        setUserAnswers(prev => ({
+            ...prev,
+            [questionIndex]: answer,
+        }));
+    };
     // États pour les certifications
     const [certifications, setCertifications] = useState([]);
     const [showCertificationForm, setShowCertificationForm] = useState(false);
@@ -122,48 +231,48 @@ const Profile = () => {
 
 
     // États pour les expériences
- 
-     const [locationTypeFilter, setLocationTypeFilter] = useState('Tous');
-     const [experienceSortOption, setExperienceSortOption] = useState('date-desc');
+
+    const [locationTypeFilter, setLocationTypeFilter] = useState('Tous');
+    const [experienceSortOption, setExperienceSortOption] = useState('date-desc');
     const [experiences, setExperiences] = useState([]);
     const [showExperienceForm, setShowExperienceForm] = useState(false);
     const [newExperience, setNewExperience] = useState({
-    job_title: '',
-    company: '',
-    employment_type: 'Temps plein',
-    is_current: false,
-    start_date: '',
-    end_date: '',
-    location: '',
-    location_type: 'Sur place',
-    description: '',
-   
-    job_source: '',
-  
+        job_title: '',
+        company: '',
+        employment_type: 'Temps plein',
+        is_current: false,
+        start_date: '',
+        end_date: '',
+        location: '',
+        location_type: 'Sur place',
+        description: '',
+
+        job_source: '',
+
     });
     const [editingExperienceId, setEditingExperienceId] = useState(null);
     const [editExperienceData, setEditExperienceData] = useState({
-       job_title: '',
-    company: '',
-    employment_type: 'Temps plein',
-    is_current: false,
-    start_date: '',
-    end_date: '',
-    location: '',
-    location_type: 'Sur place',
-    description: '',
-  
-    job_source: ''
+        job_title: '',
+        company: '',
+        employment_type: 'Temps plein',
+        is_current: false,
+        start_date: '',
+        end_date: '',
+        location: '',
+        location_type: 'Sur place',
+        description: '',
+
+        job_source: ''
     });
 
 
     const generateCV = async () => {
         const doc = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4',
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4',
         });
-      
+
         const marginLeft = 15;
         const marginRight = 15;
         const marginTop = 15;
@@ -172,64 +281,64 @@ const Profile = () => {
         const mainContentWidth = pageWidth - marginLeft - marginRight - sidebarWidth - 5; // Main content area
         let currentY = marginTop;
         let mainContentY = marginTop;
-      
+
         // Helper to convert image URL to base64
         const getBase64Image = async (url) => {
-          try {
-            const response = await fetch(url);
-            const blob = await response.blob();
-            return new Promise((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result);
-              reader.readAsDataURL(blob);
-            });
-          } catch (error) {
-            console.error('Error fetching profile picture:', error);
-            return null;
-          }
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                });
+            } catch (error) {
+                console.error('Error fetching profile picture:', error);
+                return null;
+            }
         };
-      
+
         // Add Sidebar Background
         doc.setFillColor(0, 51, 102); // Dark blue
         doc.rect(marginLeft, 0, sidebarWidth, 297, 'F'); // Full height sidebar
-      
+
         // Profile Picture
         let profileImage = null;
         if (formData.profile_picture) {
-          profileImage = await getBase64Image(formData.profile_picture);
+            profileImage = await getBase64Image(formData.profile_picture);
         }
         if (profileImage) {
-          try {
-            doc.addImage(profileImage, 'JPEG', marginLeft + 10, currentY, 40, 40, undefined, 'FAST'); // 40x40mm image
-            currentY += 45;
-          } catch (error) {
-            console.error('Error adding profile picture to PDF:', error);
-            currentY += 5; // Space even if image fails
-          }
+            try {
+                doc.addImage(profileImage, 'JPEG', marginLeft + 10, currentY, 40, 40, undefined, 'FAST'); // 40x40mm image
+                currentY += 45;
+            } catch (error) {
+                console.error('Error adding profile picture to PDF:', error);
+                currentY += 5; // Space even if image fails
+            }
         } else {
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(12);
-          doc.setTextColor(255, 255, 255);
-          doc.text('Photo indisponible', marginLeft + 10, currentY + 10);
-          currentY += 15;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(255, 255, 255);
+            doc.text('Photo indisponible', marginLeft + 10, currentY + 10);
+            currentY += 15;
         }
-      
+
         // Name and Tagline in Sidebar
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(18);
         doc.setTextColor(255, 255, 255); // White text
         const nameLines = doc.splitTextToSize(formData.name || 'Nom Prénom', sidebarWidth - 10);
         nameLines.forEach((line) => {
-          doc.text(line, marginLeft + 5, currentY);
-          currentY += 6;
+            doc.text(line, marginLeft + 5, currentY);
+            currentY += 6;
         });
-      
+
         doc.setFont('helvetica', 'italic');
         doc.setFontSize(10);
         doc.setTextColor(200, 200, 200); // Light gray
         doc.text('Développeur Full Stack', marginLeft + 5, currentY); // Example tagline
         currentY += 10;
-      
+
         // Contact Info in Sidebar
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
@@ -237,266 +346,266 @@ const Profile = () => {
         doc.text('Email:', marginLeft + 5, currentY);
         doc.setTextColor(173, 216, 230); // Light blue for clickable link
         doc.textWithLink(formData.email || 'email@example.com', marginLeft + 15, currentY, {
-          url: `mailto:${formData.email || 'email@example.com'}`,
+            url: `mailto:${formData.email || 'email@example.com'}`,
         });
         currentY += 6;
         doc.setTextColor(255, 255, 255);
         doc.text(`Téléphone: ${formData.phone_number || '+33 123 456 789'}`, marginLeft + 5, currentY);
         currentY += 10;
-      
+
         // Skills in Sidebar
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.setTextColor(255, 255, 255);
         doc.text('Compétences', marginLeft + 5, currentY);
         currentY += 6;
-      
+
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(200, 200, 200);
         if (skills.length === 0) {
-          doc.text('Aucune compétence', marginLeft + 5, currentY);
-          currentY += 5;
-        } else {
-          const skillsText = skills.map((skill) => skill.name).join(', ');
-          const skillsLines = doc.splitTextToSize(skillsText, sidebarWidth - 10);
-          skillsLines.forEach((line) => {
-            doc.text(line, marginLeft + 5, currentY);
+            doc.text('Aucune compétence', marginLeft + 5, currentY);
             currentY += 5;
-          });
+        } else {
+            const skillsText = skills.map((skill) => skill.name).join(', ');
+            const skillsLines = doc.splitTextToSize(skillsText, sidebarWidth - 10);
+            skillsLines.forEach((line) => {
+                doc.text(line, marginLeft + 5, currentY);
+                currentY += 5;
+            });
         }
-      
+
         // Main Content Area (Right Side)
         const mainContentX = marginLeft + sidebarWidth + 5;
-      
+
         // Helper to add section header in main content
         const addSectionHeader = (title) => {
-          doc.setFillColor(240, 240, 240); // Light gray background
-          doc.rect(mainContentX, mainContentY, mainContentWidth, 6, 'F');
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(14);
-          doc.setTextColor(0, 51, 102);
-          doc.text(title, mainContentX, mainContentY + 4);
-          mainContentY += 8;
+            doc.setFillColor(240, 240, 240); // Light gray background
+            doc.rect(mainContentX, mainContentY, mainContentWidth, 6, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.setTextColor(0, 51, 102);
+            doc.text(title, mainContentX, mainContentY + 4);
+            mainContentY += 8;
         };
-      
+
         // Helper to add a divider
         const addDivider = () => {
-          doc.setDrawColor(0, 51, 102);
-          doc.setLineWidth(0.3);
-          doc.line(mainContentX, mainContentY, mainContentX + mainContentWidth, mainContentY);
-          mainContentY += 3;
+            doc.setDrawColor(0, 51, 102);
+            doc.setLineWidth(0.3);
+            doc.line(mainContentX, mainContentY, mainContentX + mainContentWidth, mainContentY);
+            mainContentY += 3;
         };
-      
+
         // Expériences Professionnelles
         addSectionHeader('Expériences Professionnelles');
         if (experiences.length === 0) {
-          doc.setFont('helvetica', 'italic');
-          doc.setFontSize(10);
-          doc.setTextColor(100, 100, 100);
-          doc.text('Aucune expérience enregistrée', mainContentX, mainContentY);
-          mainContentY += 5;
-        } else {
-          experiences.forEach((exp) => {
-            const startDate = new Date(exp.start_date).toLocaleDateString('fr-FR');
-            const endDate = exp.is_current ? 'Présent' : new Date(exp.end_date).toLocaleDateString('fr-FR');
-      
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(11);
-            doc.setTextColor(0, 51, 102);
-            doc.text(`${exp.job_title} - ${exp.company}`, mainContentX, mainContentY);
-            mainContentY += 5;
-      
             doc.setFont('helvetica', 'italic');
-            doc.setFontSize(9);
-            doc.setTextColor(50, 50, 50);
-            doc.text(`${startDate} - ${endDate} | ${exp.employment_type} (${exp.location_type})`, mainContentX, mainContentY);
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Aucune expérience enregistrée', mainContentX, mainContentY);
             mainContentY += 5;
-      
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(9);
-            const descriptionLines = doc.splitTextToSize(exp.description || 'Aucune description', mainContentWidth);
-            descriptionLines.forEach((line) => {
-              doc.text(line, mainContentX, mainContentY);
-              mainContentY += 4;
+        } else {
+            experiences.forEach((exp) => {
+                const startDate = new Date(exp.start_date).toLocaleDateString('fr-FR');
+                const endDate = exp.is_current ? 'Présent' : new Date(exp.end_date).toLocaleDateString('fr-FR');
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor(0, 51, 102);
+                doc.text(`${exp.job_title} - ${exp.company}`, mainContentX, mainContentY);
+                mainContentY += 5;
+
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(9);
+                doc.setTextColor(50, 50, 50);
+                doc.text(`${startDate} - ${endDate} | ${exp.employment_type} (${exp.location_type})`, mainContentX, mainContentY);
+                mainContentY += 5;
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                const descriptionLines = doc.splitTextToSize(exp.description || 'Aucune description', mainContentWidth);
+                descriptionLines.forEach((line) => {
+                    doc.text(line, mainContentX, mainContentY);
+                    mainContentY += 4;
+                });
+
+                mainContentY += 3;
+                if (mainContentY > 260) {
+                    doc.addPage();
+                    mainContentY = marginTop;
+                }
             });
-      
-            mainContentY += 3;
-            if (mainContentY > 260) {
-              doc.addPage();
-              mainContentY = marginTop;
-            }
-          });
         }
-      
+
         // Certifications
         mainContentY += 5;
         addSectionHeader('Certifications');
         if (certifications.length === 0) {
-          doc.setFont('helvetica', 'italic');
-          doc.setFontSize(10);
-          doc.setTextColor(100, 100, 100);
-          doc.text('Aucune certification enregistrée', mainContentX, mainContentY);
-          mainContentY += 5;
-        } else {
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(9);
-          doc.setTextColor(50, 50, 50);
-          certifications.forEach((cert) => {
-            doc.text(
-              `• ${cert.certifications_name} - ${cert.issued_by} (${new Date(cert.obtained_date).toLocaleDateString('fr-FR')})`,
-              mainContentX,
-              mainContentY
-            );
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Aucune certification enregistrée', mainContentX, mainContentY);
             mainContentY += 5;
-      
-            if (mainContentY > 260) {
-              doc.addPage();
-              mainContentY = marginTop;
-            }
-          });
+        } else {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(50, 50, 50);
+            certifications.forEach((cert) => {
+                doc.text(
+                    `• ${cert.certifications_name} - ${cert.issued_by} (${new Date(cert.obtained_date).toLocaleDateString('fr-FR')})`,
+                    mainContentX,
+                    mainContentY
+                );
+                mainContentY += 5;
+
+                if (mainContentY > 260) {
+                    doc.addPage();
+                    mainContentY = marginTop;
+                }
+            });
         }
-      
+
         // Projets
         mainContentY += 5;
         addSectionHeader('Projets');
         if (projects.length === 0) {
-          doc.setFont('helvetica', 'italic');
-          doc.setFontSize(10);
-          doc.setTextColor(100, 100, 100);
-          doc.text('Aucun projet associé à cet utilisateur', mainContentX, mainContentY);
-          mainContentY += 5;
-        } else {
-          projects.forEach((project) => {
-            const startDate = new Date(project.start_date).toLocaleDateString('fr-FR');
-            const endDate = new Date(project.end_date).toLocaleDateString('fr-FR');
-      
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(11);
-            doc.setTextColor(0, 51, 102);
-            doc.text(project.project_name, mainContentX, mainContentY);
-            mainContentY += 5;
-      
             doc.setFont('helvetica', 'italic');
-            doc.setFontSize(9);
-            doc.setTextColor(50, 50, 50);
-            doc.text(`${startDate} - ${endDate}`, mainContentX, mainContentY);
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Aucun projet associé à cet utilisateur', mainContentX, mainContentY);
             mainContentY += 5;
-      
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(9);
-            const descriptionLines = doc.splitTextToSize(project.description || 'Aucune description', mainContentWidth);
-            descriptionLines.forEach((line) => {
-              doc.text(line, mainContentX, mainContentY);
-              mainContentY += 4;
+        } else {
+            projects.forEach((project) => {
+                const startDate = new Date(project.start_date).toLocaleDateString('fr-FR');
+                const endDate = new Date(project.end_date).toLocaleDateString('fr-FR');
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor(0, 51, 102);
+                doc.text(project.project_name, mainContentX, mainContentY);
+                mainContentY += 5;
+
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(9);
+                doc.setTextColor(50, 50, 50);
+                doc.text(`${startDate} - ${endDate}`, mainContentX, mainContentY);
+                mainContentY += 5;
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                const descriptionLines = doc.splitTextToSize(project.description || 'Aucune description', mainContentWidth);
+                descriptionLines.forEach((line) => {
+                    doc.text(line, mainContentX, mainContentY);
+                    mainContentY += 4;
+                });
+
+                mainContentY += 3;
+                if (mainContentY > 260) {
+                    doc.addPage();
+                    mainContentY = marginTop;
+                }
             });
-      
-            mainContentY += 3;
-            if (mainContentY > 260) {
-              doc.addPage();
-              mainContentY = marginTop;
-            }
-          });
         }
-      
+
         // Footer
         doc.setFont('helvetica', 'italic');
         doc.setFontSize(8);
         doc.setTextColor(100, 100, 100);
         doc.text('Généré le ' + new Date().toLocaleDateString('fr-FR'), marginLeft, 280);
         doc.text('Page 1', pageWidth - marginRight - 10, 280);
-      
+
         doc.save('CV.pdf');
-      };
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await api.get('/api/users/getMe');
-        if (!response.data || !response.data._id) {
-          throw new Error('Invalid user data received');
-        }
-        setUser(response.data);
-        setFormData({
-          name: response.data?.name || '',
-          email: response.data?.email || '',
-          phone_number: response.data?.phone_number || '',
-          bio: response.data?.bio || '',
-          role: response.data?.role || 'user',
-          two_factor_enabled: response.data?.two_factor_enabled || false,
-          profile_picture: response.data?.profile_picture || '',
-          password: '',
-          newPassword: '',
-          confirmPassword: '',
-        });
-        setImagePreview(response.data?.profile_picture || null);
-
-        await Promise.all([
-          fetchUserSkills(),
-          fetchUserExperiences(),
-          fetchCertifications(),
-          //fetchUserProjects(), // Add projects fetching
-        ]);
-      } catch (error) {
-        console.error('Error fetching user:', error.response?.data || error.message);
-        toast.error('Failed to load profile: ' + (error.response?.data?.message || error.message));
-        if (error.response?.status === 401) {
-          navigate('/login');
-        }
-      } finally {
-        setLoading(false);
-      }
     };
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const response = await api.get('/api/users/getMe');
+                if (!response.data || !response.data._id) {
+                    throw new Error('Invalid user data received');
+                }
+                setUser(response.data);
+                setFormData({
+                    name: response.data?.name || '',
+                    email: response.data?.email || '',
+                    phone_number: response.data?.phone_number || '',
+                    bio: response.data?.bio || '',
+                    role: response.data?.role || 'user',
+                    two_factor_enabled: response.data?.two_factor_enabled || false,
+                    profile_picture: response.data?.profile_picture || '',
+                    password: '',
+                    newPassword: '',
+                    confirmPassword: '',
+                });
+                setImagePreview(response.data?.profile_picture || null);
 
-    const fetchUserSkills = async () => {
-      try {
-        const response = await api.get('/api/skills/');
-        setSkills(Array.isArray(response.data) ? response.data : []);
-      } catch (error) {
-        console.error('Error fetching user skills:', error.response?.data || error.message);
-        setSkills([]);
-        toast.error('Failed to load skills: ' + (error.response?.data?.message || error.message));
-      }
-    };
+                await Promise.all([
+                    fetchUserSkills(),
+                    fetchUserExperiences(),
+                    fetchCertifications(),
+                    //fetchUserProjects(), // Add projects fetching
+                ]);
+            } catch (error) {
+                console.error('Error fetching user:', error.response?.data || error.message);
+                toast.error('Failed to load profile: ' + (error.response?.data?.message || error.message));
+                if (error.response?.status === 401) {
+                    navigate('/login');
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const fetchUserExperiences = async () => {
-      try {
-        const response = await api.get('/api/experiences/');
-        const fetchedExperiences = Array.isArray(response.data) ? response.data : [];
-        setExperiences(fetchedExperiences);
-      } catch (error) {
-        console.error('Error fetching user experiences:', error.response?.data || error.message);
-        setExperiences([]);
-        toast.error('Failed to load experiences: ' + (error.response?.data?.message || error.message));
-      }
-    };
+        const fetchUserSkills = async () => {
+            try {
+                const response = await api.get('/api/skills/');
+                setSkills(Array.isArray(response.data) ? response.data : []);
+            } catch (error) {
+                console.error('Error fetching user skills:', error.response?.data || error.message);
+                setSkills([]);
+                toast.error('Failed to load skills: ' + (error.response?.data?.message || error.message));
+            }
+        };
 
-    const fetchCertifications = async () => {
-      try {
-        const response = await api.get('/api/certifications');
-        const validCertifications = Array.isArray(response.data)
-          ? response.data.map((cert) => ({
-              _id: cert._id || '',
-              certifications_name: cert.certifications_name || 'Unnamed Certification',
-              issued_by: cert.issued_by || 'Unknown Issuer',
-              obtained_date: cert.obtained_date || new Date().toISOString().split('T')[0],
-              description: cert.description || '',
-              image: cert.image || null,
-            }))
-          : [];
-        setCertifications(validCertifications);
-      } catch (error) {
-        console.error('Error fetching certifications:', error.response?.data || error.message);
-        toast.error('Failed to load certifications');
-        setCertifications([]);
-      }
-    };
+        const fetchUserExperiences = async () => {
+            try {
+                const response = await api.get('/api/experiences/');
+                const fetchedExperiences = Array.isArray(response.data) ? response.data : [];
+                setExperiences(fetchedExperiences);
+            } catch (error) {
+                console.error('Error fetching user experiences:', error.response?.data || error.message);
+                setExperiences([]);
+                toast.error('Failed to load experiences: ' + (error.response?.data?.message || error.message));
+            }
+        };
 
-   
-     
-   // fetchCertifications();
-  //  fetchUserExperiences();
-    fetchUser();
-  }, [navigate]);
+        const fetchCertifications = async () => {
+            try {
+                const response = await api.get('/api/certifications'); // Appelle getUserCertifications
+                const validCertifications = Array.isArray(response.data)
+                    ? response.data.map((cert) => ({
+                        _id: cert._id || '',
+                        certifications_name: cert.certifications_name || 'Unnamed Certification',
+                        issued_by: cert.issued_by || 'Unknown Issuer',
+                        obtained_date: cert.obtained_date || new Date().toISOString().split('T')[0],
+                        description: cert.description || '',
+                        image: cert.image || null,
+                    }))
+                    : [];
+                setCertifications(validCertifications);
+            } catch (error) {
+                console.error('Error fetching certifications:', error.response?.data || error.message);
+                toast.error('Failed to load certifications');
+                setCertifications([]);
+            }
+        };
+
+
+
+        fetchCertifications();
+        //  fetchUserExperiences();
+        fetchUser();
+    }, [navigate]);
     useEffect(() => {
         if (theme === 'system') {
             const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -677,6 +786,9 @@ const Profile = () => {
 
     // Gestion des certifications
     const [sortOption, setSortOption] = useState('date-desc');
+
+
+    // Gestion de la sélection d'image
     const handleCertificationImageSelect = (e, isEditing = false) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -690,15 +802,18 @@ const Profile = () => {
         reader.onload = (event) => {
             const imageData = event.target.result;
             if (isEditing) {
-                setEditCertificationData(prev => ({ ...prev, image: imageData }));
+                setEditCertificationData((prev) => ({ ...prev, image: file }));
             } else {
-                setNewCertification(prev => ({ ...prev, image: imageData }));
+                setNewCertification((prev) => ({ ...prev, image: file }));
             }
             setCertificationImagePreview(imageData);
         };
         reader.readAsDataURL(file);
+
+        console.log('Selected file:', file);
     };
 
+    // Ajouter une certification
     const handleAddCertification = async (e) => {
         e.preventDefault();
         setIsSaving(true);
@@ -707,16 +822,30 @@ const Profile = () => {
             formData.append('certifications_name', newCertification.certifications_name);
             formData.append('issued_by', newCertification.issued_by);
             formData.append('obtained_date', newCertification.obtained_date);
-            formData.append('description', newCertification.description);
-
-            if (newCertification.image && newCertification.image.startsWith('data:')) {
-                const blob = await fetch(newCertification.image).then(res => res.blob());
-                formData.append('image', blob, 'certification.jpg');
+            formData.append('description', newCertification.description || '');
+            if (newCertification.image instanceof File) {
+                formData.append('image', newCertification.image);
+            } else {
+                console.log('No valid file to upload:', newCertification.image);
             }
 
-            const response = await api.post('/api/certifications/addCertification', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
+            // Log détaillé du contenu de FormData
+            console.log('Contenu de FormData avant envoi:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}:`, value instanceof File ? `File { name: "${value.name}", size: ${value.size} }` : value);
+            }
+
+            // Envoyer la requête avec Content-Type explicite
+            const response = await api.post('/api/certifications/add', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data', // Forcer le Content-Type
+                },
+                onUploadProgress: (progressEvent) => {
+                    console.log('Progression de l\'upload:', progressEvent.loaded, '/', progressEvent.total);
+                },
             });
+
+            console.log('Réponse du serveur:', response.data);
 
             setCertifications([...certifications, response.data]);
             setNewCertification({
@@ -732,25 +861,15 @@ const Profile = () => {
             toast.success('Certification added successfully');
         } catch (error) {
             console.error('Error adding certification:', error.response?.data || error.message);
+            if (error.request) {
+                console.log('Requête envoyée:', error.request);
+            }
             toast.error(error.response?.data?.message || 'Failed to add certification');
         } finally {
             setIsSaving(false);
         }
     };
-
-    const handleEditCertification = (certification) => {
-        setEditingCertificationId(certification._id);
-        setEditCertificationData({
-            certifications_name: certification.certifications_name || '',
-            issued_by: certification.issued_by || '',
-            obtained_date: certification.obtained_date ? certification.obtained_date.split('T')[0] : '',
-            description: certification.description || '',
-            image: certification.image || null,
-        });
-        setCertificationImagePreview(certification.image || null);
-        setShowCertificationForm(true);
-    };
-
+    // Mettre à jour une certification
     const handleUpdateCertification = async (e) => {
         e.preventDefault();
         setIsSaving(true);
@@ -760,19 +879,15 @@ const Profile = () => {
             formData.append('issued_by', editCertificationData.issued_by);
             formData.append('obtained_date', editCertificationData.obtained_date);
             formData.append('description', editCertificationData.description);
-
-            if (editCertificationData.image && editCertificationData.image.startsWith('data:')) {
-                const blob = await fetch(editCertificationData.image).then(res => res.blob());
-                formData.append('image', blob, 'certification.jpg');
-            } else if (editCertificationData.image) {
-                formData.append('image', editCertificationData.image); // Conserver l'URL existante
+            if (editCertificationData.image instanceof File) {
+                formData.append('image', editCertificationData.image); // Fichier brut
             }
 
-            const response = await api.put(`/api/certifications/updateCertification/${editingCertificationId}`, formData, {
+            const response = await api.put(`/api/certifications/update/${editingCertificationId}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
-            setCertifications(certifications.map(cert => (cert._id === editingCertificationId ? response.data : cert)));
+            setCertifications(certifications.map((cert) => (cert._id === editingCertificationId ? response.data : cert)));
             setEditingCertificationId(null);
             setEditCertificationData({
                 certifications_name: '',
@@ -793,27 +908,17 @@ const Profile = () => {
         }
     };
 
-    const handleDeleteCertification = async (certificationId) => {
-        try {
-            await api.delete(`/api/certifications/${certificationId}`);
-            setCertifications(certifications.filter(cert => cert._id !== certificationId));
-            toast.success('Certification deleted successfully');
-        } catch (error) {
-            console.error('Error deleting certification:', error.response?.data || error.message);
-            toast.error(error.response?.data?.message || 'Failed to delete certification');
-        }
-    };
-
+    // Annuler l'image sélectionnée
     const handleCancelCertificationImage = () => {
         if (editingCertificationId) {
-            const existingCert = certifications.find(cert => cert._id === editingCertificationId);
-            setEditCertificationData(prev => ({
+            const existingCert = certifications.find((cert) => cert._id === editingCertificationId);
+            setEditCertificationData((prev) => ({
                 ...prev,
-                image: existingCert?.image || null,
+                image: existingCert?.image || null, // Revenir à l'URL existante
             }));
             setCertificationImagePreview(existingCert?.image || null);
         } else {
-            setNewCertification(prev => ({
+            setNewCertification((prev) => ({
                 ...prev,
                 image: null,
             }));
@@ -821,75 +926,99 @@ const Profile = () => {
         }
         if (certificationFileInputRef.current) certificationFileInputRef.current.value = null;
     };
+    //handleDeleteCertification
+    const handleDeleteCertification = async (certificationId) => {
+        try {
+            await api.delete(`/api/certifications/${certificationId}`);
+            setCertifications(certifications.filter((cert) => cert._id !== certificationId));
+            toast.success('Certification deleted successfully');
+        } catch (error) {
+            console.error('Error deleting certification:', error.response?.data || error.message);
+            toast.error(error.response?.data?.message || 'Failed to delete certification');
+        }
+    };
+    const handleEditCertification = (certification) => {
+        setEditingCertificationId(certification._id);
+        setEditCertificationData({
+            certifications_name: certification.certifications_name || '',
+            issued_by: certification.issued_by || '',
+            obtained_date: certification.obtained_date ? certification.obtained_date.split('T')[0] : '',
+            description: certification.description || '',
+            image: certification.image || null,
+        });
+        setCertificationImagePreview(certification.image || null);
+        setShowCertificationForm(true);
+    };
 
-   // Gestion des expériences
-const handleAddExperience = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
-    try {
-      // Préparez les données à envoyer en incluant tous les champs nécessaires
-      const experienceData = {
-        job_title: newExperience.job_title,
-        company: newExperience.company,
-        employment_type: newExperience.employment_type,
-        is_current: newExperience.is_current,
-        start_date: newExperience.start_date,
-        end_date: newExperience.is_current ? null : newExperience.end_date, // Ne pas envoyer end_date si poste actuel
-        location: newExperience.location,
-        location_type: newExperience.location_type,
-        description: newExperience.description,
-       
-        job_source: newExperience.job_source,
-      };
-  
-      const response = await api.post('/api/experiences/add', experienceData);
-      
-      // Vérifiez que la réponse contient bien les données attendues
-      if (!response.data || !response.data._id) {
-        throw new Error('Réponse invalide du serveur');
-      }
-  
-      setExperiences([...experiences, response.data]);
-      setNewExperience({
-        job_title: '',
-        company: '',
-        employment_type: 'Temps plein',
-        is_current: false,
-        start_date: '',
-        end_date: '',
-        location: '',
-        location_type: 'Sur place',
-        description: '',
-      
-        job_source: '',
-      });
-      setShowExperienceForm(false);
-      toast.success('Experience added successfully');
-    } catch (error) {
-      console.error('Error adding experience:', error.response?.data || error.message);
-      toast.error(`Failed to add experience: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+
+    // Gestion des expériences
+    const handleAddExperience = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            // Préparez les données à envoyer en incluant tous les champs nécessaires
+            const experienceData = {
+                job_title: newExperience.job_title,
+                company: newExperience.company,
+                employment_type: newExperience.employment_type,
+                is_current: newExperience.is_current,
+                start_date: newExperience.start_date,
+                end_date: newExperience.is_current ? null : newExperience.end_date, // Ne pas envoyer end_date si poste actuel
+                location: newExperience.location,
+                location_type: newExperience.location_type,
+                description: newExperience.description,
+
+                job_source: newExperience.job_source,
+            };
+
+            const response = await api.post('/api/experiences/add', experienceData);
+
+            // Vérifiez que la réponse contient bien les données attendues
+            if (!response.data || !response.data._id) {
+                throw new Error('Réponse invalide du serveur');
+            }
+
+            setExperiences([...experiences, response.data]);
+            setNewExperience({
+                job_title: '',
+                company: '',
+                employment_type: 'Temps plein',
+                is_current: false,
+                start_date: '',
+                end_date: '',
+                location: '',
+                location_type: 'Sur place',
+                description: '',
+
+                job_source: '',
+            });
+            setShowExperienceForm(false);
+            toast.success('Experience added successfully');
+        } catch (error) {
+            console.error('Error adding experience:', error.response?.data || error.message);
+            toast.error(`Failed to add experience: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const handleEditExperience = (experience) => {
         setEditingExperienceId(experience._id);
         setEditExperienceData({
-          job_title: experience.job_title || '',
-          company: experience.company || '',
-          employment_type: experience.employment_type || 'Temps plein',
-          is_current: experience.is_current || false,
-          start_date: experience.start_date ? new Date(experience.start_date).toISOString().split('T')[0] : '',
-          end_date: experience.end_date ? new Date(experience.end_date).toISOString().split('T')[0] : '',
-          location: experience.location || '',
-          location_type: experience.location_type || 'Sur place',
-          description: experience.description || '',
-          
-          job_source: experience.job_source || '',
+            job_title: experience.job_title || '',
+            company: experience.company || '',
+            employment_type: experience.employment_type || 'Temps plein',
+            is_current: experience.is_current || false,
+            start_date: experience.start_date ? new Date(experience.start_date).toISOString().split('T')[0] : '',
+            end_date: experience.end_date ? new Date(experience.end_date).toISOString().split('T')[0] : '',
+            location: experience.location || '',
+            location_type: experience.location_type || 'Sur place',
+            description: experience.description || '',
+
+            job_source: experience.job_source || '',
         });
         setShowExperienceForm(true);
-      };
+    };
 
     const handleUpdateExperience = async (e) => {
         e.preventDefault();
@@ -899,16 +1028,16 @@ const handleAddExperience = async (e) => {
                 `/api/experiences/update/${editingExperienceId}`,
                 {
                     job_title: editExperienceData.job_title,
-        company: editExperienceData.company,
-        employment_type: editExperienceData.employment_type,
-        is_current: editExperienceData.is_current,
-        start_date: editExperienceData.start_date,
-        end_date: editExperienceData.is_current ? null : editExperienceData.end_date,
-        location: editExperienceData.location,
-        location_type: editExperienceData.location_type,
-        description: editExperienceData.description,
-    
-        job_source: editExperienceData.job_source,
+                    company: editExperienceData.company,
+                    employment_type: editExperienceData.employment_type,
+                    is_current: editExperienceData.is_current,
+                    start_date: editExperienceData.start_date,
+                    end_date: editExperienceData.is_current ? null : editExperienceData.end_date,
+                    location: editExperienceData.location,
+                    location_type: editExperienceData.location_type,
+                    description: editExperienceData.description,
+
+                    job_source: editExperienceData.job_source,
                 }
             );
 
@@ -928,9 +1057,9 @@ const handleAddExperience = async (e) => {
                 location: '',
                 location_type: 'Sur place',
                 description: '',
-             
+
                 job_source: '',
-              });
+            });
             setShowExperienceForm(false);
             toast.success('Experience updated successfully');
         } catch (error) {
@@ -964,7 +1093,7 @@ const handleAddExperience = async (e) => {
         );
     }
 
-     return (
+    return (
         <div className="min-h-screen bg-base-200 font-poppins">
             <nav className="navbar bg-base-100 shadow-lg px-4 lg:px-8">
                 <div className="flex-1">
@@ -983,7 +1112,7 @@ const handleAddExperience = async (e) => {
                                 d="M10 19l-7-7m0 0l7-7m-7 7h18"
                             />
                         </svg>
-                       PlaniFy
+                        PlaniFy
                     </Link>
                 </div>
                 <div className="flex-none gap-4">
@@ -1009,7 +1138,7 @@ const handleAddExperience = async (e) => {
                         >
                             <li className="px-4 py-2 border-b">
                                 <span className="font-bold">{user?.name || 'User'}</span>
-                               
+
                             </li>
                             <li>
                                 <Link to="/acceuil">Dashboard</Link>
@@ -1100,14 +1229,14 @@ const handleAddExperience = async (e) => {
                                         <p className="text-base-content opacity-75">{user?.email || 'user@example.com'}</p>
 
                                         {currentPosition ? (
-  <span className="  text-sl block opacity-90 font-medium bg-yellow-100 px-2 py-1 rounded-md ">
-    {currentPosition.job_title} at {currentPosition.company}
-  </span>
-) : (
-  <span className="text-sl block opacity-50 italic bg-base-300/50 px-2 py-1 rounded-md ">
-    No current position
-  </span>
-)}
+                                            <span className="  text-sl block opacity-90 font-medium bg-yellow-100 px-2 py-1 rounded-md ">
+                                                {currentPosition.job_title} at {currentPosition.company}
+                                            </span>
+                                        ) : (
+                                            <span className="text-sl block opacity-50 italic bg-base-300/50 px-2 py-1 rounded-md ">
+                                                No current position
+                                            </span>
+                                        )}
                                         <div className="mt-1 flex items-center gap-2">
                                             <span className="badge badge-primary">{user?.role || 'user'}</span>
                                             {skills
@@ -1151,11 +1280,11 @@ const handleAddExperience = async (e) => {
                                             Edit Profile
                                         </button>
 
-                                        
-                                    )}
-                                    
 
-                                   
+                                    )}
+
+
+
                                 </div>
                                 {user?.bio && (
                                     <div className="mt-4 text-base-content opacity-90">
@@ -1165,30 +1294,30 @@ const handleAddExperience = async (e) => {
                             </div>
                         </div>
                         <button
-      onClick={generateCV}
-      className="btn btn-sm"
-      style={{
-        background: 'linear-gradient(to right, #F5A7B7, #C084FC)', // Pink to Purple gradient
-        color: '#FFFFFF',
-        border: 'none',
-      }}
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-5 w-5 mr-1"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-        />
-      </svg>
-      Générer le CV
-    </button>
+                            onClick={generateCV}
+                            className="btn btn-sm"
+                            style={{
+                                background: 'linear-gradient(to right, #F5A7B7, #C084FC)', // Pink to Purple gradient
+                                color: '#FFFFFF',
+                                border: 'none',
+                            }}
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5 mr-1"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                            </svg>
+                            Générer le CV
+                        </button>
                         <div className="tabs tabs-boxed bg-base-200 px-6">
                             <button
                                 className={`tab ${activeTab === 'profile' ? 'tab-active' : ''}`}
@@ -1427,84 +1556,84 @@ const handleAddExperience = async (e) => {
                                 </div>
                             )}
                             {activeTab === 'Skills' && (
-    <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
-        <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-primary">My Skills</h2>
-            <button
-                onClick={() => {
-                    setShowSkillForm(true);
-                    setEditingSkillId(null);
-                    setNewSkill({ name: '', description: '', category: 'Technical', tags: 50 });
-                }}
-                className="btn btn-primary gap-2"
-                disabled={showSkillForm}
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                >
-                    <path
-                        fillRule="evenodd"
-                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                        clipRule="evenodd"
-                    />
-                </svg>
-                Add Skill
-            </button>
-        </div>
+                                <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h2 className="text-2xl font-bold text-primary">My Skills</h2>
+                                        <button
+                                            onClick={() => {
+                                                setShowSkillForm(true);
+                                                setEditingSkillId(null);
+                                                setNewSkill({ name: '', description: '', category: 'Technical', tags: 50 });
+                                            }}
+                                            className="btn btn-primary gap-2"
+                                            disabled={showSkillForm}
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-5 w-5"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                    clipRule="evenodd"
+                                                />
+                                            </svg>
+                                            Add Skill
+                                        </button>
+                                    </div>
 
-        {/* Filtres ajoutés ici */}
-        <div className="mb-6 bg-base-200 p-4 rounded-lg">
-            <div className="flex flex-wrap gap-4 items-center">
-                <div className="form-control">
-                    <label className="label">
-                        <span className="label-text">Filter by Category</span>
-                    </label>
-                    <select
-                        onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="select select-bordered"
-                        defaultValue="all"
-                    >
-                        <option value="all">All Categories</option>
-                        <option value="Technical">Technical</option>
-                        <option value="Soft Skill">Soft Skill</option>
-                        <option value="Management">Management</option>
-                    </select>
-                </div>
+                                    {/* Filtres ajoutés ici */}
+                                    <div className="mb-6 bg-base-200 p-4 rounded-lg">
+                                        <div className="flex flex-wrap gap-4 items-center">
+                                            <div className="form-control">
+                                                <label className="label">
+                                                    <span className="label-text">Filter by Category</span>
+                                                </label>
+                                                <select
+                                                    onChange={(e) => setCategoryFilter(e.target.value)}
+                                                    className="select select-bordered"
+                                                    defaultValue="all"
+                                                >
+                                                    <option value="all">All Categories</option>
+                                                    <option value="Technical">Technical</option>
+                                                    <option value="Soft Skill">Soft Skill</option>
+                                                    <option value="Management">Management</option>
+                                                </select>
+                                            </div>
 
-                <div className="form-control">
-                    <label className="label">
-                        <span className="label-text">Filter by Skill Level</span>
-                    </label>
-                    <select
-                        onChange={(e) => setLevelFilter(e.target.value)}
-                        className="select select-bordered"
-                        defaultValue="all"
-                    >
-                        <option value="all">All Levels</option>
-                        <option value="expert">Expert (70-100)</option>
-                        <option value="advanced">Advanced (50-70)</option>
-                        <option value="intermediate">Intermediate (30-50)</option>
-                        <option value="beginner">Beginner (0-30)</option>
-                    </select>
-                </div>
+                                            <div className="form-control">
+                                                <label className="label">
+                                                    <span className="label-text">Filter by Skill Level</span>
+                                                </label>
+                                                <select
+                                                    onChange={(e) => setLevelFilter(e.target.value)}
+                                                    className="select select-bordered"
+                                                    defaultValue="all"
+                                                >
+                                                    <option value="all">All Levels</option>
+                                                    <option value="expert">Expert (70-100)</option>
+                                                    <option value="advanced">Advanced (50-70)</option>
+                                                    <option value="intermediate">Intermediate (30-50)</option>
+                                                    <option value="beginner">Beginner (0-30)</option>
+                                                </select>
+                                            </div>
 
-                <button 
-                    onClick={() => {
-                        setCategoryFilter('all');
-                        setLevelFilter('all');
-                    }}
-                    className="btn btn-ghost mt-6"
-                >
-                    Reset Filters
-                </button>
-            </div>
-        </div>
+                                            <button
+                                                onClick={() => {
+                                                    setCategoryFilter('all');
+                                                    setLevelFilter('all');
+                                                }}
+                                                className="btn btn-ghost mt-6"
+                                            >
+                                                Reset Filters
+                                            </button>
+                                        </div>
+                                    </div>
 
-        {showSkillForm && (
-            <div className="card bg-base-200 shadow-lg mb-8">
+                                    {showSkillForm && (
+                                        <div className="card bg-base-200 shadow-lg mb-8">
                                             <div className="card-body">
                                                 <h3 className="card-title text-lg mb-4">
                                                     {editingSkillId ? 'Edit Skill' : 'New Skill'}
@@ -1623,10 +1752,10 @@ const handleAddExperience = async (e) => {
                                                 </form>
                                             </div>
                                         </div>
-        )}
+                                    )}
 
-        {skills.length === 0 && !showSkillForm ? (
-            <div className="text-center py-12">
+                                    {skills.length === 0 && !showSkillForm ? (
+                                        <div className="text-center py-12">
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"
                                                 className="h-12 w-12 mx-auto text-gray-400"
@@ -1650,205 +1779,264 @@ const handleAddExperience = async (e) => {
                                                 Add Skill
                                             </button>
                                         </div>
-        ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {skills
-                    .filter(skill => {
-                        // Filtre par catégorie
-                        if (categoryFilter !== 'all' && skill.category !== categoryFilter) {
-                            return false;
-                        }
-                        
-                        // Filtre par niveau
-                        if (levelFilter !== 'all') {
-                            switch(levelFilter) {
-                                case 'expert':
-                                    return skill.tags > 70;
-                                case 'advanced':
-                                    return skill.tags > 50 && skill.tags <= 70;
-                                case 'intermediate':
-                                    return skill.tags > 30 && skill.tags <= 50;
-                                case 'beginner':
-                                    return skill.tags <= 30;
-                                default:
-                                    return true;
-                            }
-                        }
-                        
-                        return true;
-                    })
-                    .map((skill) => {
-                                                const categoryColors = {
-                                                    Technical: 'bg-blue-200 text-blue-800',
-                                                    'Soft Skill': 'bg-green-200 text-green-800',
-                                                    Management: 'bg-purple-200 text-purple-800',
-                                                };
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {skills
+                                                .filter(skill => {
+                                                    // Filtre par catégorie
+                                                    if (categoryFilter !== 'all' && skill.category !== categoryFilter) {
+                                                        return false;
+                                                    }
 
-                                                // Déterminer le niveau de compétence
-                                                let skillLevel = "";
-                                                let levelClass = "";
-                                                if (skill.tags > 70) {
-                                                    skillLevel = "Expert";
-                                                    levelClass = "badge-success";
-                                                } else if (skill.tags > 50) {
-                                                    skillLevel = "Advanced";
-                                                    levelClass = "badge-warning";
-                                                } else if (skill.tags > 30) {
-                                                    skillLevel = "Intermediate";
-                                                    levelClass = "badge-info";
-                                                } else {
-                                                    skillLevel = "Beginner";
-                                                    levelClass = "badge-outline";
-                                                }
+                                                    // Filtre par niveau
+                                                    if (levelFilter !== 'all') {
+                                                        switch (levelFilter) {
+                                                            case 'expert':
+                                                                return skill.tags > 70;
+                                                            case 'advanced':
+                                                                return skill.tags > 50 && skill.tags <= 70;
+                                                            case 'intermediate':
+                                                                return skill.tags > 30 && skill.tags <= 50;
+                                                            case 'beginner':
+                                                                return skill.tags <= 30;
+                                                            default:
+                                                                return true;
+                                                        }
+                                                    }
 
-                                                return (
-                                                    <div
-                                                        key={skill._id}
-                                                        className="card bg-base-100 border border-base-300 hover:border-primary transition-colors h-full"
-                                                    >
-                                                        <div className="card-body p-3">
-                                                            <div className="flex flex-row gap-4">
-                                                                {/* Partie gauche - Contenu textuel */}
-                                                                <div className="flex-1">
-                                                                    <div className="flex justify-between items-start mb-2">
-                                                                        <h3 className="card-title text-lg">
-                                                                            {skill.name}
-                                                                        </h3>
-                                                                        <span className={`badge ${categoryColors[skill.category]} capitalize`}>
-                                                                            {skill.category}
-                                                                        </span>
+                                                    return true;
+                                                })
+                                                .map((skill) => {
+                                                    const categoryColors = {
+                                                        Technical: 'bg-blue-200 text-blue-800',
+                                                        'Soft Skill': 'bg-green-200 text-green-800',
+                                                        Management: 'bg-purple-200 text-purple-800',
+                                                    };
+
+                                                    // Déterminer le niveau de compétence
+                                                    let skillLevel = "";
+                                                    let levelClass = "";
+                                                    if (skill.tags > 70) {
+                                                        skillLevel = "Expert";
+                                                        levelClass = "badge-success";
+                                                    } else if (skill.tags > 50) {
+                                                        skillLevel = "Advanced";
+                                                        levelClass = "badge-warning";
+                                                    } else if (skill.tags > 30) {
+                                                        skillLevel = "Intermediate";
+                                                        levelClass = "badge-info";
+                                                    } else {
+                                                        skillLevel = "Beginner";
+                                                        levelClass = "badge-outline";
+                                                    }
+
+                                                    return (
+                                                        <div
+                                                            key={skill._id}
+                                                            className="card bg-base-100 border border-base-300 hover:border-primary transition-colors h-full"
+                                                        >
+                                                            <div className="card-body p-3">
+                                                                <div className="flex flex-row gap-4">
+                                                                    {/* Partie gauche - Contenu textuel */}
+                                                                    <div className="flex-1">
+                                                                        <div className="flex justify-between items-start mb-2">
+                                                                            <h3 className="card-title text-lg">
+                                                                                {skill.name}
+                                                                            </h3>
+                                                                            <span className={`badge ${categoryColors[skill.category]} capitalize`}>
+                                                                                {skill.category}
+                                                                            </span>
+                                                                        </div>
+
+                                                                        <div className="flex items-center gap-2 mb-2">
+                                                                            <span className={`badge ${levelClass}`}>
+                                                                                {skillLevel}
+                                                                            </span>
+
+                                                                        </div>
+
+                                                                        {skill.description && (
+                                                                            <p className="text-base-content/80 line-clamp-3">
+                                                                                {skill.description}
+                                                                            </p>
+                                                                        )}
                                                                     </div>
 
-                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                        <span className={`badge ${levelClass}`}>
-                                                                            {skillLevel}
-                                                                        </span>
+                                                                    {/* Partie droite - Cercle de progression et boutons */}
+                                                                    <div className="flex flex-col items-center justify-between">
+                                                                        <ProgressCircle percentage={skill.tags} size={60} strokeWidth={4} />
 
-                                                                    </div>
-
-                                                                    {skill.description && (
-                                                                        <p className="text-base-content/80 line-clamp-3">
-                                                                            {skill.description}
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Partie droite - Cercle de progression et boutons */}
-                                                                <div className="flex flex-col items-center justify-between">
-                                                                    <ProgressCircle percentage={skill.tags} size={60} strokeWidth={4} />
-
-                                                                    <div className="flex gap-2 mt-2">
-                                                                        <button
-                                                                            onClick={() => handleEditSkill(skill)}
-                                                                            className="btn btn-square btn-xs btn-ghost"
-                                                                            title="Edit"
-                                                                        >
-                                                                            <svg
-                                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                                className="h-4 w-4"
-                                                                                fill="none"
-                                                                                viewBox="0 0 24 24"
-                                                                                stroke="currentColor"
+                                                                        <div className="flex gap-2 mt-2">
+                                                                            <button
+                                                                                onClick={() => handleEditSkill(skill)}
+                                                                                className="btn btn-square btn-xs btn-ghost"
+                                                                                title="Edit"
                                                                             >
-                                                                                <path
-                                                                                    strokeLinecap="round"
-                                                                                    strokeLinejoin="round"
-                                                                                    strokeWidth={2}
-                                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                                                                />
-                                                                            </svg>
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleDeleteSkill(skill._id)}
-                                                                            className="btn btn-square btn-xs btn-ghost text-error"
-                                                                            title="Delete"
-                                                                        >
-                                                                            <svg
-                                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                                className="h-4 w-4"
-                                                                                fill="none"
-                                                                                viewBox="0 0 24 24"
-                                                                                stroke="currentColor"
+                                                                                <svg
+                                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                                    className="h-4 w-4"
+                                                                                    fill="none"
+                                                                                    viewBox="0 0 24 24"
+                                                                                    stroke="currentColor"
+                                                                                >
+                                                                                    <path
+                                                                                        strokeLinecap="round"
+                                                                                        strokeLinejoin="round"
+                                                                                        strokeWidth={2}
+                                                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                                                    />
+                                                                                </svg>
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleDeleteSkill(skill._id)}
+                                                                                className="btn btn-square btn-xs btn-ghost text-error"
+                                                                                title="Delete"
                                                                             >
-                                                                                <path
-                                                                                    strokeLinecap="round"
-                                                                                    strokeLinejoin="round"
-                                                                                    strokeWidth={2}
-                                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                                                />
-                                                                            </svg>
-                                                                        </button>
+                                                                                <svg
+                                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                                    className="h-4 w-4"
+                                                                                    fill="none"
+                                                                                    viewBox="0 0 24 24"
+                                                                                    stroke="currentColor"
+                                                                                >
+                                                                                    <path
+                                                                                        strokeLinecap="round"
+                                                                                        strokeLinejoin="round"
+                                                                                        strokeWidth={2}
+                                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                                    />
+                                                                                </svg>
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => generateQuiz(skill.name)}
+                                                                                className="btn btn-square btn-xs btn-ghost"
+                                                                                title="Générer un quiz"
+                                                                            >
+                                                                                <svg
+                                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                                    className="h-4 w-4"
+                                                                                    fill="none"
+                                                                                    viewBox="0 0 24 24"
+                                                                                    stroke="currentColor"
+                                                                                >
+                                                                                    <path
+                                                                                        strokeLinecap="round"
+                                                                                        strokeLinejoin="round"
+                                                                                        strokeWidth={2}
+                                                                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                                                    />
+                                                                                </svg>
+                                                                            </button>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })}
-            </div>
-        )}
-    </div>
-)}
+                                                    );
+                                                })}
+                                        </div>
+                                    )}
+                                    {currentQuiz && (
+                                        <div className="mt-8 p-6 bg-base-100 rounded-lg border border-base-300">
+                                            <h2 className="text-2xl font-bold mb-4">Quiz pour {currentQuiz.skill}</h2>
+                                            {currentQuiz.questions.map((question, index) => (
+                                                <div key={index} className="mb-4">
+                                                    <p className="font-medium">{index + 1}. {question.question}</p>
+                                                    {Object.entries(question.options).map(([key, value]) => (
+                                                        <div key={key} className="ml-4">
+                                                            <label className="flex items-center space-x-2">
+                                                                <input
+                                                                    type="radio"
+                                                                    name={`question-${index}`}
+                                                                    value={key}
+                                                                    onChange={() => handleAnswerChange(index, key)}
+                                                                    className="radio radio-primary"
+                                                                />
+                                                                <span className="text-sm text-base-content/80">
+                                                                    {key.toUpperCase()}. {value}
+                                                                </span>
+                                                            </label>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                            <button
+                                                onClick={submitQuiz}
+                                                className="btn btn-primary mt-4"
+                                                disabled={Object.keys(userAnswers).length !== currentQuiz.questions.length}
+                                            >
+                                                Soumettre le quiz
+                                            </button>
+                                            <button
+                                                onClick={() => setCurrentQuiz(null)}
+                                                className="btn btn-ghost ml-2 mt-4"
+                                            >
+                                                Fermer le quiz
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                            )}
                             {activeTab === 'Certifications' && (
-    <div className="mt-4 p-6 bg-base-100 text-base-content rounded-lg border border-base-300 shadow-lg">
-        <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-primary">Mes Certifications</h2>
-            <div className="flex items-center gap-4">
-                {/* Ajout du sélecteur de tri */}
-                <div className="form-control">
-                    <label className="label">
-                        <span className="label-text">Sort by</span>
-                    </label>
-                    <select
-                        onChange={(e) => setSortOption(e.target.value)}
-                        className="select select-bordered select-sm"
-                        defaultValue="date-desc"
-                    >
-                        <option value="date-desc">Date (Newest first)</option>
-                        <option value="date-asc">Date (Oldest first)</option>
-                        <option value="name-asc">Name (A-Z)</option>
-                        <option value="name-desc">Name (Z-A)</option>
-                    </select>
-                </div>
+                                <div className="mt-4 p-6 bg-base-100 text-base-content rounded-lg border border-base-300 shadow-lg">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h2 className="text-2xl font-bold text-primary">My Certifications</h2>
+                                        <div className="flex items-center gap-4">
+                                            <div className="form-control">
+                                                <label className="label">
+                                                    <span className="label-text">Sort by</span>
+                                                </label>
+                                                <select
+                                                    onChange={(e) => setSortOption(e.target.value)}
+                                                    className="select select-bordered select-sm"
+                                                    defaultValue="date-desc"
+                                                >
+                                                    <option value="date-desc">Date (Newest first)</option>
+                                                    <option value="date-asc">Date (Oldest first)</option>
+                                                    <option value="name-asc">Name (A-Z)</option>
+                                                    <option value="name-desc">Name (Z-A)</option>
+                                                </select>
+                                            </div>
 
-                <button
-                    onClick={() => {
-                        setShowCertificationForm(true);
-                        setEditingCertificationId(null);
-                        setNewCertification({
-                            certifications_name: '',
-                            issued_by: '',
-                            obtained_date: '',
-                            description: '',
-                            image: null,
-                        });
-                        setCertificationImagePreview(null);
-                        if (certificationFileInputRef.current) certificationFileInputRef.current.value = '';
-                    }}
-                    className="btn btn-primary gap-2 hover:bg-primary-focus transition-colors mb-4"
-                    disabled={showCertificationForm}
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-white"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                    >
-                        <path
-                            fillRule="evenodd"
-                            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                            clipRule="evenodd"
-                        />
-                    </svg>
-                    Add Certification
-                </button>
-            </div>
-        </div>
+                                            <button
+                                                onClick={() => {
+                                                    setShowCertificationForm(true);
+                                                    setEditingCertificationId(null);
+                                                    setNewCertification({
+                                                        certifications_name: '',
+                                                        issued_by: '',
+                                                        obtained_date: '',
+                                                        description: '',
+                                                        image: null,
+                                                    });
+                                                    setCertificationImagePreview(null);
+                                                    if (certificationFileInputRef.current) certificationFileInputRef.current.value = '';
+                                                }}
+                                                className="btn btn-primary gap-2 hover:bg-primary-focus transition-colors mb-4"
+                                                disabled={showCertificationForm}
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-5 w-5 text-white"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                        clipRule="evenodd"
+                                                    />
+                                                </svg>
+                                                Add Certification
+                                            </button>
+                                        </div>
+                                    </div>
 
-      {showCertificationForm && (
+                                    {showCertificationForm && (
                                         <div className="bg-base-200 p-6 rounded-lg mb-8 shadow-sm">
                                             <h3 className="text-lg font-semibold mb-4">
-                                                {editingCertificationId ? 'Modifier la Certification' : 'Nouvelle Certification'}
+                                                {editingCertificationId ? 'Edit Certification' : 'New Certification'}
                                             </h3>
                                             <form
                                                 onSubmit={editingCertificationId ? handleUpdateCertification : handleAddCertification}
@@ -1857,7 +2045,7 @@ const handleAddExperience = async (e) => {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div className="form-control">
                                                         <label className="label">
-                                                            <span className="label-text">Name*</span>
+                                                            <span className="label-text">Name *</span>
                                                         </label>
                                                         <input
                                                             type="text"
@@ -1874,7 +2062,7 @@ const handleAddExperience = async (e) => {
                                                     </div>
                                                     <div className="form-control">
                                                         <label className="label">
-                                                            <span className="label-text">Issued by                                *</span>
+                                                            <span className="label-text">Issued by *</span>
                                                         </label>
                                                         <input
                                                             type="text"
@@ -1893,7 +2081,7 @@ const handleAddExperience = async (e) => {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div className="form-control">
                                                         <label className="label">
-                                                            <span className="label-text">Date obtained  *</span>
+                                                            <span className="label-text">Date obtained *</span>
                                                         </label>
                                                         <input
                                                             type="date"
@@ -1921,7 +2109,7 @@ const handleAddExperience = async (e) => {
                                                                 : setNewCertification(prev => ({ ...prev, description: e.target.value }))
                                                         }
                                                         className="textarea textarea-bordered h-24"
-                                                        placeholder="Décrivez cette certification..."
+                                                        placeholder="Describe this certification..."
                                                     />
                                                 </div>
                                                 <div className="form-control">
@@ -1939,10 +2127,10 @@ const handleAddExperience = async (e) => {
                                                 {certificationImagePreview && (
                                                     <div className="mt-4">
                                                         <label className="label">
-                                                            <span className="label-text">Aperçu</span>
+                                                            <span className="label-text">Preview</span>
                                                         </label>
                                                         <div className="w-40 h-40 border-2 border-base-300 rounded-lg overflow-hidden bg-base-200 flex items-center justify-center">
-                                                            <img src={certificationImagePreview} alt="Aperçu" className="w-full h-full object-contain" />
+                                                            <img src={certificationImagePreview} alt="Preview" className="w-full h-full object-contain" />
                                                         </div>
                                                         <div className="mt-2 flex justify-center">
                                                             <button
@@ -1955,6 +2143,7 @@ const handleAddExperience = async (e) => {
                                                         </div>
                                                     </div>
                                                 )}
+
                                                 <div className="flex justify-end gap-3 mt-6">
                                                     <button
                                                         type="button"
@@ -1978,676 +2167,672 @@ const handleAddExperience = async (e) => {
                                         </div>
                                     )}
 
-        {certifications.length > 0 && !showCertificationForm && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {certifications
-                    .sort((a, b) => {
-                        switch(sortOption) {
-                            case 'date-desc':
-                                return new Date(b.obtained_date) - new Date(a.obtained_date);
-                            case 'date-asc':
-                                return new Date(a.obtained_date) - new Date(b.obtained_date);
-                            case 'name-asc':
-                                return a.certifications_name.localeCompare(b.certifications_name);
-                            case 'name-desc':
-                                return b.certifications_name.localeCompare(a.certifications_name);
-                            default:
-                                return 0;
-                        }
-                    })
-                     .map((certification) => (
-                                                <div
-                                                    key={certification._id}
-                                                    className="bg-base-100 border border-base-300 hover:border-primary transition-colors p-4 rounded-lg shadow-sm"
-                                                >
-                                                    <div className="flex justify-between items-start gap-4">
-                                                        <div className="flex-1">
-                                                            <h3 className="text-lg font-semibold">
-                                                                {certification.certifications_name || 'Sans nom'}
-                                                            </h3>
-                                                            {certification.description && (
-                                                                <p className="mt-2 text-base-content/80 line-clamp-2">
-                                                                    {certification.description}
+                                    {certifications.length > 0 && !showCertificationForm && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {certifications
+                                                .sort((a, b) => {
+                                                    switch (sortOption) {
+                                                        case 'date-desc':
+                                                            return new Date(b.obtained_date) - new Date(a.obtained_date);
+                                                        case 'date-asc':
+                                                            return new Date(a.obtained_date) - new Date(b.obtained_date);
+                                                        case 'name-asc':
+                                                            return a.certifications_name.localeCompare(b.certifications_name);
+                                                        case 'name-desc':
+                                                            return b.certifications_name.localeCompare(a.certifications_name);
+                                                        default:
+                                                            return 0;
+                                                    }
+                                                })
+                                                .map((certification) => (
+                                                    <div
+                                                        key={certification._id}
+                                                        className="bg-base-100 border border-base-300 hover:border-primary transition-colors p-4 rounded-lg shadow-sm"
+                                                    >
+                                                        <div className="flex justify-between items-start gap-4">
+                                                            <div className="flex-1">
+                                                                <h3 className="text-lg font-semibold">
+                                                                    {certification.certifications_name || 'No name'}
+                                                                </h3>
+                                                                {certification.description && (
+                                                                    <p className="mt-2 text-base-content/80 line-clamp-2">
+                                                                        {certification.description}
+                                                                    </p>
+                                                                )}
+                                                                <p className="text-sm text-base-content/70 mt-1">
+                                                                    Issued by: {certification.issued_by || 'Unknown'}
                                                                 </p>
-                                                            )}
-                                                            <p className="text-sm text-base-content/70 mt-1">
-                                                                Issued by  * : {certification.issued_by || 'Inconnu'}
-                                                            </p>
-                                                            <p>Obtained on *: {new Date(certification.obtained_date).toLocaleDateString('fr-FR')}</p>
-                                                        </div>
-                                                        {certification.image ? (
-                                                            <div className="w-20 h-20 border border-base-300 rounded-lg overflow-hidden bg-base-200">
-                                                                <img
-                                                                    src={certification.image.startsWith('data:') ? certification.image : `/uploads/${certification.image}`}
-                                                                    alt={certification.certifications_name}
-                                                                    className="w-full h-full object-cover"
-                                                                    onError={(e) => {
-                                                                        e.target.src = 'https://via.placeholder.com/80?text=Pas+d%27image';
-                                                                        e.target.alt = 'Image not available';
-                                                                    }}
-                                                                />
+                                                                <p>Obtained on: {new Date(certification.obtained_date).toLocaleDateString('en-US')}</p>
                                                             </div>
-                                                        ) : null}
-                                                    </div>
-                                                    <div className="flex justify-end mt-4 gap-2">
-                                                        {!certification.image && (
+                                                            {certification.image ? (
+                                                                <div className="w-20 h-20 border border-base-300 rounded-lg overflow-hidden bg-base-200">
+                                                                    <img
+                                                                        src={certification.image}
+                                                                        alt={certification.certifications_name}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="w-20 h-20 border border-base-300 rounded-lg overflow-hidden bg-base-200 flex items-center justify-center">
+                                                                    <span className="text-base-content/50">No image</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex justify-end mt-4 gap-2">
+                                                            {!certification.image && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setEditingCertificationId(certification._id);
+                                                                        setEditCertificationData({
+                                                                            ...certification,
+                                                                            obtained_date: certification.obtained_date.split('T')[0],
+                                                                        });
+                                                                        setCertificationImagePreview(certification.image || null);
+                                                                        setShowCertificationForm(true);
+                                                                    }}
+                                                                    className="btn btn-sm bg-base-200 hover:bg-base-300 text-base-content transition-colors"
+                                                                >
+                                                                    Add a photo
+                                                                </button>
+                                                            )}
                                                             <button
-                                                                onClick={() => {
-                                                                    setEditingCertificationId(certification._id);
-                                                                    setEditCertificationData({
-                                                                        ...certification,
-                                                                        obtained_date: certification.obtained_date.split('T')[0],
-                                                                    });
-                                                                    setCertificationImagePreview(certification.image || null);
-                                                                    setShowCertificationForm(true);
-                                                                }}
-                                                                className="btn btn-sm bg-base-200 hover:bg-base-300 text-base-content transition-colors"
+                                                                onClick={() => handleEditCertification(certification)}
+                                                                className="btn btn-square btn-xs btn-ghost hover:bg-base-300 transition-colors"
+                                                                title="Edit"
                                                             >
-                                                                Add a photo
+                                                                <svg
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                    className="h-4 w-4"
+                                                                    fill="none"
+                                                                    viewBox="0 0 24 24"
+                                                                    stroke="currentColor"
+                                                                >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        strokeWidth={2}
+                                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                                    />
+                                                                </svg>
                                                             </button>
-                                                        )}
-                                                        <button
-                                                            onClick={() => handleEditCertification(certification)}
-                                                            className="btn btn-square btn-xs btn-ghost hover:bg-base-300 transition-colors"
-                                                            title="Modifier"
-                                                        >
-                                                            <svg
-                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                className="h-4 w-4"
-                                                                fill="none"
-                                                                viewBox="0 0 24 24"
-                                                                stroke="currentColor"
+                                                            <button
+                                                                onClick={() => handleDeleteCertification(certification._id)}
+                                                                className="btn btn-square btn-xs btn-ghost text-error hover:bg-error/20 transition-colors"
+                                                                title="Delete"
                                                             >
-                                                                <path
-                                                                    strokeLinecap="round"
-                                                                    strokeLinejoin="round"
-                                                                    strokeWidth={2}
-                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                                                />
-                                                            </svg>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteCertification(certification._id)}
-                                                            className="btn btn-square btn-xs btn-ghost text-error hover:bg-error/20 transition-colors"
-                                                            title="Supprimer"
-                                                        >
-                                                            <svg
-                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                className="h-4 w-4"
-                                                                fill="none"
-                                                                viewBox="0 0 24 24"
-                                                                stroke="currentColor"
-                                                            >
-                                                                <path
-                                                                    strokeLinecap="round"
-                                                                    strokeLinejoin="round"
-                                                                    strokeWidth={2}
-                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                                />
-                                                            </svg>
-                                                        </button>
+                                                                <svg
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                    className="h-4 w-4"
+                                                                    fill="none"
+                                                                    viewBox="0 0 24 24"
+                                                                    stroke="currentColor"
+                                                                >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        strokeWidth={2}
+                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                    />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
-
+                                                ))}
                                         </div>
                                     )}
                                 </div>
                             )}
-                            
-                           {activeTab === 'Experience' && (
-  <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
-    <div className="flex justify-between items-center mb-4">
-      <h2 className="text-2xl font-bold text-primary">My experiences</h2>
-      <button
-        onClick={() => {
-          setShowExperienceForm(true);
-          setEditingExperienceId(null);
-          setNewExperience({
-            job_title: '',
-            company: '',
-            employment_type: 'Temps plein',
-            is_current: false,
-            start_date: '',
-            end_date: '',
-            location: '',
-            location_type: 'Sur place',
-            description: '',
-            profile_title: '',
-            job_source: '',
-          });
-        }}
-        className="btn btn-primary gap-2"
-        disabled={showExperienceForm}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-            clipRule="evenodd"
-          />
-        </svg>
-        Add experience
-      </button>
+                            {activeTab === 'Experience' && (
+                                <div className="mt-4 p-6 bg-base-100 rounded-lg border border-base-300">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-2xl font-bold text-primary">My experiences</h2>
+                                        <button
+                                            onClick={() => {
+                                                setShowExperienceForm(true);
+                                                setEditingExperienceId(null);
+                                                setNewExperience({
+                                                    job_title: '',
+                                                    company: '',
+                                                    employment_type: 'Temps plein',
+                                                    is_current: false,
+                                                    start_date: '',
+                                                    end_date: '',
+                                                    location: '',
+                                                    location_type: 'Sur place',
+                                                    description: '',
+                                                    profile_title: '',
+                                                    job_source: '',
+                                                });
+                                            }}
+                                            className="btn btn-primary gap-2"
+                                            disabled={showExperienceForm}
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-5 w-5"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                                    clipRule="evenodd"
+                                                />
+                                            </svg>
+                                            Add experience
+                                        </button>
 
-      
 
-    </div>
 
-    {/* Interface de filtrage et de tri (déplacée en dessous du titre) */}
-    <div className="flex items-center gap-4 mb-6">
-      {/* Filtre par type de localisation */}
-      <div className="form-control">
-        <label className="label">
-          <span className="label-text">Filter by location type
-</span>
-        </label>
-        <select
-          id="location-filter"
-          value={locationFilter}
-          onChange={(e) => setLocationFilter(e.target.value)}
-          className="select select-bordered select-sm"
-        >
-          <option value="Tous">Tous</option>
-          <option value="Sur place">Sur place</option>
-          <option value="Hybride">Hybride</option>
-          <option value="À distance">À distance</option>
-        </select>
-      </div>
+                                    </div>
 
-      {/* Sélecteur de tri */}
-      <div className="form-control">
-        <label className="label">
-          <span className="label-text">Order by</span>
-        </label>
-        <select
-          onChange={(e) => setExperienceSortOption(e.target.value)}
-          className="select select-bordered select-sm"
-          value={experienceSortOption}
-        >
-          <option value="date-desc">Date (Newest first)</option>
-          <option value="date-asc">Date (Oldest first)</option>
-        </select>
-      </div>
-    </div>
+                                    {/* Interface de filtrage et de tri (déplacée en dessous du titre) */}
+                                    <div className="flex items-center gap-4 mb-6">
+                                        {/* Filtre par type de localisation */}
+                                        <div className="form-control">
+                                            <label className="label">
+                                                <span className="label-text">Filter by location type
+                                                </span>
+                                            </label>
+                                            <select
+                                                id="location-filter"
+                                                value={locationFilter}
+                                                onChange={(e) => setLocationFilter(e.target.value)}
+                                                className="select select-bordered select-sm"
+                                            >
+                                                <option value="Tous">Tous</option>
+                                                <option value="Sur place">Sur place</option>
+                                                <option value="Hybride">Hybride</option>
+                                                <option value="À distance">À distance</option>
+                                            </select>
+                                        </div>
 
-    {showExperienceForm && (
-      <div className="card bg-base-200 shadow-lg mb-8">
-        <div className="card-body">
-          <h3 className="card-title text-lg mb-4">
-            {editingExperienceId ? 'Modifier une expérience' : 'New Experience'}
-          </h3>
-          <form
-            onSubmit={editingExperienceId ? handleUpdateExperience : handleAddExperience}
-            className="space-y-4"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Job Title*</span>
-                </label>
-                <input
-                  type="text"
-                  value={editingExperienceId ? editExperienceData.job_title : newExperience.job_title}
-                  onChange={(e) =>
-                    editingExperienceId
-                      ? setEditExperienceData({ ...editExperienceData, job_title: e.target.value })
-                      : setNewExperience({ ...newExperience, job_title: e.target.value })
-                  }
-                  className="input input-bordered"
-                  placeholder="Ex: Software Developer"
-                  required
-                />
-              </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Employment Type</span>
-                </label>
-                <select
-                  value={editingExperienceId ? editExperienceData.employment_type : newExperience.employment_type}
-                  onChange={(e) =>
-                    editingExperienceId
-                      ? setEditExperienceData({ ...editExperienceData, employment_type: e.target.value })
-                      : setNewExperience({ ...newExperience, employment_type: e.target.value })
-                  }
-                  className="select select-bordered"
-                >
-                  <option value="Temps plein">Temps plein</option>
-                  <option value="Temps partiel">Temps partiel</option>
-                  <option value="Freelance">Freelance</option>
-                  <option value="Stage">Stage</option>
-                  <option value="Contrat">Contrat</option>
-                  <option value="Bénévolat">Bénévolat</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Company or Organization*</span>
-                </label>
-                <input
-                  type="text"
-                  value={editingExperienceId ? editExperienceData.company : newExperience.company}
-                  onChange={(e) =>
-                    editingExperienceId
-                      ? setEditExperienceData({ ...editExperienceData, company: e.target.value })
-                      : setNewExperience({ ...newExperience, company: e.target.value })
-                  }
-                  className="input input-bordered"
-                  placeholder="Ex: Tech Corp"
-                  required
-                />
-              </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Company Location</span>
-                </label>
-                <input
-                  type="text"
-                  value={editingExperienceId ? editExperienceData.location : newExperience.location}
-                  onChange={(e) =>
-                    editingExperienceId
-                      ? setEditExperienceData({ ...editExperienceData, location: e.target.value })
-                      : setNewExperience({ ...newExperience, location: e.target.value })
-                  }
-                  className="input input-bordered"
-                  placeholder="Ex: Paris, France"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Type of Location</span>
-                </label>
-                <select
-                  value={editingExperienceId ? editExperienceData.location_type : newExperience.location_type}
-                  onChange={(e) =>
-                    editingExperienceId
-                      ? setEditExperienceData({ ...editExperienceData, location_type: e.target.value })
-                      : setNewExperience({ ...newExperience, location_type: e.target.value })
-                  }
-                  className="select select-bordered"
-                >
-                  <option value="Sur place">Sur place</option>
-                  <option value="À distance">À distance</option>
-                  <option value="Hybride">Hybride</option>
-                </select>
-              </div>
-              <div className="form-control">
-                <label className="label cursor-pointer">
-                  <span className="label-text">I currently work in this position</span>
-                  <input
-                    type="checkbox"
-                    checked={editingExperienceId ? editExperienceData.is_current : newExperience.is_current}
-                    onChange={(e) =>
-                      editingExperienceId
-                        ? setEditExperienceData({ ...editExperienceData, is_current: e.target.checked })
-                        : setNewExperience({ ...newExperience, is_current: e.target.checked })
-                    }
-                    className="checkbox checkbox-primary"
-                  />
-                </label>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Start Date*</span>
-                </label>
-                <input
-                  type="date"
-                  value={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
-                  onChange={(e) =>
-                    editingExperienceId
-                      ? setEditExperienceData({ ...editExperienceData, start_date: e.target.value })
-                      : setNewExperience({ ...newExperience, start_date: e.target.value })
-                  }
-                  className="input input-bordered"
-                  max={new Date().toISOString().split('T')[0]}
-                  required
-                />
-              </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">End Date</span>
-                </label>
-                <input
-                  type="date"
-                  value={editingExperienceId ? editExperienceData.end_date : newExperience.end_date}
-                  onChange={(e) =>
-                    editingExperienceId
-                      ? setEditExperienceData({ ...editExperienceData, end_date: e.target.value })
-                      : setNewExperience({ ...newExperience, end_date: e.target.value })
-                  }
-                  className="input input-bordered"
-                  max={new Date().toISOString().split('T')[0]}
-                  disabled={editingExperienceId ? editExperienceData.is_current : newExperience.is_current}
-                />
-              </div>
-            </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Description*</span>
-              </label>
-              <textarea
-                value={editingExperienceId ? editExperienceData.description : newExperience.description}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, description: e.target.value })
-                    : setNewExperience({ ...newExperience, description: e.target.value })
-                }
-                className="textarea textarea-bordered h-24"
-                placeholder="Describe your responsibilities..."
-                required
-              />
-            </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Profile Title</span>
-              </label>
-              <input
-                type="text"
-                value={editingExperienceId ? editExperienceData.profile_title : newExperience.profile_title}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, profile_title: e.target.value })
-                    : setNewExperience({ ...newExperience, profile_title: e.target.value })
-                }
-                className="input input-bordered"
-                placeholder="Appears below your name at the top of the profile"
-              />
-            </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Where did you find this job offer?</span>
-              </label>
-              <select
-                value={editingExperienceId ? editExperienceData.job_source : newExperience.job_source}
-                onChange={(e) =>
-                  editingExperienceId
-                    ? setEditExperienceData({ ...editExperienceData, job_source: e.target.value })
-                    : setNewExperience({ ...newExperience, job_source: e.target.value })
-                }
-                className="select select-bordered"
-              >
-                <option value="">Please Select</option>
-                <option value="LinkedIn">LinkedIn</option>
-                <option value="Indeed">Indeed</option>
-                <option value="Glassdoor">Glassdoor</option>
-                <option value="Directement sur le site de l'entreprise">Directly on the company's website</option>
-                <option value="Recommandation">Recommandation</option>
-                <option value="Autre">Other</option>
-              </select>
-              <label className="label">
-                <span className="label-text-alt text-gray-500">
-                  This information will be used to encourage gaining more experience.
-                </span>
-              </label>
-            </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowExperienceForm(false);
-                  setEditingExperienceId(null);
-                  setEditExperienceData({
-                    job_title: '',
-                    company: '',
-                    employment_type: 'Temps plein',
-                    is_current: false,
-                    start_date: '',
-                    end_date: '',
-                    location: '',
-                    location_type: 'Sur place',
-                    description: '',
-                    profile_title: '',
-                    job_source: '',
-                  });
-                }}
-                className="btn btn-ghost"
-              >
-                Cancel
-              </button>
-              <button type="submit" className="btn btn-primary" disabled={isSaving}>
-                {isSaving ? (
-                  <>
-                    <span className="loading loading-spinner loading-xs"></span>
-                    {editingExperienceId ? 'Modification...' : 'Ajout...'}
-                  </>
-                ) : editingExperienceId ? 'Saves Changes' : 'Add Experience'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )}
+                                        {/* Sélecteur de tri */}
+                                        <div className="form-control">
+                                            <label className="label">
+                                                <span className="label-text">Order by</span>
+                                            </label>
+                                            <select
+                                                onChange={(e) => setExperienceSortOption(e.target.value)}
+                                                className="select select-bordered select-sm"
+                                                value={experienceSortOption}
+                                            >
+                                                <option value="date-desc">Date (Newest first)</option>
+                                                <option value="date-asc">Date (Oldest first)</option>
+                                            </select>
+                                        </div>
+                                    </div>
 
-    {experiences.length === 0 && !showExperienceForm ? (
-      <div className="text-center py-12">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-12 w-12 mx-auto text-gray-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-          />
-        </svg>
-        <h3 className="mt-4 text-lg font-medium text-gray-500">Aucune expérience ajoutée</h3>
-        <p className="mt-1 text-gray-400">Ajoutez vos expériences professionnelles pour les afficher ici</p>
-        <button onClick={() => setShowExperienceForm(true)} className="btn btn-primary mt-6">
-          Add Experience
-        </button>
-      </div>
-    ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {experiences
-          .filter((experience) => {
-            if (locationFilter === 'Tous') return true;
-            return experience.location_type === locationFilter;
-          })
-          .sort((a, b) => {
-            const dateA = a.is_current ? new Date() : new Date(a.end_date);
-            const dateB = b.is_current ? new Date() : new Date(b.end_date);
-            return experienceSortOption === 'date-desc' ? dateB - dateA : dateA - dateB;
-          })
-          .map((experience) => {
-            const startDate = new Date(experience.start_date);
-            const endDate = experience.is_current ? new Date() : new Date(experience.end_date);
-            const durationMonths = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24 * 30));
-            const durationYears = Math.floor(durationMonths / 12);
-            const remainingMonths = durationMonths % 12;
-            const durationText =
-              durationYears > 0
-                ? `${durationYears} an${durationYears > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} mois` : ''}`
-                : `${durationMonths} mois`;
-            const maxDuration = 120; // 10 years
-            const durationPercentage = Math.min((durationMonths / maxDuration) * 100, 100);
-      
-            return (
-              <div
-                key={experience._id}
-                className={`card ${
-                  experience.is_current
-                    ? 'bg-[#e4bdf3] text-gray-900'
-                    : 'bg-base-100 text-base-content'
-                } border border-base-300 hover:border-primary transition-colors shadow-md`}
-              >
-                <div className="card-body p-6 flex flex-row gap-4">
-                  {/* Left Side: Experience Details and More Details Button */}
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="card-title text-xl font-semibold">{experience.job_title}</h3>
-                        <p className={`${experience.is_current ? 'text-gray-800' : 'text-base-content/80'} text-lg`}>
-                          {experience.company}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'}`}>
-                        {experience.employment_type} • {experience.location_type}
-                      </span>
-                    </div>
-                    <p className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'} mb-2`}>
-                      {startDate.toLocaleDateString('fr-FR')} -{' '}
-                      {experience.is_current ? 'Présent' : endDate.toLocaleDateString('fr-FR')}
-                    </p>
-                    {experience.location && (
-                      <p className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'} mb-2`}>
-                        {experience.location}
-                      </p>
-                    )}
-                    <button
-                      onClick={() => setSelectedExperience(experience)}
-                      className={`btn btn-outline btn-sm mt-2 ${
-                        experience.is_current
-                          ? 'text-gray-900 border-gray-900 hover:bg-gray-200 hover:border-gray-900'
-                          : 'text-base-content border-base-content hover:bg-base-200 hover:border-base-content'
-                      }`}
-                    >
-                      More details
-                    </button>
-                  </div>
-      
-                  {/* Right Side: Percentage Circle and Edit/Delete Buttons */}
-                  <div className="flex flex-col items-center justify-between">
-                    <div className="relative w-16 h-16 mb-4">
-                      <svg className="w-full h-full" viewBox="0 0 36 36">
-                        <path
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="#e5e7eb"
-                          strokeWidth="3.8"
-                        />
-                        <path
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="url(#gradient)"
-                          strokeWidth="3.8"
-                          strokeDasharray={`${durationPercentage}, 100`}
-                          strokeLinecap="round"
-                        />
-                        <defs>
-                          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style={{ stopColor: '#F5A7B7', stopOpacity: 1 }} />
-                            <stop offset="100%" style={{ stopColor: '#C084FC', stopOpacity: 1 }} />
-                          </linearGradient>
-                        </defs>
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className={`text-sm font-medium ${experience.is_current ? 'text-gray-900' : 'text-base-content'}`}>
-                          {Math.round(durationPercentage)}%
-                        </span>
-                      </div>
-                    </div>
-                    <span className={`text-sm mb-2 ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'}`}>
-                      {durationText}
-                    </span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditExperience(experience)}
-                        className="btn btn-square btn-sm btn-ghost"
-                        title="Modifier"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteExperience(experience._id)}
-                        className="btn btn-square btn-sm btn-ghost text-error"
-                        title="Supprimer"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-      </div>
-    )}
+                                    {showExperienceForm && (
+                                        <div className="card bg-base-200 shadow-lg mb-8">
+                                            <div className="card-body">
+                                                <h3 className="card-title text-lg mb-4">
+                                                    {editingExperienceId ? 'Modifier une expérience' : 'New Experience'}
+                                                </h3>
+                                                <form
+                                                    onSubmit={editingExperienceId ? handleUpdateExperience : handleAddExperience}
+                                                    className="space-y-4"
+                                                >
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text">Job Title*</span>
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={editingExperienceId ? editExperienceData.job_title : newExperience.job_title}
+                                                                onChange={(e) =>
+                                                                    editingExperienceId
+                                                                        ? setEditExperienceData({ ...editExperienceData, job_title: e.target.value })
+                                                                        : setNewExperience({ ...newExperience, job_title: e.target.value })
+                                                                }
+                                                                className="input input-bordered"
+                                                                placeholder="Ex: Software Developer"
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text">Employment Type</span>
+                                                            </label>
+                                                            <select
+                                                                value={editingExperienceId ? editExperienceData.employment_type : newExperience.employment_type}
+                                                                onChange={(e) =>
+                                                                    editingExperienceId
+                                                                        ? setEditExperienceData({ ...editExperienceData, employment_type: e.target.value })
+                                                                        : setNewExperience({ ...newExperience, employment_type: e.target.value })
+                                                                }
+                                                                className="select select-bordered"
+                                                            >
+                                                                <option value="Temps plein">Temps plein</option>
+                                                                <option value="Temps partiel">Temps partiel</option>
+                                                                <option value="Freelance">Freelance</option>
+                                                                <option value="Stage">Stage</option>
+                                                                <option value="Contrat">Contrat</option>
+                                                                <option value="Bénévolat">Bénévolat</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text">Company or Organization*</span>
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={editingExperienceId ? editExperienceData.company : newExperience.company}
+                                                                onChange={(e) =>
+                                                                    editingExperienceId
+                                                                        ? setEditExperienceData({ ...editExperienceData, company: e.target.value })
+                                                                        : setNewExperience({ ...newExperience, company: e.target.value })
+                                                                }
+                                                                className="input input-bordered"
+                                                                placeholder="Ex: Tech Corp"
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text">Company Location</span>
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={editingExperienceId ? editExperienceData.location : newExperience.location}
+                                                                onChange={(e) =>
+                                                                    editingExperienceId
+                                                                        ? setEditExperienceData({ ...editExperienceData, location: e.target.value })
+                                                                        : setNewExperience({ ...newExperience, location: e.target.value })
+                                                                }
+                                                                className="input input-bordered"
+                                                                placeholder="Ex: Paris, France"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text">Type of Location</span>
+                                                            </label>
+                                                            <select
+                                                                value={editingExperienceId ? editExperienceData.location_type : newExperience.location_type}
+                                                                onChange={(e) =>
+                                                                    editingExperienceId
+                                                                        ? setEditExperienceData({ ...editExperienceData, location_type: e.target.value })
+                                                                        : setNewExperience({ ...newExperience, location_type: e.target.value })
+                                                                }
+                                                                className="select select-bordered"
+                                                            >
+                                                                <option value="Sur place">Sur place</option>
+                                                                <option value="À distance">À distance</option>
+                                                                <option value="Hybride">Hybride</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="form-control">
+                                                            <label className="label cursor-pointer">
+                                                                <span className="label-text">I currently work in this position</span>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={editingExperienceId ? editExperienceData.is_current : newExperience.is_current}
+                                                                    onChange={(e) =>
+                                                                        editingExperienceId
+                                                                            ? setEditExperienceData({ ...editExperienceData, is_current: e.target.checked })
+                                                                            : setNewExperience({ ...newExperience, is_current: e.target.checked })
+                                                                    }
+                                                                    className="checkbox checkbox-primary"
+                                                                />
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text">Start Date*</span>
+                                                            </label>
+                                                            <input
+                                                                type="date"
+                                                                value={editingExperienceId ? editExperienceData.start_date : newExperience.start_date}
+                                                                onChange={(e) =>
+                                                                    editingExperienceId
+                                                                        ? setEditExperienceData({ ...editExperienceData, start_date: e.target.value })
+                                                                        : setNewExperience({ ...newExperience, start_date: e.target.value })
+                                                                }
+                                                                className="input input-bordered"
+                                                                max={new Date().toISOString().split('T')[0]}
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text">End Date</span>
+                                                            </label>
+                                                            <input
+                                                                type="date"
+                                                                value={editingExperienceId ? editExperienceData.end_date : newExperience.end_date}
+                                                                onChange={(e) =>
+                                                                    editingExperienceId
+                                                                        ? setEditExperienceData({ ...editExperienceData, end_date: e.target.value })
+                                                                        : setNewExperience({ ...newExperience, end_date: e.target.value })
+                                                                }
+                                                                className="input input-bordered"
+                                                                max={new Date().toISOString().split('T')[0]}
+                                                                disabled={editingExperienceId ? editExperienceData.is_current : newExperience.is_current}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="form-control">
+                                                        <label className="label">
+                                                            <span className="label-text">Description*</span>
+                                                        </label>
+                                                        <textarea
+                                                            value={editingExperienceId ? editExperienceData.description : newExperience.description}
+                                                            onChange={(e) =>
+                                                                editingExperienceId
+                                                                    ? setEditExperienceData({ ...editExperienceData, description: e.target.value })
+                                                                    : setNewExperience({ ...newExperience, description: e.target.value })
+                                                            }
+                                                            className="textarea textarea-bordered h-24"
+                                                            placeholder="Describe your responsibilities..."
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="form-control">
+                                                        <label className="label">
+                                                            <span className="label-text">Profile Title</span>
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            value={editingExperienceId ? editExperienceData.profile_title : newExperience.profile_title}
+                                                            onChange={(e) =>
+                                                                editingExperienceId
+                                                                    ? setEditExperienceData({ ...editExperienceData, profile_title: e.target.value })
+                                                                    : setNewExperience({ ...newExperience, profile_title: e.target.value })
+                                                            }
+                                                            className="input input-bordered"
+                                                            placeholder="Appears below your name at the top of the profile"
+                                                        />
+                                                    </div>
+                                                    <div className="form-control">
+                                                        <label className="label">
+                                                            <span className="label-text">Where did you find this job offer?</span>
+                                                        </label>
+                                                        <select
+                                                            value={editingExperienceId ? editExperienceData.job_source : newExperience.job_source}
+                                                            onChange={(e) =>
+                                                                editingExperienceId
+                                                                    ? setEditExperienceData({ ...editExperienceData, job_source: e.target.value })
+                                                                    : setNewExperience({ ...newExperience, job_source: e.target.value })
+                                                            }
+                                                            className="select select-bordered"
+                                                        >
+                                                            <option value="">Please Select</option>
+                                                            <option value="LinkedIn">LinkedIn</option>
+                                                            <option value="Indeed">Indeed</option>
+                                                            <option value="Glassdoor">Glassdoor</option>
+                                                            <option value="Directement sur le site de l'entreprise">Directly on the company's website</option>
+                                                            <option value="Recommandation">Recommandation</option>
+                                                            <option value="Autre">Other</option>
+                                                        </select>
+                                                        <label className="label">
+                                                            <span className="label-text-alt text-gray-500">
+                                                                This information will be used to encourage gaining more experience.
+                                                            </span>
+                                                        </label>
+                                                    </div>
+                                                    <div className="flex justify-end gap-3 mt-6">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setShowExperienceForm(false);
+                                                                setEditingExperienceId(null);
+                                                                setEditExperienceData({
+                                                                    job_title: '',
+                                                                    company: '',
+                                                                    employment_type: 'Temps plein',
+                                                                    is_current: false,
+                                                                    start_date: '',
+                                                                    end_date: '',
+                                                                    location: '',
+                                                                    location_type: 'Sur place',
+                                                                    description: '',
+                                                                    profile_title: '',
+                                                                    job_source: '',
+                                                                });
+                                                            }}
+                                                            className="btn btn-ghost"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                                                            {isSaving ? (
+                                                                <>
+                                                                    <span className="loading loading-spinner loading-xs"></span>
+                                                                    {editingExperienceId ? 'Modification...' : 'Ajout...'}
+                                                                </>
+                                                            ) : editingExperienceId ? 'Saves Changes' : 'Add Experience'}
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    )}
 
-    {/* Modal pour afficher les détails */}
-    {selectedExperience && (
-      <div className="modal modal-open">
-        <div className="modal-box max-w-2xl">
-          <h3 className="font-bold text-xl mb-4">{selectedExperience.job_title}</h3>
-          <p className="text-lg text-base-content/80 mb-2">{selectedExperience.company}</p>
-          {selectedExperience.profile_title && (
-            <p className="text-sm text-base-content/60 mb-2">{selectedExperience.profile_title}</p>
-          )}
-          <p className="text-sm text-base-content/70 mb-2">
-            {selectedExperience.employment_type} • {selectedExperience.location_type}
-          </p>
-          <p className="text-sm text-base-content/70 mb-2">
-            {new Date(selectedExperience.start_date).toLocaleDateString('fr-FR')} -{' '}
-            {selectedExperience.is_current
-              ? 'Présent'
-              : new Date(selectedExperience.end_date).toLocaleDateString('fr-FR')}
-          </p>
-          {selectedExperience.location && (
-            <p className="text-sm text-base-content/70 mb-2">{selectedExperience.location}</p>
-          )}
-          {selectedExperience.description && (
-            <div className="mt-4">
-              <h4 className="font-semibold text-base mb-2">Descriptif</h4>
-              <p className="text-base-content/80">{selectedExperience.description}</p>
-            </div>
-          )}
-          {selectedExperience.job_source && (
-            <p className="text-sm text-base-content/60 mt-4">
-              Source : {selectedExperience.job_source}
-            </p>
-          )}
-          <div className="modal-action">
-            <button onClick={() => setSelectedExperience(null)} className="btn btn-ghost">
-              Fermer
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-)}
+                                    {experiences.length === 0 && !showExperienceForm ? (
+                                        <div className="text-center py-12">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-12 w-12 mx-auto text-gray-400"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={1.5}
+                                                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                                />
+                                            </svg>
+                                            <h3 className="mt-4 text-lg font-medium text-gray-500">Aucune expérience ajoutée</h3>
+                                            <p className="mt-1 text-gray-400">Ajoutez vos expériences professionnelles pour les afficher ici</p>
+                                            <button onClick={() => setShowExperienceForm(true)} className="btn btn-primary mt-6">
+                                                Add Experience
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {experiences
+                                                .filter((experience) => {
+                                                    if (locationFilter === 'Tous') return true;
+                                                    return experience.location_type === locationFilter;
+                                                })
+                                                .sort((a, b) => {
+                                                    const dateA = a.is_current ? new Date() : new Date(a.end_date);
+                                                    const dateB = b.is_current ? new Date() : new Date(b.end_date);
+                                                    return experienceSortOption === 'date-desc' ? dateB - dateA : dateA - dateB;
+                                                })
+                                                .map((experience) => {
+                                                    const startDate = new Date(experience.start_date);
+                                                    const endDate = experience.is_current ? new Date() : new Date(experience.end_date);
+                                                    const durationMonths = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24 * 30));
+                                                    const durationYears = Math.floor(durationMonths / 12);
+                                                    const remainingMonths = durationMonths % 12;
+                                                    const durationText =
+                                                        durationYears > 0
+                                                            ? `${durationYears} an${durationYears > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} mois` : ''}`
+                                                            : `${durationMonths} mois`;
+                                                    const maxDuration = 120; // 10 years
+                                                    const durationPercentage = Math.min((durationMonths / maxDuration) * 100, 100);
+
+                                                    return (
+                                                        <div
+                                                            key={experience._id}
+                                                            className={`card ${experience.is_current
+                                                                ? 'bg-[#e4bdf3] text-gray-900'
+                                                                : 'bg-base-100 text-base-content'
+                                                                } border border-base-300 hover:border-primary transition-colors shadow-md`}
+                                                        >
+                                                            <div className="card-body p-6 flex flex-row gap-4">
+                                                                {/* Left Side: Experience Details and More Details Button */}
+                                                                <div className="flex-1">
+                                                                    <div className="flex justify-between items-start mb-2">
+                                                                        <div>
+                                                                            <h3 className="card-title text-xl font-semibold">{experience.job_title}</h3>
+                                                                            <p className={`${experience.is_current ? 'text-gray-800' : 'text-base-content/80'} text-lg`}>
+                                                                                {experience.company}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <span className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'}`}>
+                                                                            {experience.employment_type} • {experience.location_type}
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'} mb-2`}>
+                                                                        {startDate.toLocaleDateString('fr-FR')} -{' '}
+                                                                        {experience.is_current ? 'Présent' : endDate.toLocaleDateString('fr-FR')}
+                                                                    </p>
+                                                                    {experience.location && (
+                                                                        <p className={`text-sm ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'} mb-2`}>
+                                                                            {experience.location}
+                                                                        </p>
+                                                                    )}
+                                                                    <button
+                                                                        onClick={() => setSelectedExperience(experience)}
+                                                                        className={`btn btn-outline btn-sm mt-2 ${experience.is_current
+                                                                            ? 'text-gray-900 border-gray-900 hover:bg-gray-200 hover:border-gray-900'
+                                                                            : 'text-base-content border-base-content hover:bg-base-200 hover:border-base-content'
+                                                                            }`}
+                                                                    >
+                                                                        More details
+                                                                    </button>
+                                                                </div>
+
+                                                                {/* Right Side: Percentage Circle and Edit/Delete Buttons */}
+                                                                <div className="flex flex-col items-center justify-between">
+                                                                    <div className="relative w-16 h-16 mb-4">
+                                                                        <svg className="w-full h-full" viewBox="0 0 36 36">
+                                                                            <path
+                                                                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                                                                fill="none"
+                                                                                stroke="#e5e7eb"
+                                                                                strokeWidth="3.8"
+                                                                            />
+                                                                            <path
+                                                                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                                                                fill="none"
+                                                                                stroke="url(#gradient)"
+                                                                                strokeWidth="3.8"
+                                                                                strokeDasharray={`${durationPercentage}, 100`}
+                                                                                strokeLinecap="round"
+                                                                            />
+                                                                            <defs>
+                                                                                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                                                    <stop offset="0%" style={{ stopColor: '#F5A7B7', stopOpacity: 1 }} />
+                                                                                    <stop offset="100%" style={{ stopColor: '#C084FC', stopOpacity: 1 }} />
+                                                                                </linearGradient>
+                                                                            </defs>
+                                                                        </svg>
+                                                                        <div className="absolute inset-0 flex items-center justify-center">
+                                                                            <span className={`text-sm font-medium ${experience.is_current ? 'text-gray-900' : 'text-base-content'}`}>
+                                                                                {Math.round(durationPercentage)}%
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <span className={`text-sm mb-2 ${experience.is_current ? 'text-gray-700' : 'text-base-content/70'}`}>
+                                                                        {durationText}
+                                                                    </span>
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={() => handleEditExperience(experience)}
+                                                                            className="btn btn-square btn-sm btn-ghost"
+                                                                            title="Modifier"
+                                                                        >
+                                                                            <svg
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                className="h-5 w-5"
+                                                                                fill="none"
+                                                                                viewBox="0 0 24 24"
+                                                                                stroke="currentColor"
+                                                                            >
+                                                                                <path
+                                                                                    strokeLinecap="round"
+                                                                                    strokeLinejoin="round"
+                                                                                    strokeWidth={2}
+                                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                                                />
+                                                                            </svg>
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDeleteExperience(experience._id)}
+                                                                            className="btn btn-square btn-sm btn-ghost text-error"
+                                                                            title="Supprimer"
+                                                                        >
+                                                                            <svg
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                                className="h-5 w-5"
+                                                                                fill="none"
+                                                                                viewBox="0 0 24 24"
+                                                                                stroke="currentColor"
+                                                                            >
+                                                                                <path
+                                                                                    strokeLinecap="round"
+                                                                                    strokeLinejoin="round"
+                                                                                    strokeWidth={2}
+                                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                                />
+                                                                            </svg>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+                                    )}
+
+                                    {/* Modal pour afficher les détails */}
+                                    {selectedExperience && (
+                                        <div className="modal modal-open">
+                                            <div className="modal-box max-w-2xl">
+                                                <h3 className="font-bold text-xl mb-4">{selectedExperience.job_title}</h3>
+                                                <p className="text-lg text-base-content/80 mb-2">{selectedExperience.company}</p>
+                                                {selectedExperience.profile_title && (
+                                                    <p className="text-sm text-base-content/60 mb-2">{selectedExperience.profile_title}</p>
+                                                )}
+                                                <p className="text-sm text-base-content/70 mb-2">
+                                                    {selectedExperience.employment_type} • {selectedExperience.location_type}
+                                                </p>
+                                                <p className="text-sm text-base-content/70 mb-2">
+                                                    {new Date(selectedExperience.start_date).toLocaleDateString('fr-FR')} -{' '}
+                                                    {selectedExperience.is_current
+                                                        ? 'Présent'
+                                                        : new Date(selectedExperience.end_date).toLocaleDateString('fr-FR')}
+                                                </p>
+                                                {selectedExperience.location && (
+                                                    <p className="text-sm text-base-content/70 mb-2">{selectedExperience.location}</p>
+                                                )}
+                                                {selectedExperience.description && (
+                                                    <div className="mt-4">
+                                                        <h4 className="font-semibold text-base mb-2">Descriptif</h4>
+                                                        <p className="text-base-content/80">{selectedExperience.description}</p>
+                                                    </div>
+                                                )}
+                                                {selectedExperience.job_source && (
+                                                    <p className="text-sm text-base-content/60 mt-4">
+                                                        Source : {selectedExperience.job_source}
+                                                    </p>
+                                                )}
+                                                <div className="modal-action">
+                                                    <button onClick={() => setSelectedExperience(null)} className="btn btn-ghost">
+                                                        Fermer
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {activeTab === 'security' && (
                                 <div className="space-y-8">
@@ -2848,8 +3033,6 @@ const handleAddExperience = async (e) => {
                                     </div>
                                 </div>
                             )}
-
-
                         </div>
                     </div>
                 </div>
@@ -2858,4 +3041,4 @@ const handleAddExperience = async (e) => {
     );
 };
 
-export default Profile;
+export default Profile; 
