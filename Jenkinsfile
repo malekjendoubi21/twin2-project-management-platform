@@ -30,12 +30,11 @@ pipeline {
         stage('Verify Code Quality') {
             steps {
                 dir('Server') {
-                    // Run linting to ensure code quality
+                    sh 'npm install --legacy-peer-deps'
                     sh 'npm run lint'
-                    echo "server tests passed"
                 }
                 dir('Client') {
-                    sh 'npm install'
+                    sh 'npm install --legacy-peer-deps'
                     sh 'npm run lint'
                 }
             }
