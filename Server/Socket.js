@@ -63,7 +63,6 @@ const initializeSocket = (server) => {
         // Send a test notification to confirm room joining worked
         socket.emit('test-notification', { message: 'Successfully joined notification room' });
       } else {
-        console.log(`Authentication mismatch: Socket user ${socket.userId} attempted to join ${userId}'s room`);
         socket.emit('error', { message: 'Authentication error: Cannot join another user\'s notification room' });
       }
     });

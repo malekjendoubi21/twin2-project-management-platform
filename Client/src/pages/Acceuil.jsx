@@ -1700,109 +1700,95 @@ const showToast = (message, type = 'success') => {
       </section>
 
       {/* Enhanced Footer */}
-      <footer className="bg-base-300 text-base-content border-t border-base-200 relative z-10 mt-12">
-        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
-          {/* Waves SVG */}
-          <div className="w-full overflow-hidden leading-none relative -top-1">
-            <svg className="relative block w-full h-12" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
-              <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" className="fill-base-100"></path>
-            </svg>
+      <footer className="border-t border-white/10 relative overflow-hidden">
+  <div className="absolute inset-0 bg-gradient-to-b from-gray-900 to-black"></div>
+  <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
+  
+  <div className="container mx-auto px-8 py-16 relative z-10">
+    <div className="flex flex-col md:flex-row justify-between gap-12">
+      <div className="md:w-1/3">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 relative overflow-hidden">
+            <motion.div 
+              animate={{ rotate: [0, 360] }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 bg-primary rounded-lg rotate-45"
+            ></motion.div>
+            <motion.div 
+              animate={{ rotate: [0, -360] }}
+              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 bg-info rounded-lg rotate-90 opacity-60"
+            ></motion.div>
+            <span className="absolute inset-0 flex items-center justify-center font-bold text-white text-lg">P</span>
           </div>
-          
-          <div className="p-10">
-            {/* Footer Links - Keep your existing footer content */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              {/* Product Links */}
-              <div>
-                <h6 className="footer-title opacity-100 text-primary">Product</h6>
-                <Link to="/features" className="link link-hover">Features</Link>
-                <Link to="/pricing" className="link link-hover">Pricing</Link>
-                <Link to="/integrations" className="link link-hover">Integrations</Link>
-                <Link to="/status" className="link link-hover">Status</Link>
-              </div>
-              
-              {/* Solutions Links */}
-              <div>
-                <h6 className="footer-title opacity-100 text-primary">Solutions</h6>
-                <Link to="/teams" className="link link-hover">For Teams</Link>
-                <Link to="/startups" className="link link-hover">For Startups</Link>
-                <Link to="/enterprise" className="link link-hover">Enterprise</Link>
-                <Link to="/education" className="link link-hover">Education</Link>
-              </div>
-              
-              {/* Company Links */}
-              <div>
-                <h6 className="footer-title opacity-100 text-primary">Company</h6>
-                <Link to="/about" className="link link-hover">About</Link>
-                <Link to="/careers" className="link link-hover">Careers</Link>
-                <Link to="/blog" className="link link-hover">Blog</Link>
-                <Link to="/contact" className="link link-hover">Contact</Link>
-              </div>
-              
-              {/* Legal Links and Social Media */}
-              <div>
-                <h6 className="footer-title opacity-100 text-primary">Legal</h6>
-                <Link to="/privacy" className="link link-hover">Privacy</Link>
-                <Link to="/terms" className="link link-hover">Terms</Link>
-                <Link to="/cookies" className="link link-hover">Cookies</Link>
-                
-                {/* Social Media Icons */}
-                <div className="mt-4 flex gap-4">
-                  <motion.a 
-                    whileHover={{ scale: 1.2, rotate: 5 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="btn btn-circle btn-sm bg-base-200 hover:bg-primary hover:text-white transition-all"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" className="fill-current">
-                      <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
-                    </svg>
-                  </motion.a>
-                  <motion.a 
-                    whileHover={{ scale: 1.2, rotate: -5 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="btn btn-circle btn-sm bg-base-200 hover:bg-primary hover:text-white transition-all"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" className="fill-current">
-                      <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-                    </svg>
-                  </motion.a>
-                  <motion.a 
-                    whileHover={{ scale: 1.2, rotate: 5 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="btn btn-circle btn-sm bg-base-200 hover:bg-primary hover:text-white transition-all"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" className="fill-current">
-                      <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/>
-                    </svg>
-                  </motion.a>
-                </div>
-              </div>
-            </div>
-            
-            {/* Footer Bottom */}
-            <div className="divider my-8"></div>
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              {/* Language Selector */}
-              <div className="flex items-center gap-4">
-                <span className="text-sm">Language:</span>
-                <select className="select select-bordered select-sm w-32">
-                  <option>English</option>
-                  <option>Français</option>
-                  <option>Español</option>
-                </select>
-              </div>
-              
-              {/* Copyright and Links */}
-              <div className="flex gap-4">
-                <span className="text-sm">© 2025 PlaniFy</span>
-                <Link to="/privacy" className="link link-hover text-sm">Privacy Policy</Link>
-                <Link to="/terms" className="link link-hover text-sm">Terms of Service</Link>
-              </div>
-            </div>
-          </div>
+          <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">PlaniFy</span>
         </div>
-      </footer>
+        
+        <p className="text-white/70 mb-6">
+          Simplify project management and enhance team collaboration with our comprehensive platform designed for modern teams.
+        </p>
+        
+        <div className="flex gap-4">
+          {["linkedin", "github"].map(platform => (
+            <a 
+              key={platform} 
+              href="#" 
+              className="btn btn-circle btn-sm btn-ghost bg-white/5 hover:bg-white/10 border-none text-white/70 hover:text-white"
+            >
+              <i className={`fa-brands fa-${platform}`}></i>
+            </a>
+          ))}
+        </div>
+      </div>
       
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
+        {[
+          {
+            title: "Product",
+            links: ["Features", "Pricing", "Integrations"]
+          },
+          {
+            title: "Company",
+            links: ["About Us", "Contact"]
+          }
+        ].map((column, idx) => (
+          <div key={idx}>
+            <h4 className="text-lg font-medium mb-5 text-primary">{column.title}</h4>
+            <ul className="space-y-3">
+              {column.links.map((link, i) => (
+                <li key={i}>
+                  <Link 
+                    to={`/${link.toLowerCase().replace(/\s+/g, '-')}`}
+                    className="text-white/70 hover:text-white transition-colors relative inline-block group"
+                  >
+                    {link}
+                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+    
+    <div className="border-t border-white/10 mt-16 pt-8 flex flex-col md:flex-row justify-between items-center">
+      <p className="text-white/60">
+        © {new Date().getFullYear()} PlaniFy. All rights reserved.
+      </p>
+      <div className="flex flex-wrap justify-center gap-6 mt-6 md:mt-0">
+        <div className="flex items-center gap-2">
+          <select className="select select-sm bg-white/5 border-white/10 text-white/70">
+            <option>English (US)</option>
+            <option>Français</option>
+            <option>Español</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       {/* Add the animations style */}
       <style>{`
         @keyframes gridScroll {

@@ -142,27 +142,27 @@ const Home = () => {
           </motion.div>
           
           <motion.nav 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="hidden lg:flex items-center gap-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+        className="hidden lg:flex items-center gap-8"
+      >
+        {["Features", "Pricing", "About-us", "Contact"].map((item, index) => (
+          <motion.div
+            key={item}
+            whileHover={{ scale: 1.1, color: "#60a5fa" }}
+            transition={{ type: "spring", stiffness: 400, damping: 10 }}
           >
-            {["Features", "Pricing", "About", "Blog"].map((item, index) => (
-              <motion.div
-                key={item}
-                whileHover={{ scale: 1.1, color: "#60a5fa" }}
-                transition={{ type: "spring", stiffness: 400, damping: 10 }}
-              >
-                <Link 
-                  to={`/${item.toLowerCase()}`} 
-                  className="text-white/80 hover:text-primary transition-colors relative group"
-                >
-                  {item}
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
-                </Link>
-              </motion.div>
-            ))}
-          </motion.nav>
+            <Link 
+              to={`/${item.toLowerCase()}`} 
+              className="text-white/80 hover:text-primary transition-colors relative group"
+            >
+              {item}
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
+            </Link>
+          </motion.div>
+        ))}
+      </motion.nav>
           
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -749,7 +749,7 @@ const Home = () => {
               </p>
               
               <div className="flex gap-4">
-                {["twitter", "linkedin", "github", "facebook"].map(platform => (
+                {["linkedin", "github"].map(platform => (
                   <a 
                     key={platform} 
                     href="#" 
@@ -761,19 +761,15 @@ const Home = () => {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-8 lg:gap-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
               {[
                 {
                   title: "Product",
-                  links: ["Features", "Pricing", "Integrations", "Changelog", "Status"]
+                  links: ["Features", "Pricing", "Integrations"]
                 },
                 {
                   title: "Company",
-                  links: ["About Us", "Blog", "Careers", "Contact", "Press Kit"]
-                },
-                {
-                  title: "Resources",
-                  links: ["Documentation", "Help Center", "API Reference", "Community", "Security"]
+                  links: ["About Us", "Contact"]
                 }
               ].map((column, idx) => (
                 <div key={idx}>
@@ -801,9 +797,6 @@ const Home = () => {
               © {new Date().getFullYear()} PlaniFy. All rights reserved.
             </p>
             <div className="flex flex-wrap justify-center gap-6 mt-6 md:mt-0">
-              <Link to="/terms" className="text-white/60 hover:text-white transition-colors">Terms of Service</Link>
-              <Link to="/privacy" className="text-white/60 hover:text-white transition-colors">Privacy Policy</Link>
-              <Link to="/cookies" className="text-white/60 hover:text-white transition-colors">Cookie Policy</Link>
               <div className="flex items-center gap-2">
                 <select className="select select-sm bg-white/5 border-white/10 text-white/70">
                   <option>English (US)</option>

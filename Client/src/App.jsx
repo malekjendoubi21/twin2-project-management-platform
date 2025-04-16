@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import Login from './pages/Login';
 import { Toaster } from 'react-hot-toast';
 import Register from './pages/Register';
-import Home from './pages/home';
 import ProtectedRoute from './pages/ProtectedRoute';
 import Acceuil from './pages/Acceuil';
 import UserDetails from "./dashboard/UserDetails.jsx";
@@ -28,6 +27,11 @@ import AdminProfile from "./dashboard/AdminProfile.jsx";
 import ResourceDetails from './pages/workspace/ResourceDetails.jsx';
 
 import WorkspaceTasks from './pages/workspace/WorkspaceTasks.jsx';
+import AboutUs from './shared/AboutUs.jsx';
+import Contact from './shared/Contact.jsx';
+import Home from './pages/Home.jsx';
+import Pricing from './shared/Pricing.jsx';
+import Features from './shared/Features.jsx';
 
 function App() {
   const { user } = useSession();
@@ -58,6 +62,14 @@ function App() {
           <Route path="/forgotPassword" element={<ForgotPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/home" element={<Home />} />
+
+
+          {/* Public Routes */}
+          <Route path="/about-us" element={<AboutUs />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/features" element={<Features />} />
+
 
           <Route path="/invitations/:token/accept" element={<InvitationResponse />} />
           <Route path="/invitations" element={<Invitations />} />
