@@ -446,3 +446,152 @@ exports.verifyEmail = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+exports.initiateGithubAuth = (req, res) => {
+  try {
+    const clientRedirect = req.query.clientRedirect === 'true';
+    
+    if (!process.env.GITHUB_CLIENT_ID) {
+      console.error("Missing GitHub Client ID");
+      return res.redirect(`${process.env.CLIENT_URL}/login?error=github_config_missing`);
+    }
+    
+    const params = new URLSearchParams({
+      client_id: process.env.GITHUB_CLIENT_ID,
+      redirect_uri: `${process.env.BACKEND_URL}/api/auth/github/callback`,
+      scope: 'user:email',
+      state: clientRedirect ? 'clientRedirect=true' : ''
+    });
+    
+    res.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
+  } catch (error) {
+    console.error("GitHub auth initiation error:", error);
+    res.redirect(`${process.env.CLIENT_URL}/login?error=github_init_failed`);
+  }
+};
+exports.handleGithubCallback = async (req, res) => {
+    try {
+      const { code, state } = req.query;
+      console.log("GitHub callback received with code:", code ? "Code present" : "No code");
+      
+      if (!code) {
+        console.error("No authorization code received from GitHub");
+        return res.redirect(`${process.env.CLIENT_URL}/login?error=no_github_code`);
+      }
+      
+      const clientRedirect = state && state.includes('clientRedirect=true');
+  
+      // Exchange code for access token
+      console.log("Requesting access token from GitHub...");
+      let tokenResponse;
+      try {
+        tokenResponse = await axios.post(
+          'https://github.com/login/oauth/access_token',
+          {
+            client_id: process.env.GITHUB_CLIENT_ID,
+            client_secret: process.env.GITHUB_CLIENT_SECRET,
+            code,
+            redirect_uri: `${process.env.BACKEND_URL}/api/auth/github/callback`
+          },
+          {
+            headers: {
+              Accept: 'application/json'
+            }
+          }
+        );
+      } catch (tokenError) {
+        console.error("Error getting GitHub access token:", tokenError.message);
+        return res.redirect(`${process.env.CLIENT_URL}/login?error=github_token_failed`);
+      }
+  
+      const accessToken = tokenResponse.data.access_token;
+      if (!accessToken) {
+        console.error("No access token received from GitHub");
+        return res.redirect(`${process.env.CLIENT_URL}/login?error=no_github_token`);
+      }
+      
+      console.log("Got GitHub access token, fetching user data...");
+  
+      // Get user data with the access token
+      let userResponse, emailResponse;
+      try {
+        userResponse = await axios.get('https://api.github.com/user', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+        
+        // Get user's email
+        emailResponse = await axios.get('https://api.github.com/user/emails', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+      } catch (userDataError) {
+        console.error("Error fetching GitHub user data:", userDataError.message);
+        return res.redirect(`${process.env.CLIENT_URL}/login?error=github_user_data_failed`);
+      }
+      
+      const primaryEmail = emailResponse.data.find(email => email.primary)?.email;
+      if (!primaryEmail) {
+        console.error("No primary email found in GitHub response");
+        return res.redirect(`${process.env.CLIENT_URL}/login?error=no_github_email`);
+      }
+      
+      console.log("GitHub user data received, email:", primaryEmail);
+  
+      // Find or create user
+      try {
+        let user = await User.findOne({ email: primaryEmail });
+        if (!user) {
+          console.log("Creating new user with GitHub credentials");
+          user = new User({
+            github_id: userResponse.data.id,
+            email: primaryEmail,
+            name: userResponse.data.name || userResponse.data.login,
+            authentication_method: 'github',
+            role: 'user',
+            profile_picture: userResponse.data.avatar_url // Make sure your User model has an avatar field
+          });
+          await user.save();
+        } else {
+          console.log("Existing user found, updating GitHub info");
+          // Update GitHub info for existing user
+          user.github_id = userResponse.data.id;
+          user.profile_picture = userResponse.data.avatar_url;
+          user.authentication_method = 'github';
+          await user.save();
+        }
+  
+        // Generate JWT token and set cookie
+        const token = jwt.sign(
+          { id: user._id, email: user.email, profile_picture: user.profile_picture },
+          process.env.JWT_SECRET,
+          { expiresIn: process.env.JWT_EXPIRE_TIME }
+        );
+  
+        console.log("Setting auth cookie and redirecting user");
+        res.cookie('token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+          domain: process.env.COOKIE_DOMAIN,
+          path: '/'
+        });
+  
+        // Redirect based on user role
+        if (clientRedirect) {
+          res.redirect(`${process.env.CLIENT_URL}/login?githubAuth=success`);
+        } else {
+          const redirectPath = user.role === 'admin' ? '/dashboard' : '/acceuil';
+          res.redirect(`${process.env.CLIENT_URL}${redirectPath}`);
+        }
+      } catch (dbError) {
+        console.error("Database error during GitHub auth:", dbError.message);
+        return res.redirect(`${process.env.CLIENT_URL}/login?error=github_db_error`);
+      }
+    } catch (error) {
+      console.error('GitHub OAuth error:', error.message);
+      res.redirect(`${process.env.CLIENT_URL}/login?error=github_auth_failed`);
+    }
+  };
