@@ -141,30 +141,24 @@ exports.logout = (req, res) => {
 // }
 
 exports.protection = async (req, res, next) => {
-    console.log('En-têtes reçus :', req.headers);
   
     let token;
     // Vérifie l'en-tête Authorization
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
-      console.log('Token extrait de l\'en-tête :', token);
     }
     // Vérifie le cookie comme fallback
     else if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
-      console.log('Token extrait du cookie :', token);
     } else {
-      console.log('Aucun token trouvé dans les en-têtes ou les cookies');
       return res.status(401).json({ error: 'Non authentifiéee. Veuillez vous connecter.' });
     }
   
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('Token décodé :', decoded);
       const user = await User.findById(decoded.id);
   
       if (!user) {
-        console.log('Utilisateur non trouvé pour ID :', decoded.id);
         return res.status(401).json({ error: 'Utilisateur non trouvé. Veuillez vous connecter.' });
       }
   
