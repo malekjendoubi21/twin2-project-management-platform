@@ -9,7 +9,7 @@ const {
     logout,
     initiateGoogleAuth,
     handleGoogleCallback,
-    verifyEmail
+    verifyEmail,initiateGithubAuth,handleGithubCallback
 } = require('../controllers/AuthController');
 
 // Local authentication
@@ -25,5 +25,9 @@ router.post('/verify-email', verifyEmail);
 // Google authentication
 router.get('/google', initiateGoogleAuth);
 router.get('/google/callback', handleGoogleCallback);
+
+
+router.get('/github', initiateGithubAuth);
+router.get('/github/callback', handleGithubCallback);
 
 module.exports = router;
