@@ -446,6 +446,40 @@ exports.verifyEmail = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+exports.initiateGithubLinking = (req, res) => {
+  try {
+    const userId = req.user._id;
+    
+    // Add a timestamp to prevent caching
+    const timestamp = Date.now();
+    
+    // Simple, well-defined state parameter
+    const state = JSON.stringify({
+      userId: userId,
+      isLinking: true,
+      timestamp: timestamp
+    });
+    
+    const params = new URLSearchParams({
+      client_id: process.env.GITHUB_CLIENT_ID,
+      redirect_uri: `${process.env.BACKEND_URL}/api/auth/github/callback`,
+      scope: 'user:email repo', // Make sure repo scope is included
+      state: state,
+      login: 'true', // Force GitHub to show the login page
+      allow_signup: 'true'
+    });
+    
+    console.log(`Initiating GitHub linking for user ID: ${userId} with timestamp ${timestamp}`);
+    
+    // Direct redirect without the logout step
+    const authUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
+    console.log("Redirecting to:", authUrl);
+    res.redirect(authUrl);
+  } catch (error) {
+    console.error("GitHub linking initiation error:", error);
+    res.redirect(`${process.env.CLIENT_URL}/profile?error=github_link_failed&message=${encodeURIComponent(error.message)}`);
+  }
+};
 exports.initiateGithubAuth = (req, res) => {
   try {
     const clientRedirect = req.query.clientRedirect === 'true';
@@ -455,143 +489,277 @@ exports.initiateGithubAuth = (req, res) => {
       return res.redirect(`${process.env.CLIENT_URL}/login?error=github_config_missing`);
     }
     
+    // Create a proper state object like we do in the linking flow
+    const state = JSON.stringify({
+      clientRedirect: clientRedirect,
+      timestamp: Date.now()
+    });
+    
     const params = new URLSearchParams({
       client_id: process.env.GITHUB_CLIENT_ID,
       redirect_uri: `${process.env.BACKEND_URL}/api/auth/github/callback`,
-      scope: 'user:email',
-      state: clientRedirect ? 'clientRedirect=true' : ''
+      scope: 'user:email repo',
+      state: state,
+      login: 'true',
+      allow_signup: 'true'
     });
     
-    res.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
+    // Direct redirect instead of logout - this matches the linking function's approach
+    const authUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
+    console.log("Redirecting to GitHub auth:", authUrl);
+    res.redirect(authUrl);
   } catch (error) {
     console.error("GitHub auth initiation error:", error);
     res.redirect(`${process.env.CLIENT_URL}/login?error=github_init_failed`);
   }
 };
 exports.handleGithubCallback = async (req, res) => {
+  console.log("GitHub callback started");
+  try {
+    const { code, state } = req.query;
+    console.log("GitHub callback received with code:", !!code);
+    
+    if (!code) {
+      return res.redirect(`${process.env.CLIENT_URL}/profile?error=no_code`);
+    }
+    
+    // Parse state as before...
+    let stateData = {};
     try {
-      const { code, state } = req.query;
-      console.log("GitHub callback received with code:", code ? "Code present" : "No code");
-      
-      if (!code) {
-        console.error("No authorization code received from GitHub");
-        return res.redirect(`${process.env.CLIENT_URL}/login?error=no_github_code`);
+      stateData = JSON.parse(state);
+      console.log("Parsed state data:", JSON.stringify(stateData));
+    } catch (e) {
+      console.error("Could not parse state parameter:", state, e);
+      if (req.query.userId) {
+        stateData.userId = req.query.userId;
+      }
+    }
+    
+    // Token exchange and user fetch as before...
+    console.log("Exchanging code for token...");
+    const tokenResponse = await axios.post(
+      'https://github.com/login/oauth/access_token',
+      {
+        client_id: process.env.GITHUB_CLIENT_ID,
+        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        code: code
+      },
+      { headers: { Accept: 'application/json' } }
+    );
+    
+    const accessToken = tokenResponse.data.access_token;
+    if (!accessToken) {
+      console.error("No access token received from GitHub");
+      return res.redirect(`${process.env.CLIENT_URL}/profile?error=no_token`);
+    }
+    
+    // User fetch code as before...
+    console.log("Fetching GitHub user data...");
+    const userResponse = await axios.get('https://api.github.com/user', {
+      headers: { Authorization: `token ${accessToken}` }
+    });
+    
+    const User = require('../models/User');
+    let user;
+    
+    if (stateData.userId) {
+      console.log(`Looking for user with ID: ${stateData.userId}`);
+      user = await User.findById(stateData.userId);
+      if (!user) {
+        return res.redirect(`${process.env.CLIENT_URL}/profile?error=user_not_found`);
       }
       
-      const clientRedirect = state && state.includes('clientRedirect=true');
-  
-      // Exchange code for access token
-      console.log("Requesting access token from GitHub...");
-      let tokenResponse;
-      try {
-        tokenResponse = await axios.post(
-          'https://github.com/login/oauth/access_token',
-          {
-            client_id: process.env.GITHUB_CLIENT_ID,
-            client_secret: process.env.GITHUB_CLIENT_SECRET,
-            code,
-            redirect_uri: `${process.env.BACKEND_URL}/api/auth/github/callback`
-          },
-          {
-            headers: {
-              Accept: 'application/json'
-            }
-          }
-        );
-      } catch (tokenError) {
-        console.error("Error getting GitHub access token:", tokenError.message);
-        return res.redirect(`${process.env.CLIENT_URL}/login?error=github_token_failed`);
+      user.github_id = userResponse.data.id;
+      if (!user.profile_picture) {
+        user.profile_picture = userResponse.data.avatar_url;
       }
-  
-      const accessToken = tokenResponse.data.access_token;
-      if (!accessToken) {
-        console.error("No access token received from GitHub");
-        return res.redirect(`${process.env.CLIENT_URL}/login?error=no_github_token`);
-      }
+      await user.save();
+    } else {
+      return res.redirect(`${process.env.CLIENT_URL}/profile?error=missing_user_id`);
+    }
+    
+    // This is where we fix the workspace and project creation
+    console.log("Starting workspace creation...");
+    try {
+      const mongoose = require('mongoose');
+      const Workspace = require('../models/Workspace');
+      const Project = require('../models/Project');
       
-      console.log("Got GitHub access token, fetching user data...");
-  
-      // Get user data with the access token
-      let userResponse, emailResponse;
-      try {
-        userResponse = await axios.get('https://api.github.com/user', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
+      // FIRST FIX: Clean up existing projects with null workspace that have GitHub repo IDs
+      // This will prevent duplicate key errors
+      console.log("Cleaning up orphaned projects with GitHub IDs...");
+      await Project.deleteMany({ 
+        workspace: null,
+        github_repo_id: { $exists: true, $ne: null }
+      });
+      
+      // Create or find workspace with explicit ID handling
+      let githubWorkspace = await Workspace.findOne({
+        owner: user._id,
+        name: "Github workspace" 
+      });
+      
+      if (!githubWorkspace) {
+        console.log("Creating new GitHub workspace");
+        githubWorkspace = new Workspace({
+          name: "Github workspace",
+          description: "Your GitHub repositories",
+          owner: user._id,
+          members: [{ user: user._id, role: 'admin' }],
+          projects: []
         });
         
-        // Get user's email
-        emailResponse = await axios.get('https://api.github.com/user/emails', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
+        await githubWorkspace.save();
+        console.log("Created new GitHub workspace with ID:", githubWorkspace._id);
+      } else {
+        console.log("Found existing GitHub workspace with ID:", githubWorkspace._id);
+      }
+      
+      // Make sure we have a valid workspace ID before continuing
+      if (!githubWorkspace || !githubWorkspace._id) {
+        throw new Error("Failed to create or find valid workspace");
+      }
+      
+      // Store the workspace ID as both string and ObjectId for safety
+      const workspaceId = githubWorkspace._id;
+      const workspaceIdStr = workspaceId.toString();
+      
+      console.log(`Using workspace ID: ${workspaceIdStr}`);
+      
+      // Fetch repositories - filter by ownership to avoid forks
+      console.log("Fetching repositories from GitHub API...");
+      const reposResponse = await axios.get('https://api.github.com/user/repos', {
+        headers: { Authorization: `token ${accessToken}` },
+        params: { 
+          per_page: 100,
+          visibility: 'all',
+          sort: 'updated',
+          affiliation: 'owner' // Only get repositories the user owns
+        }
+      });
+      
+      const repositories = reposResponse.data;
+      console.log(`Successfully fetched ${repositories.length} owned repositories`);
+      
+      if (repositories.length === 0) {
+        console.log("No repositories found to import");
+      } else {
+        let successCount = 0;
+        let skipCount = 0;
+        
+        // Track existing projects for duplicate prevention
+        const existingProjectIds = new Set();
+        
+        // First, get the current workspace projects
+        if (githubWorkspace.projects && githubWorkspace.projects.length > 0) {
+          for (const projectRef of githubWorkspace.projects) {
+            try {
+              if (typeof projectRef === 'object' && projectRef._id) {
+                existingProjectIds.add(projectRef._id.toString());
+              } else if (projectRef) {
+                existingProjectIds.add(projectRef.toString());
+              }
+            } catch (err) {
+              console.log(`Error processing existing project reference: ${projectRef}`);
+            }
           }
-        });
-      } catch (userDataError) {
-        console.error("Error fetching GitHub user data:", userDataError.message);
-        return res.redirect(`${process.env.CLIENT_URL}/login?error=github_user_data_failed`);
-      }
-      
-      const primaryEmail = emailResponse.data.find(email => email.primary)?.email;
-      if (!primaryEmail) {
-        console.error("No primary email found in GitHub response");
-        return res.redirect(`${process.env.CLIENT_URL}/login?error=no_github_email`);
-      }
-      
-      console.log("GitHub user data received, email:", primaryEmail);
-  
-      // Find or create user
-      try {
-        let user = await User.findOne({ email: primaryEmail });
-        if (!user) {
-          console.log("Creating new user with GitHub credentials");
-          user = new User({
-            github_id: userResponse.data.id,
-            email: primaryEmail,
-            name: userResponse.data.name || userResponse.data.login,
-            authentication_method: 'github',
-            role: 'user',
-            profile_picture: userResponse.data.avatar_url // Make sure your User model has an avatar field
-          });
-          await user.save();
-        } else {
-          console.log("Existing user found, updating GitHub info");
-          // Update GitHub info for existing user
-          user.github_id = userResponse.data.id;
-          user.profile_picture = userResponse.data.avatar_url;
-          user.authentication_method = 'github';
-          await user.save();
         }
-  
-        // Generate JWT token and set cookie
-        const token = jwt.sign(
-          { id: user._id, email: user.email, profile_picture: user.profile_picture },
-          process.env.JWT_SECRET,
-          { expiresIn: process.env.JWT_EXPIRE_TIME }
-        );
-  
-        console.log("Setting auth cookie and redirecting user");
-        res.cookie('token', token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
-          maxAge: 7 * 24 * 60 * 60 * 1000,
-          domain: process.env.COOKIE_DOMAIN,
-          path: '/'
-        });
-  
-        // Redirect based on user role
-        if (clientRedirect) {
-          res.redirect(`${process.env.CLIENT_URL}/login?githubAuth=success`);
-        } else {
-          const redirectPath = user.role === 'admin' ? '/dashboard' : '/acceuil';
-          res.redirect(`${process.env.CLIENT_URL}${redirectPath}`);
+        
+        console.log(`Found ${existingProjectIds.size} existing projects in workspace`);
+        
+        for (const repo of repositories) {
+          try {
+            console.log(`Processing repository: ${repo.name} (ID: ${repo.id})`);
+            
+            // Check if project already exists with this repo ID
+            const existingProject = await Project.findOne({
+              github_repo_id: String(repo.id)
+            });
+            
+            if (existingProject) {
+              console.log(`Project already exists for repo: ${repo.name}`);
+              
+              // SECOND FIX: Update existing project to ensure workspace is set correctly
+              if (!existingProject.workspace || existingProject.workspace.toString() !== workspaceIdStr) {
+                existingProject.workspace = workspaceId;
+                await existingProject.save();
+                console.log(`Updated existing project with correct workspace ID`);
+              }
+              
+              // Add to workspace projects array if not already there
+              const projectIdStr = existingProject._id.toString();
+              if (!existingProjectIds.has(projectIdStr)) {
+                githubWorkspace.projects.push(existingProject._id);
+                existingProjectIds.add(projectIdStr);
+              }
+              
+              skipCount++;
+              continue;
+            }
+            
+            // Create new project with explicit workspace ID
+            const newProject = new Project({
+              project_name: repo.name,
+              description: repo.description || "No description",
+              workspace: workspaceId, // THIRD FIX: Use the direct ObjectId, not a string that needs conversion
+              status: 'not started',
+              start_date: new Date(repo.created_at || Date.now()),
+              end_date: new Date(new Date().setMonth(new Date().getMonth() + 3)),
+              github_repo_id: String(repo.id),
+              github_repo_url: repo.html_url || "",
+              id_teamMembre: [user._id]
+            });
+            
+            // Double-check the workspace is set
+            console.log(`Project workspace set to: ${newProject.workspace}`);
+            
+            // Save the project
+            const savedProject = await newProject.save();
+            console.log(`Project saved with ID: ${savedProject._id}`);
+            
+            // Add to workspace projects array if not already there
+            const newProjectIdStr = savedProject._id.toString();
+            if (!existingProjectIds.has(newProjectIdStr)) {
+              githubWorkspace.projects.push(savedProject._id);
+              existingProjectIds.add(newProjectIdStr);
+              successCount++;
+            }
+          } catch (error) {
+            console.error(`Error importing repository ${repo.name}:`, error.message);
+          }
         }
-      } catch (dbError) {
-        console.error("Database error during GitHub auth:", dbError.message);
-        return res.redirect(`${process.env.CLIENT_URL}/login?error=github_db_error`);
+        
+        // Save workspace with updated projects array
+        await githubWorkspace.save();
+        console.log(`GitHub workspace updated with ${githubWorkspace.projects.length} total projects`);
+        console.log(`Repository import summary - Added: ${successCount}, Skipped: ${skipCount}`);
       }
-    } catch (error) {
-      console.error('GitHub OAuth error:', error.message);
-      res.redirect(`${process.env.CLIENT_URL}/login?error=github_auth_failed`);
+    } catch (workspaceError) {
+      console.error("Error in workspace creation process:", workspaceError);
     }
-  };
+    
+    // Token generation and redirect as before...
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { id: user._id, email: user.email, name: user.name, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE_TIME || '7d' }
+    );
+    
+    res.cookie('token', token, {
+      httpOnly: false, // Allow JS access
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+      domain: process.env.COOKIE_DOMAIN || undefined
+    });
+
+    console.log("GitHub account linked successfully, redirecting to profile");
+    return res.redirect(`${process.env.CLIENT_URL}/profile?token=${token}&githubLinked=success`);
+  } catch (error) {
+    console.error("GitHub callback error:", error);
+    const errorMsg = error.response?.data?.message || error.message || 'unknown_error';
+    return res.redirect(`${process.env.CLIENT_URL}/profile?error=${encodeURIComponent(errorMsg)}`);
+  }
+};

@@ -913,6 +913,7 @@ exports.getUserWorkspaceStats = async (req, res) => {
 exports.getWorkspaceProjects = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`Fetching projects for workspace ${id}`);
 
     // First get the workspace with project IDs
     const workspace = await Workspace.findById(id);
@@ -921,19 +922,75 @@ exports.getWorkspaceProjects = async (req, res) => {
       return res.status(404).json({ message: 'Workspace not found' });
     }
 
-    // Then fetch the complete projects with populated tasks using those IDs
-    const projectIds = workspace.projects;
-    const completeProjects = await Project.find({
-      _id: { $in: projectIds }
-    }).populate('id_tasks');
+    if (!workspace.projects || workspace.projects.length === 0) {
+      console.log(`Workspace ${id} has no projects array or empty array`);
+      return res.status(200).json([]);
+    }
 
+    // Log the raw projects array for debugging
+    console.log(`Raw projects in workspace ${id}:`, JSON.stringify(workspace.projects));
+
+    // Clean and normalize the project IDs
+    const projectIds = [];
+    for (const projectRef of workspace.projects) {
+      try {
+        if (typeof projectRef === 'string') {
+          // String ID - convert to ObjectId
+          if (mongoose.Types.ObjectId.isValid(projectRef)) {
+            projectIds.push(new mongoose.Types.ObjectId(projectRef));
+          }
+        } else if (projectRef instanceof mongoose.Types.ObjectId) {
+          // Already an ObjectId
+          projectIds.push(projectRef);
+        } else if (typeof projectRef === 'object' && projectRef !== null) {
+          // Object with _id property
+          if (projectRef._id && mongoose.Types.ObjectId.isValid(projectRef._id)) {
+            projectIds.push(new mongoose.Types.ObjectId(projectRef._id));
+          }
+        }
+      } catch (err) {
+        console.log(`Error processing project reference: ${projectRef}`, err);
+      }
+    }
+
+    console.log(`Normalized ${projectIds.length} valid project IDs`);
+    
+    // Primary query: Find projects using the cleaned IDs
+    let projects = [];
+    if (projectIds.length > 0) {
+      projects = await Project.find({
+        _id: { $in: projectIds }
+      }).populate('id_tasks');
+      
+      console.log(`Found ${projects.length} projects by ID`);
+    }
+    
+    // Fallback: If no projects found by IDs, try searching by workspace field
+    if (projects.length === 0) {
+      console.log(`No projects found by ID, trying fallback query by workspace field`);
+      
+      const fallbackProjects = await Project.find({
+        workspace: id
+      }).populate('id_tasks');
+      
+      console.log(`Fallback found ${fallbackProjects.length} projects`);
+      
+      // If fallback found projects, update the workspace with correct references
+      if (fallbackProjects.length > 0) {
+        workspace.projects = fallbackProjects.map(p => p._id);
+        await workspace.save();
+        console.log(`Updated workspace with ${fallbackProjects.length} project references`);
+        projects = fallbackProjects;
+      }
+    }
+    
     // Debug task counts
-    console.log('Project task counts:', completeProjects.map(p => ({
-      project: p.project_name,
+    console.log('Project task counts:', projects.map(p => ({
+      project: p.project_name || p.name,
       taskCount: p.id_tasks ? p.id_tasks.length : 0
     })));
 
-    res.status(200).json(completeProjects);
+    res.status(200).json(projects);
   } catch (error) {
     console.error('Error fetching workspace projects:', error);
     res.status(500).json({ message: 'Server error', error: error.message });

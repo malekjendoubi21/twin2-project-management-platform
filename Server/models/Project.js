@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-// const Task = require('./Task');
 
 const projectSchema = new mongoose.Schema(
   {
@@ -33,10 +32,32 @@ const projectSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Task',
     }],
+    
+    // GitHub specific fields
+    github_repo_id: {
+      type: String,
+      sparse: true,  // Allows null values but maintains uniqueness for non-null values
+    },
+    github_repo_url: {
+      type: String,
+    },
+    github_repo_owner: {
+      type: String,
+    },
+    github_repo_branch: {
+      type: String,
+      default: 'main'
+    },
+    github_last_sync: {
+      type: Date
+    },
   },
   {
     timestamps: true, 
   }
 );
+
+// Add a compound index to ensure uniqueness of repositories within a workspace
+projectSchema.index({ workspace: 1, github_repo_id: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Project', projectSchema);

@@ -3,7 +3,8 @@ const router = express.Router();
 const {getUserWorkspacesCount,fixUserWorkspaces, profilePictureUpload, getBasicUserInfo, getMe, getAllUsers, addUser, updateUser, dropUser, getUserById, changePassword,  updateLoggedUserPassword, UpdateLoggeduserData, deleteLoggedUser,getUserProfile ,getUserCount} = require('../controllers/UserController');
 const { protection, allowTo } =require('../controllers/AuthController');
 const User = require('../models/User');
-
+const AuthController = require('../controllers/AuthController');
+const { clearGitHubSessions } = require('../utils/githubUtils');
 // admin
 router.get('/', protection, allowTo('admin'), getAllUsers);
 router.post('/addUser', protection, allowTo('admin'), addUser);
@@ -74,5 +75,7 @@ router.get('/verified', protection, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+// Add this new route
+router.get('/github/link', protection,clearGitHubSessions, AuthController.initiateGithubLinking);
 
 module.exports = router
