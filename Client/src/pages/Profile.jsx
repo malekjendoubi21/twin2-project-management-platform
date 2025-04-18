@@ -1,11 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../utils/Api';
 import { toast } from 'react-hot-toast';
-import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { jsPDF } from 'jspdf';
 import { useParams } from 'react-router-dom';
+import GitHubLinkButton from '../components/profile/GitHubLinkButton';
+import GitHubProfileFrame from '../components/profile/GitHubProfileFrame';
+import GitHubCrownBadge from '../components/profile/GitHubCrownBadge';
+
 // Composant pour le cercle de progression
 const ProgressCircle = ({ percentage, size = 80, strokeWidth = 8 }) => {
     const radius = (size - strokeWidth) / 2;
@@ -66,7 +69,7 @@ const Profile = () => {
     const [sortOrder, setSortOrder] = useState('newest'); // Par défaut, tri du plus récent au plus ancien
     const [projects, setProjects] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
-
+    const location = useLocation();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -200,6 +203,7 @@ const Profile = () => {
 
         setCurrentQuiz(null);
     };
+    console.log('GitHub ID value:', user?.githubId);
 
     // Gestion des réponses de l'utilisateur
     const handleAnswerChange = (questionIndex, answer) => {
@@ -631,6 +635,24 @@ const Profile = () => {
         return () => document.head.removeChild(style);
     }, []);
 
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);    
+        // Check if GitHub was just linked
+        if (params.get('githubLinked') === 'success') {
+            toast.success("GitHub account linked successfully!");
+            // Check if there's also a token and save it
+            const token = params.get('token');
+            if (token) {
+                document.cookie = `token=${token}; path=/; secure; HttpOnly`;
+            }
+            
+            // Force refresh of user data
+            fetchUserData();
+            
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, [location]);
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1231,6 +1253,20 @@ const Profile = () => {
             toast.error(`Failed to delete experience: ${error.response?.data?.message || error.message}`);
         }
     };
+    // Add this to your useEffect that handles URL parameters
+
+  
+  // Add a function to fetch fresh user data
+  const fetchUserData = async () => {
+    try {
+      const response = await api.get('/api/users/getMe');
+      setUser(response.data);
+      toast.success("Profile data refreshed!");
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      toast.error("Failed to refresh profile data");
+    }
+  };
     //Find the current position
     const currentPosition = experiences.find((exp) => exp.is_current) || null;
     if (loading) {
@@ -1305,40 +1341,40 @@ const Profile = () => {
                         <div className="h-40 bg-gradient-to-r from-purple-500 to-pink-500 opacity-80"></div>
                         <div className="px-8 pb-6 relative">
                             <div className="absolute -top-16 left-8 group">
-                                <div className="w-32 h-32 rounded-full border-4 border-base-100 overflow-hidden bg-base-200 shadow-lg relative">
-                                    {imagePreview ? (
+                            <div className="w-32 h-32 rounded-full border-4 border-base-100 overflow-hidden bg-base-200 shadow-lg relative">
+                            {imagePreview ? (
                                         <img src={imagePreview} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center bg-primary text-white text-4xl font-bold">
                                             {user?.name?.charAt(0).toUpperCase() || 'U'}
                                         </div>
                                     )}
-                                    <div
-                                        className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                        onClick={() => fileInputRef.current?.click()}
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="h-8 w-8 text-white"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth="2"
-                                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                                            />
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth="2"
-                                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                                            />
-                                        </svg>
-                                    </div>
-                                </div>
+    <div
+        className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        onClick={() => fileInputRef.current?.click()}
+    >
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-8 w-8 text-white"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+        >
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+            />
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+        </svg>
+    </div>
+</div>
                                 <input
                                     type="file"
                                     ref={fileInputRef}
@@ -1386,6 +1422,9 @@ const Profile = () => {
                 </svg>
             </div>
         </div>
+    )}
+        {(user?.githubId || user?.github_id || user?.github) && (
+      <GitHubCrownBadge />
     )}
 </div>
 {user?.bio && (
@@ -3533,29 +3572,29 @@ const Profile = () => {
                                         </div>
                                     </div>
                                     <div className="divider"></div>
-                                    <div>
-                                        <h3 className="text-xl font-bold mb-4">Email Preferences</h3>
-                                        <div className="space-y-4">
-                                            <div className="form-control">
-                                                <label className="cursor-pointer label justify-start gap-4">
-                                                    <input type="checkbox" checked={true} className="checkbox checkbox-primary" />
-                                                    <span>Task assignments and updates</span>
-                                                </label>
-                                            </div>
-                                            <div className="form-control">
-                                                <label className="cursor-pointer label justify-start gap-4">
-                                                    <input type="checkbox" checked={true} className="checkbox checkbox-primary" />
-                                                    <span>Project status updates</span>
-                                                </label>
-                                            </div>
-                                            <div className="form-control">
-                                                <label className="cursor-pointer label justify-start gap-4">
-                                                    <input type="checkbox" checked={false} className="checkbox checkbox-primary" />
-                                                    <span>Marketing and promotional emails</span>
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <div className="divider my-8">Integrations</div>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <GitHubLinkButton user={user} />
+  
+  {/* You can add more integrations here in the future */}
+  <div className="card bg-base-100 shadow-lg overflow-hidden">
+    <div className="card-body">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="rounded-lg bg-blue-100 p-3">
+          <svg className="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M22.08 12.539c0-4.154-3.2-7.508-7.346-7.508a7.33 7.33 0 0 0-6.522 4.004 4.35 4.35 0 0 0-2.288-.643A4.431 4.431 0 0 0 1.5 12.826a4.431 4.431 0 0 0 4.424 4.433h13.732a2.419 2.419 0 0 0 2.424-2.42c0-.788-.393-1.63-1.043-2.087a7.379 7.379 0 0 0 1.043-2.213z" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="font-semibold">Cloud Storage</h3>
+          <p className="text-xs opacity-70">Connect cloud storage for file sharing</p>
+        </div>
+      </div>
+      <button className="btn btn-outline btn-block">Coming Soon</button>
+    </div>
+  </div>
+</div>
+
                                     <div className="divider"></div>
                                     <div>
                                         <h3 className="text-xl font-bold mb-4">Language</h3>

@@ -11,7 +11,7 @@ const {
     handleGoogleCallback,
     verifyEmail,initiateGithubAuth,handleGithubCallback
 } = require('../controllers/AuthController');
-
+const { clearGitHubSessions } = require('../utils/githubUtils');
 // Local authentication
 router.post('/login', login);
 router.post('/register', register);
@@ -27,7 +27,9 @@ router.get('/google', initiateGoogleAuth);
 router.get('/google/callback', handleGoogleCallback);
 
 
-router.get('/github', initiateGithubAuth);
+router.get('/github',clearGitHubSessions, initiateGithubAuth);
 router.get('/github/callback', handleGithubCallback);
+
+// Add this new route
 
 module.exports = router;
