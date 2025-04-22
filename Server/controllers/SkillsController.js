@@ -1,6 +1,5 @@
 const Skill = require('../models/Skills');
-const { validateSkill } = require('../validators/SkillsValidators');
-
+const { validateSkill, validateSkillUpdate } = require('../validators/SkillsValidators');
 // Obtenir toutes les compétences
 exports.getAllSkills = async (req, res) => {
   try {
@@ -52,8 +51,29 @@ exports.createSkill = async (req, res) => {
   }
 };
 
+// exports.updateSkill = async (req, res) => {
+
+//   const { error } = validateSkill(req.body);
+//   if (error) {
+//     console.log('Validation errors:', error.details);
+//     return res.status(400).json({ errors: error.details.map((err) => err.message) });
+//   }
+
+//   try {
+//     console.log('Updating skill with ID:', req.params.id, 'Data:', req.body);
+//     const skill = await Skill.findOne({ _id: req.params.id, userId: req.user._id });
+//     if (!skill) return res.status(404).json({ message: 'Skill not found or unauthorized' });
+
+//     const updatedSkill = await Skill.findByIdAndUpdate(req.params.id, req.body, { new: true });
+//     res.status(200).json(updatedSkill);
+//   } catch (err) {
+//     console.error('Error updating skill:', err.message);
+//     res.status(500).json({ message: 'Failed to update skill', error: err.message });
+//   }
+// };
+
 exports.updateSkill = async (req, res) => {
-  const { error } = validateSkill(req.body);
+  const { error } = validateSkillUpdate(req.body); // Utiliser le validateur pour mises à jour
   if (error) {
     console.log('Validation errors:', error.details);
     return res.status(400).json({ errors: error.details.map((err) => err.message) });
@@ -64,7 +84,11 @@ exports.updateSkill = async (req, res) => {
     const skill = await Skill.findOne({ _id: req.params.id, userId: req.user._id });
     if (!skill) return res.status(404).json({ message: 'Skill not found or unauthorized' });
 
-    const updatedSkill = await Skill.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updatedSkill = await Skill.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body }, // Utiliser $set pour mise à jour partielle
+      { new: true }
+    );
     res.status(200).json(updatedSkill);
   } catch (err) {
     console.error('Error updating skill:', err.message);
