@@ -14,72 +14,49 @@ class SocketService {
   initialize(userId) {
     // Store user ID for reconnection
     this.userId = userId;
-
+  
     // If socket already exists and is connected, don't create a new one
     if (this.socket && this.socket.connected) {
       console.log('Socket already connected:', this.socket.id);
       return this.socket;
     }
-
-    // If we're already reconnecting, don't start a new connection
-    if (this.reconnecting) {
-      console.log('Already attempting to reconnect socket');
-      return null;
-    }
-
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  
+    // Use the correct port
+    const API_URL = 'http://localhost:3000'; // Match the server port
     console.log("SocketService: Connecting to socket at:", API_URL);
     
-    this.reconnecting = true;
-    
-    // Create new socket
-    this.socket = io(API_URL, {
-      withCredentials: true,
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-      autoConnect: true,
-      forceNew: false, // Don't force a new connection
-    });
-
-    // Set up event listeners
-    this.socket.on('connect', () => {
-      console.log('SocketService: Socket connected with ID:', this.socket.id);
-      this.connected = true;
+    // Create new socket connection with better debugging
+    try {
+      this.socket = io(API_URL, {
+        withCredentials: true,
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 10,
+        auth: {
+          userId: this.userId
+        }
+      });
+  
+      // Add connection event handlers
+      this.socket.on('connect', () => {
+        console.log('Socket connected:', this.socket.id);
+        this.reconnecting = false;
+      });
+  
+      this.socket.on('connect_error', (err) => {
+        console.error('Socket connection error:', err.message);
+      });
+  
+      this.socket.on('disconnect', (reason) => {
+        console.log('Socket disconnected:', reason);
+      });
+  
+      return this.socket;
+    } catch (error) {
+      console.error('Failed to initialize socket:', error);
       this.reconnecting = false;
-      
-      // Join notification room
-      if (this.userId) {
-        console.log('SocketService: Joining notification room for user:', this.userId);
-        this.socket.emit('join-notification-room', this.userId);
-      }
-      
-      // Apply any stored listeners
-      this.applyStoredListeners();
-    });
-
-    this.socket.on('disconnect', (reason) => {
-      console.error('SOCKET DISCONNECT DIAGNOSTIC:');
-      console.error('- Reason:', reason);
-      console.error('- User ID at disconnect time:', this.userId);
-      console.error('- Page URL at disconnect time:', window.location.href);
-      console.error('- Time:', new Date().toISOString());
-      this.connected = false;
-      
-      // Attempt to reconnect if disconnected unexpectedly
-      if (reason === 'io server disconnect' || reason === 'transport close') {
-        // The disconnection was initiated by the server, try to reconnect
-        this.reconnect();
-      }
-    });
-
-    this.socket.on('connect_error', (error) => {
-      console.error('SocketService: Connection error:', error.message);
-      this.connected = false;
-      this.reconnecting = false;
-    });
-
-    return this.socket;
+      throw error;
+    }
   }
 
   // Reconnect if disconnected
