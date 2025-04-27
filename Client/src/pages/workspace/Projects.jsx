@@ -23,6 +23,12 @@ const Projects = () => {
   const [viewMode, setViewMode] = useState('grid');
   const formRef = useRef(null);
 
+  // État pour gérer les prédictions
+  const [predictions, setPredictions] = useState({}); // Stocke les prédictions par projet
+  const [predictLoading, setPredictLoading] = useState({}); // Gère le chargement par projet
+  const [showPredictionModal, setShowPredictionModal] = useState(false); // Contrôle la modale de prédiction
+  const [selectedPrediction, setSelectedPrediction] = useState(null); // Stocke la prédiction à afficher dans la modale
+
   // Use workspace projects if available, otherwise fetch separately
   const projects = workspace?.projects || [];
   
@@ -44,15 +50,6 @@ const Projects = () => {
             return project;
           }
         }));
-        
-        // Log projects after fetching complete data
-          // console.log("Projects with verified task counts:", 
-          //   // updatedProjects.map(p => ({
-          //   //   name: p.project_name,
-          //   //   taskIdsLength: p.id_tasks ? p.id_tasks.length : 'none',
-          //   //   taskIds: p.id_tasks
-          //   // }))
-          // );
         
         // Update workspace state with the fetched project data
         setWorkspace(prevState => ({
@@ -131,6 +128,22 @@ const Projects = () => {
     }
   };
 
+  // Nouvelle fonction pour obtenir la couleur de l'indicateur de retard
+  const getDelayIndicator = (projectId) => {
+    const prediction = predictions[projectId];
+    if (!prediction) return null; // Aucune prédiction disponible
+
+    return prediction.is_delayed === 'En retard' ? (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ) : (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    );
+  };
+
   const handleCreateProject = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -144,7 +157,6 @@ const Projects = () => {
       }
       
       // Create proper date objects to pass validation
-      // This will convert to ISO format which is more reliable
       const startDate = new Date(newProject.start_date);
       const endDate = new Date(newProject.end_date);
       
@@ -191,17 +203,35 @@ const Projects = () => {
     }
   };
 
+  // Fonction pour prédire le retard d'un projet
+  const handlePredictDelay = async (projectId) => {
+    setPredictLoading((prev) => ({ ...prev, [projectId]: true }));
+
+    try {
+      const response = await api.post(`/api/projects/${projectId}/predict-delay`);
+      const prediction = response.data;
+
+      // Stocker la prédiction dans l'état
+      setPredictions((prev) => ({ ...prev, [projectId]: prediction }));
+
+      // Afficher la prédiction dans une modale
+      setSelectedPrediction({ projectId, ...prediction });
+      setShowPredictionModal(true);
+    } catch (err) {
+      toast.error('Failed to predict delay: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setPredictLoading((prev) => ({ ...prev, [projectId]: false }));
+    }
+  };
+
   // Update the filter projects function
   const filteredProjects = projects.filter(project => {
-    // Get accurate status based on tasks
     const projectStatus = getProjectStatus(project);
     
-    // Match against search term (project name or description)
     const matchesSearch = 
       (project.project_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
       project.description?.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Filter by status if not "all"
     if (filterStatus === 'all') return matchesSearch;
     return matchesSearch && projectStatus === filterStatus;
   });
@@ -213,7 +243,6 @@ const Projects = () => {
     } else if (sortBy === 'oldest') {
       return new Date(a.createdAt || 0) - new Date(a.createdAt || 0);
     } else {
-      // Default: newest first
       return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
     }
   });
@@ -232,7 +261,13 @@ const Projects = () => {
     };
   }, []);
 
-  // Add a debugging log to check task counts
+  // Add this call before rendering to debug task counts
+  useEffect(() => {
+    if (projects.length > 0) {
+      logProjectTaskCounts(projects);
+    }
+  }, [projects]);
+
   const logProjectTaskCounts = (projects) => {
     // console.log("Projects with task counts:", 
     //   projects.map(p => ({
@@ -241,13 +276,6 @@ const Projects = () => {
     //   }))
     // );
   };
-
-  // Add this call before rendering to debug task counts
-  useEffect(() => {
-    if (projects.length > 0) {
-      logProjectTaskCounts(projects);
-    }
-  }, [projects]);
 
   if (isFetching) {
     return (
@@ -260,6 +288,49 @@ const Projects = () => {
 
   return (
     <div className="space-y-8 pb-16">
+      {/* Modale pour afficher les résultats de la prédiction */}
+      <AnimatePresence>
+        {showPredictionModal && selectedPrediction && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-base-100 rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-primary">Delay Prediction</h2>
+                  <button 
+                    className="btn btn-sm btn-circle btn-ghost"
+                    onClick={() => setShowPredictionModal(false)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <p><strong>Status:</strong> {selectedPrediction.is_delayed}</p>
+                  <p><strong>Time Difference (days):</strong> {selectedPrediction.time_diff.toFixed(2)}</p>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => setShowPredictionModal(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header with Stats */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
@@ -324,12 +395,9 @@ const Projects = () => {
         transition={{ delay: 0.2 }}
         className="relative overflow-hidden rounded-2xl shadow-lg"
       >
-        {/* Decorative background elements */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-base-100 to-secondary/10 z-0"></div>
         <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-primary/5 blur-3xl"></div>
         <div className="absolute -left-20 -bottom-20 w-64 h-64 rounded-full bg-secondary/5 blur-3xl"></div>
-        
-        {/* Top accent line */}
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary"></div>
         
         <div className="relative z-10 p-5">
@@ -563,6 +631,7 @@ const Projects = () => {
                     <th className="rounded-tl-lg">Project</th>
                     <th>Status</th>
                     <th>Progress</th>
+                    <th>Delay</th>
                     <th>Created</th>
                     <th className="rounded-tr-lg">Actions</th>
                   </tr>
@@ -610,19 +679,31 @@ const Projects = () => {
                             <div className="text-xs">{progress}%</div>
                           </div>
                         </td>
+                        <td>
+                          {getDelayIndicator(project._id) || <span className="text-xs text-gray-500">-</span>}
+                        </td>
                         <td className="text-xs text-white/70">
                           {new Date(project.createdAt || Date.now()).toLocaleDateString()}
                         </td>
                         <td>
-                          <Link 
-                            to={`/workspace/${id}/projects/${project._id}`}
-                            className="btn btn-primary btn-sm btn-outline group-hover:btn-primary transition-all duration-300"
-                          >
-                            Open
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                            </svg>
-                          </Link>
+                          <div className="flex gap-2">
+                            <Link 
+                              to={`/workspace/${id}/projects/${project._id}`}
+                              className="btn btn-primary btn-sm btn-outline group-hover:btn-primary transition-all duration-300"
+                            >
+                              Open
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                              </svg>
+                            </Link>
+                            <button
+                              onClick={() => handlePredictDelay(project._id)}
+                              className={`btn btn-sm btn-outline btn-accent ${predictLoading[project._id] ? 'loading' : ''}`}
+                              disabled={predictLoading[project._id]}
+                            >
+                              Predict Delay
+                            </button>
+                          </div>
                         </td>
                       </motion.tr>
                     );
@@ -630,7 +711,7 @@ const Projects = () => {
                 </tbody>
                 <tfoot className="bg-base-200/30">
                   <tr>
-                    <td colSpan={5} className="text-center text-xs py-3 rounded-b-lg">
+                    <td colSpan={6} className="text-center text-xs py-3 rounded-b-lg">
                       {sortedProjects.length} projects found
                     </td>
                   </tr>
@@ -655,12 +736,15 @@ const Projects = () => {
                   <div className="flex flex-col sm:flex-row justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-md ${statusColor} flex items-center justify-center text-white font-semibold`}>
-  {(project.project_name || project.name) ? 
-    (project.project_name || project.name).charAt(0).toUpperCase() : 'P'}
-</div>
+                        <div className={`w-10 h-10 rounded-md ${statusColor} flex items-center justify-center text-white font-semibold`}>
+                          {(project.project_name || project.name) ? 
+                            (project.project_name || project.name).charAt(0).toUpperCase() : 'P'}
+                        </div>
                         <div>
-                          <h3 className="font-bold text-lg text-primary">{project.project_name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-lg text-primary">{project.project_name}</h3>
+                            {getDelayIndicator(project._id)}
+                          </div>
                           <div className="flex items-center gap-2">
                             <div className={`badge ${statusColor} badge-sm text-white capitalize`}>{status}</div>
                             <span className="text-xs">Created: {new Date(project.createdAt || Date.now()).toLocaleDateString()}</span>
@@ -686,12 +770,21 @@ const Projects = () => {
                         </div>
                       </div>
                       
-                      <Link 
-                        to={`/workspace/${id}/projects/${project._id}`}
-                        className="btn btn-primary btn-sm"
-                      >
-                        Open Project
-                      </Link>
+                      <div className="flex gap-2">
+                        <Link 
+                          to={`/workspace/${id}/projects/${project._id}`}
+                          className="btn btn-primary btn-sm"
+                        >
+                          Open Project
+                        </Link>
+                        <button
+                          onClick={() => handlePredictDelay(project._id)}
+                          className={`btn btn-sm btn-outline btn-accent ${predictLoading[project._id] ? 'loading' : ''}`}
+                          disabled={predictLoading[project._id]}
+                        >
+                          Predict Delay
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -703,7 +796,7 @@ const Projects = () => {
               {sortedProjects.map((project, index) => {
                 const status = getProjectStatus(project);
                 const statusColor = getStatusColor(status);
-                const progress = calculateProgress(project); // Dynamic progress calculation
+                const progress = calculateProgress(project);
                 
                 return (
                   <motion.div 
@@ -725,7 +818,10 @@ const Projects = () => {
                             {project.project_name ? project.project_name.charAt(0).toUpperCase() : 'P'}
                           </div>
                           <div>
-                            <h3 className="card-title text-primary line-clamp-1">{project.project_name}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="card-title text-primary line-clamp-1">{project.project_name}</h3>
+                              {getDelayIndicator(project._id)}
+                            </div>
                             <div className="flex items-center gap-1 text-xs text-white">
                               <span>Created {new Date(project.createdAt || Date.now()).toLocaleDateString()}</span>
                             </div>
@@ -737,12 +833,10 @@ const Projects = () => {
                         </div>
                       </div>
                       
-                      {/* Description */}
                       <p className="text-white mb-4 line-clamp-2">
                         {project.description || "No description provided for this project."}
                       </p>
                       
-                      {/* Progress bar */}
                       <div className="mb-5">
                         <div className="flex justify-between text-xs mb-1">
                           <span className="font-medium">Project Progress</span>
@@ -758,14 +852,12 @@ const Projects = () => {
                         </div>
                       </div>
                       
-                      {/* Project stats with badges - simplified */}
                       <div className="flex flex-wrap gap-2 mb-4">
                         <div className="badge badge-outline gap-1">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                           </svg>
                           {(() => {
-                            // This is a self-executing function to handle complex logic
                             if (project.id_tasks && Array.isArray(project.id_tasks)) {
                               return project.id_tasks.length;
                             }
@@ -781,8 +873,7 @@ const Projects = () => {
                         </div>
                       </div>
                       
-                      {/* Bottom section with just the action button */}
-                      <div className="flex justify-end items-center pt-3 border-t border-base-200">
+                      <div className="flex justify-end items-center pt-3 border-t border-base-200 gap-2">
                         <div className="card-actions">
                           <Link 
                             to={`/workspace/${id}/projects/${project._id}`}
@@ -793,6 +884,13 @@ const Projects = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
                           </Link>
+                          <button
+                            onClick={() => handlePredictDelay(project._id)}
+                            className={`btn btn-sm btn-outline btn-accent ${predictLoading[project._id] ? 'loading' : ''}`}
+                            disabled={predictLoading[project._id]}
+                          >
+                            Predict Delay
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -808,7 +906,6 @@ const Projects = () => {
             className="col-span-full flex flex-col items-center justify-center py-16 text-center"
           >
             {searchTerm || filterStatus !== 'all' ? (
-              // No results from search
               <>
                 <div className="w-24 h-24 bg-base-200 rounded-full flex items-center justify-center mb-4">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -830,7 +927,6 @@ const Projects = () => {
                 </button>
               </>
             ) : (
-              // No projects at all
               <>
                 <div className="w-24 h-24 bg-base-200 rounded-full flex items-center justify-center mb-4">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
