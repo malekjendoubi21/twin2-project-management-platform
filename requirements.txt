@@ -1,3 +1,6 @@
 Flask
-spacy
-sentence-transformers
+flask-cors
+pandas
+numpy==1.26.4
+scikit-learn
+requests

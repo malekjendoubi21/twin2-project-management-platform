@@ -13,7 +13,6 @@ const skillSchema = Joi.object({
     'any.only': 'Category must be either Technical, Soft Skill, or Management',
     'any.required': 'Category is required',
   }),
-  
   tags: Joi.number().min(0).max(100).default(0).messages({
     'number.base': 'Tags must be a number',
     'number.min': 'Tags must be at least 0',
@@ -21,6 +20,16 @@ const skillSchema = Joi.object({
   }),
 });
 
+const skillUpdateSchema = Joi.object({
+  name: Joi.string().trim(),
+  description: Joi.string().trim(),
+  category: Joi.string().valid('Technical', 'Soft Skill', 'Management'),
+  tags: Joi.number().min(0).max(100),
+}).min(1).messages({
+  'object.min': 'At least one field must be provided for update',
+});
+
 module.exports = {
   validateSkill: (data) => skillSchema.validate(data, { abortEarly: false }),
+  validateSkillUpdate: (data) => skillUpdateSchema.validate(data, { abortEarly: false }),
 };
