@@ -118,8 +118,8 @@ exports.sendMessage = async (req, res) => {
     const messageToReturn = newMessage.toObject();
     
     // Emit the message to all workspace members via socket
-    socketUtils.getIO().to(`workspace:${workspaceId}`).emit('new-message', messageToReturn);
-    
+// FIX: Use workspace-chat: prefix instead of workspace:
+socketUtils.getIO().to(`workspace-chat:${workspaceId}`).emit('new-message', messageToReturn);    
     res.status(201).json(messageToReturn);
     
   } catch (error) {

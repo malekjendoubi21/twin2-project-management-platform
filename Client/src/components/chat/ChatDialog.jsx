@@ -84,16 +84,20 @@ const ChatDialog = ({ workspaceId, workspaceName, onClose }) => {
     socketService.on('new-message', handleNewMessage);
     socketService.on('user-typing', handleUserTyping);
     
-    // Focus on input field
-    setTimeout(() => {
-      if (inputRef.current) inputRef.current.focus();
-    }, 300);
+    // Add reconnection handler
+    const handleReconnect = () => {
+      console.log('Chat socket reconnected, rejoining room:', workspaceId);
+      socketService.emit('join-workspace-chat', workspaceId);
+    };
     
+    socketService.on('connect', handleReconnect);
+    
+    // Cleanup
     return () => {
-      // Leave the workspace chat room when component unmounts
       socketService.emit('leave-workspace-chat', workspaceId);
       socketService.off('new-message', handleNewMessage);
       socketService.off('user-typing', handleUserTyping);
+      socketService.off('connect', handleReconnect);
     };
   }, [workspaceId]);
   

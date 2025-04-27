@@ -40,7 +40,16 @@ class SocketService {
       // Add connection event handlers
       this.socket.on('connect', () => {
         console.log('Socket connected:', this.socket.id);
+        this.connected = true;
         this.reconnecting = false;
+  // Join notification room
+  if (this.userId) {
+    console.log('SocketService: Joining notification room for user:', this.userId);
+    this.socket.emit('join-notification-room', this.userId);
+  }
+  
+  // Apply any stored listeners
+  this.applyStoredListeners();
       });
   
       this.socket.on('connect_error', (err) => {
