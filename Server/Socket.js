@@ -66,6 +66,32 @@ const initializeSocket = (server) => {
         socket.emit('error', { message: 'Authentication error: Cannot join another user\'s notification room' });
       }
     });
+
+    socket.on('join-workspace-chat', (workspaceId) => {
+      // Leave any previous workspace chat rooms
+      Object.keys(socket.rooms).forEach(room => {
+        if (room.startsWith('workspace-chat:')) {
+          socket.leave(room);
+        }
+      });
+      
+      const roomName = `workspace-chat:${workspaceId}`;
+      console.log(`User ${socket.userId} joining workspace chat: ${roomName}`);
+      socket.join(roomName);
+    });
+
+    socket.on('leave-workspace-chat', (workspaceId) => {
+      const roomName = `workspace-chat:${workspaceId}`;
+      console.log(`User ${socket.userId} leaving workspace chat: ${roomName}`);
+      socket.leave(roomName);
+    });
+
+    socket.on('typing-chat', (data) => {
+      socket.to(`workspace-chat:${data.workspaceId}`).emit('user-typing', {
+        userId: socket.userId,
+        userName: data.userName
+      });
+    });;
     
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);

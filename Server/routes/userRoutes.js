@@ -5,6 +5,11 @@ const { protection, allowTo } =require('../controllers/AuthController');
 const User = require('../models/User');
 const AuthController = require('../controllers/AuthController');
 const { clearGitHubSessions } = require('../utils/githubUtils');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { parseCV } = require('../controllers/CVParserController');
+
 // admin
 router.get('/', protection, allowTo('admin'), getAllUsers);
 router.post('/addUser', protection, allowTo('admin'), addUser);
@@ -77,5 +82,48 @@ router.get('/verified', protection, async (req, res) => {
 });
 // Add this new route
 router.get('/github/link', protection,clearGitHubSessions, AuthController.initiateGithubLinking);
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, '../uploads/cv');
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `${req.user._id}-${uniqueSuffix}${path.extname(file.originalname)}`);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF and Word documents are allowed.'));
+    }
+  }
+});
+router.post('/parse-cv', protection, upload.single('cv'), parseCV);
+
+
+
+
+
+
+
+
+
+
 
 module.exports = router

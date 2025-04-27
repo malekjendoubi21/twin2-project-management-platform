@@ -12,10 +12,7 @@ const api = axios.create({
 
 // Request interceptor
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+
   return config;
 });
 
@@ -25,7 +22,7 @@ api.interceptors.response.use(
   error => {
     // Ignorer les erreurs spécifiques pour ces endpoints
     if (error.config.url.includes('/auth/register') || 
-        error.config.url.includes('/auth/login')) {
+        error.config.url.includes('/auth/login') || error.config.url.includes('/workspace')) {
       return Promise.reject(error);
     }
     

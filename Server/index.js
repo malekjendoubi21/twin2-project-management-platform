@@ -43,6 +43,7 @@ const certificationRoutes = require('./routes/certificationsRoutes');
 const skillsRoutes = require('./routes/skillsRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 
 // Utilisation des routes
 app.use("/api/users", userRoutes);
@@ -50,6 +51,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/workspaces", workspaceRoutes);
 app.use("/api", taskRoutes);
+app.use('/api', messageRoutes);
 app.use("/api/experiences", experienceRoutes);
 app.use("/api/ressources", ressourceRoutes);
 app.use('/api/certifications', certificationRoutes);

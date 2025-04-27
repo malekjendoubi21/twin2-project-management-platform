@@ -5,6 +5,7 @@ import api from '../utils/Api';
 import { toast } from 'react-hot-toast';
 import NotificationSystem from '../utils/NotificationSystem';
 import { motion } from 'framer-motion'; // Add framer-motion for animations
+import WelcomeDialog from '../components/onboarding/WelcomeDialog';
 
 const Acceuil = () => {
   // Your existing state and refs
@@ -1788,6 +1789,7 @@ const showToast = (message, type = 'success') => {
     </div>
   </div>
 </footer>
+{isAuthenticated && <WelcomeDialog />}
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       {/* Add the animations style */}
       <style>{`
