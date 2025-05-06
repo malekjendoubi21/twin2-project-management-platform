@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         NODE_ENV = 'production'
-        SONAR_SCANNER_HOME = tool 'SonarScanner' // Assurez-vous que SonarScanner est installé via Jenkins tools
     }
 
     stages {
