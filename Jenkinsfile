@@ -18,7 +18,13 @@ pipeline {
         sh 'npm -v'
     }
 }
-
+    stage('Test Server') {
+            steps {
+                dir('Server') {
+sh 'npx jest --coverage'
+                }
+            }
+        }
         stage('Build Server') {
             steps {
                 dir('Server') {
