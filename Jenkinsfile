@@ -1,29 +1,40 @@
 pipeline {
     agent any
 
-    tools {
-        jdk 'JAVA_HOME'
-        maven 'M2_HOME'
+    environment {
+        NODE_ENV = 'production'
+        SONAR_SCANNER_HOME = tool 'SonarScanner' // Assurez-vous que SonarScanner est installé via Jenkins tools
     }
 
     stages {
         stage('GIT') {
             steps {
-                git branch: 'JendoubiMalek-4TWIN2-G3',
+                git branch: 'main',
                     url: 'https://github.com/malekjendoubi21/twin2-project-management-platform.git'
             }
         }
-            stage('Compile Stage') {
+
+        stage('Install dependencies') {
             steps {
-                sh 'mvn clean compile'
+                dir('backend') {
+                    sh 'npm install'
+                }
+                dir('frontend') {
+                    sh 'npm install'
+                }
             }
         }
-    stage('Test Stage') {
+
+        stage('Build React App') {
             steps {
-                sh 'mvn test'
+                dir('frontend') {
+                    sh 'npm run build'
+                }
             }
         }
+
     
+
 stage('MVN SONARQUBE') {
     steps {
         script {
@@ -34,12 +45,5 @@ stage('MVN SONARQUBE') {
     }
 }
 
-
-       
-
-     
-       
-         
-        }
-    
+    }
 }
