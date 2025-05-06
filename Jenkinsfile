@@ -26,7 +26,7 @@ pipeline {
 
       stage('Install Vite Globally') {
     steps {
-        sh 'npm install -g vite --unsafe-perm=true'
+        sh 'npm install --save-dev vite'
     }
 }
 
