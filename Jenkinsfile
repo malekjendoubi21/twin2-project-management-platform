@@ -13,32 +13,21 @@ pipeline {
             }
         }
 
-        stage('Install dependencies') {
+        stage('Build Server') {
             steps {
                 dir('Server') {
-                    sh 'npm install'
-                }
-                dir('Client') {
-                    sh 'npm install'
+                    sh 'npm install --legacy-peer-deps'
                 }
             }
         }
 
-      stage('Install Vite Globally') {
-    steps {
-        sh 'npm install --save-dev vite'
-    }
-}
-
-
-      stage('Build React App') {
-    steps {
-        dir('Client') {
-            sh 'npx vite build'
+        stage('Test Server') {
+            steps {
+                dir('Server') {
+                    sh 'npm test'
+                }
+            }
         }
-    }
-}
-
 
         stage('MVN SONARQUBE') {
             steps {
