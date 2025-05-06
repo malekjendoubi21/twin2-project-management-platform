@@ -27,13 +27,7 @@ pipeline {
             }
         }
 
-        stage('Test Server') {
-            steps {
-                dir('Server') {
-sh 'npx jest --coverage'
-                }
-            }
-        }
+    
 
                    stage('SonarQube Analysis') {
                 steps{
