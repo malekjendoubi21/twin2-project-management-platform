@@ -35,14 +35,22 @@ pipeline {
             }
         }
 
-        stage('MVN SONARQUBE') {
-            steps {
-                script {
-                    withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-                        sh 'mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN -Dmaven.test.skip=true'
-                    }
-                }
+    stage('SonarQube Analysis') {
+    steps {
+        script {
+            withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+          
+
+                // Exécuter le scan SonarQube
+                sh '''
+                    sonar-scanner \
+                 
+                        -Dsonar.login=$SONAR_TOKEN
+                '''
             }
         }
+    }
+}
+
     }
 }
