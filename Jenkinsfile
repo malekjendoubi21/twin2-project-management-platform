@@ -12,6 +12,12 @@ pipeline {
                     url: 'https://github.com/malekjendoubi21/twin2-project-management-platform.git'
             }
         }
+     stage('Debug Environment') {
+    steps {
+        sh 'node -v'
+        sh 'npm -v'
+    }
+}
 
         stage('Build Server') {
             steps {
