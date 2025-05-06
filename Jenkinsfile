@@ -30,7 +30,7 @@ pipeline {
         stage('Test Server') {
             steps {
                 dir('Server') {
-                    sh 'npm test'
+sh 'npx jest --coverage'
                 }
             }
         }
