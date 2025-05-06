@@ -24,11 +24,12 @@ pipeline {
             }
         }
 
-        stage('Install Vite Globally') {
-            steps {
-                sh 'sudo npm install -g vite'
-            }
-        }
+      stage('Install Vite Globally') {
+    steps {
+        sh 'npm install -g vite --unsafe-perm=true'
+    }
+}
+
 
         stage('Build React App') {
             steps {
