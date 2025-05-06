@@ -31,13 +31,14 @@ pipeline {
 }
 
 
-        stage('Build React App') {
-            steps {
-                dir('Client') {
-                    sh 'npm run build'
-                }
-            }
+      stage('Build React App') {
+    steps {
+        dir('Client') {
+            sh 'npx vite build'
         }
+    }
+}
+
 
         stage('MVN SONARQUBE') {
             steps {
