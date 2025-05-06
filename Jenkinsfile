@@ -24,6 +24,12 @@ pipeline {
             }
         }
 
+        stage('Install Vite Globally') {
+            steps {
+                sh 'sudo npm install -g vite'
+            }
+        }
+
         stage('Build React App') {
             steps {
                 dir('Client') {
@@ -32,17 +38,14 @@ pipeline {
             }
         }
 
-    
-
-stage('MVN SONARQUBE') {
-    steps {
-        script {
-            withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-                sh 'mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN -Dmaven.test.skip=true'
+        stage('MVN SONARQUBE') {
+            steps {
+                script {
+                    withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                        sh 'mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN -Dmaven.test.skip=true'
+                    }
+                }
             }
         }
-    }
-}
-
     }
 }
