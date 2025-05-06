@@ -15,10 +15,10 @@ pipeline {
 
         stage('Install dependencies') {
             steps {
-                dir('backend') {
+                dir('server') {
                     sh 'npm install'
                 }
-                dir('frontend') {
+                dir('client') {
                     sh 'npm install'
                 }
             }
@@ -26,7 +26,7 @@ pipeline {
 
         stage('Build React App') {
             steps {
-                dir('frontend') {
+                dir('client') {
                     sh 'npm run build'
                 }
             }
