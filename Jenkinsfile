@@ -20,7 +20,13 @@ pipeline {
             }
         }
 
-     
+          stage('Test Server') {
+            steps {
+                dir('Server') {
+                    sh 'npm test'
+                }
+            }
+        }
 
         stage('Build Server') {
             steps {
