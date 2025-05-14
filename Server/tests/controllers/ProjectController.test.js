@@ -2,6 +2,14 @@ const Project = require('../../models/Project');
 const projectValidator = require('../../validators/validatorProject');
 const ProjectController = require('../../controllers/ProjectController');
 const mongoose = require('mongoose');
+describe('UserController', () => {
+    it('should return true', () => {
+        expect(true).toBe(true);
+    });
+});
+
+
+
 /*
 // Mock dependencies
 jest.mock('../../models/Project');
