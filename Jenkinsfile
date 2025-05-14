@@ -27,14 +27,13 @@ pipeline {
             }
         }
 
-          stage('Test Server') {
-            steps {
-                dir('Server') {
-                    sh 'npm test'
-                }
-            }
+stage('Test Server') {
+    steps {
+        dir('Server') {
+            sh 'npx jest --coverage'
         }
-
+    }
+}
      
         stage('Build Docker Images') {
             steps {
