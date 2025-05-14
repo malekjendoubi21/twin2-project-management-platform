@@ -57,7 +57,7 @@ stage('Build Docker Images') {
                     sh 'docker run -d --name mern-frontend -p 80:80 mern-frontend'
                 }
             }
-        }
+        
     }
 
     post {
