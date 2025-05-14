@@ -170,179 +170,182 @@ describe('TaskController', () => {
   });
 
   // Tests pour updateTask
-  describe('updateTask', () => {
-    it('should update a task successfully', async () => {
-      // Arrange
-      const mockTaskData = {
-        title: 'Updated Task',
-        description: 'Updated Description'
-      };
-      
-      const updatedTask = { 
-        _id: '123', 
-        ...mockTaskData, 
-        status: 'in_progress' 
-      };
-      
-      const mockReq = { 
-        params: { id: '123' },
-        body: mockTaskData
-      };
-      
-      const mockRes = {
-        json: jest.fn(),
-        status: jest.fn().mockReturnThis()
-      };
-      
-      taskValidator.updateTask = {
-        validate: jest.fn().mockReturnValue({ error: null })
-      };
-      
-      const mockPopulateProject = jest.fn().mockResolvedValue(updatedTask);
-      const mockPopulateUser = jest.fn().mockReturnThis();
-      
-      Task.findByIdAndUpdate.mockReturnValue({
-        populate: mockPopulateUser,
-        populate: mockPopulateProject
-      });
+describe('updateTask', () => {
+  it('should update a task successfully', async () => {
+    // Arrange
+    const mockTaskData = {
+      title: 'Updated Task',
+      description: 'Updated Description'
+    };
 
-      // Act
-      await TaskController.updateTask(mockReq, mockRes);
+    const updatedTask = {
+      _id: '123',
+      ...mockTaskData,
+      status: 'in_progress'
+    };
 
-      // Assert
-      expect(taskValidator.updateTask.validate).toHaveBeenCalledWith(mockTaskData, { abortEarly: false });
-      expect(Task.findByIdAndUpdate).toHaveBeenCalledWith(
-        '123',
-        mockTaskData,
-        { new: true, runValidators: true }
-      );
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: true,
-        data: updatedTask,
-        message: 'Task updated successfully'
-      });
-    });
+    const mockReq = {
+      params: { id: '123' },
+      body: mockTaskData
+    };
 
-    it('should return 400 if validation fails', async () => {
-      // Arrange
-      const mockTaskData = {
-        title: '', // Invalid title
-        description: 'Updated Description'
-      };
-      
-      const mockReq = { 
-        params: { id: '123' },
-        body: mockTaskData
-      };
-      
-      const mockRes = {
-        json: jest.fn(),
-        status: jest.fn().mockReturnThis()
-      };
-      
-      const validationError = {
-        details: [{ path: ['title'], message: 'Title is required' }]
-      };
-      
-      taskValidator.updateTask = {
-        validate: jest.fn().mockReturnValue({ error: validationError })
-      };
+    const mockRes = {
+      json: jest.fn(),
+      status: jest.fn().mockReturnThis()
+    };
 
-      // Act
-      await TaskController.updateTask(mockReq, mockRes);
+    taskValidator.updateTask = {
+      validate: jest.fn().mockReturnValue({ error: null })
+    };
 
-      // Assert
-      expect(taskValidator.updateTask.validate).toHaveBeenCalledWith(mockTaskData, { abortEarly: false });
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        errors: [{ field: 'title', message: 'Title is required' }]
-      });
-    });
+    // Chaînage des appels populate().populate().then(...)
+   const mockPopulateChain = {
+  populate: jest.fn().mockReturnThis(),
+  then: jest.fn((resolve) => resolve(updatedTask)) // 👈 Corrige ici
+};
+Task.findByIdAndUpdate.mockReturnValue(mockPopulateChain);
 
-    it('should return 404 if task not found', async () => {
-      // Arrange
-      const mockTaskData = {
-        title: 'Updated Task',
-        description: 'Updated Description'
-      };
-      
-      const mockReq = { 
-        params: { id: '123' },
-        body: mockTaskData
-      };
-      
-      const mockRes = {
-        json: jest.fn(),
-        status: jest.fn().mockReturnThis()
-      };
-      
-      taskValidator.updateTask = {
-        validate: jest.fn().mockReturnValue({ error: null })
-      };
-      
-      const mockPopulateProject = jest.fn().mockResolvedValue(null);
-      const mockPopulateUser = jest.fn().mockReturnThis();
-      
-      Task.findByIdAndUpdate.mockReturnValue({
-        populate: mockPopulateUser,
-        populate: mockPopulateProject
-      });
 
-      // Act
-      await TaskController.updateTask(mockReq, mockRes);
+    // Act
+    await TaskController.updateTask(mockReq, mockRes);
 
-      // Assert
-      expect(Task.findByIdAndUpdate).toHaveBeenCalledWith(
-        '123',
-        mockTaskData,
-        { new: true, runValidators: true }
-      );
-      expect(mockRes.status).toHaveBeenCalledWith(404);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        message: 'Task not found'
-      });
-    });
-
-    it('should return 400 on error', async () => {
-      // Arrange
-      const mockError = new Error('Validation error');
-      const mockTaskData = {
-        title: 'Updated Task',
-        description: 'Updated Description'
-      };
-      
-      const mockReq = { 
-        params: { id: '123' },
-        body: mockTaskData
-      };
-      
-      const mockRes = {
-        json: jest.fn(),
-        status: jest.fn().mockReturnThis()
-      };
-      
-      taskValidator.updateTask = {
-        validate: jest.fn().mockReturnValue({ error: null })
-      };
-      
-      Task.findByIdAndUpdate.mockImplementation(() => {
-        throw mockError;
-      });
-
-      // Act
-      await TaskController.updateTask(mockReq, mockRes);
-
-      // Assert
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        message: mockError.message
-      });
+    // Assert
+    expect(taskValidator.updateTask.validate).toHaveBeenCalledWith(mockTaskData, { abortEarly: false });
+    expect(Task.findByIdAndUpdate).toHaveBeenCalledWith(
+      '123',
+      mockTaskData,
+      { new: true, runValidators: true }
+    );
+    expect(mockRes.status).toHaveBeenCalledWith(200);
+    expect(mockRes.json).toHaveBeenCalledWith({
+      success: true,
+      data: updatedTask,
+      message: 'Task updated successfully'
     });
   });
+
+  it('should return 400 if validation fails', async () => {
+    // Arrange
+    const mockTaskData = {
+      title: '', // Invalid title
+      description: 'Updated Description'
+    };
+
+    const mockReq = {
+      params: { id: '123' },
+      body: mockTaskData
+    };
+
+    const mockRes = {
+      json: jest.fn(),
+      status: jest.fn().mockReturnThis()
+    };
+
+    const validationError = {
+      details: [{ path: ['title'], message: 'Title is required' }]
+    };
+
+    taskValidator.updateTask = {
+      validate: jest.fn().mockReturnValue({ error: validationError })
+    };
+
+    // Act
+    await TaskController.updateTask(mockReq, mockRes);
+
+    // Assert
+    expect(taskValidator.updateTask.validate).toHaveBeenCalledWith(mockTaskData, { abortEarly: false });
+    expect(mockRes.status).toHaveBeenCalledWith(400);
+    expect(mockRes.json).toHaveBeenCalledWith({
+      success: false,
+      errors: [{ field: 'title', message: 'Title is required' }]
+    });
+  });
+
+  it('should return 404 if task not found', async () => {
+    // Arrange
+    const mockTaskData = {
+      title: 'Updated Task',
+      description: 'Updated Description'
+    };
+
+    const mockReq = {
+      params: { id: '123' },
+      body: mockTaskData
+    };
+
+    const mockRes = {
+      json: jest.fn(),
+      status: jest.fn().mockReturnThis()
+    };
+
+    taskValidator.updateTask = {
+      validate: jest.fn().mockReturnValue({ error: null })
+    };
+
+    // Chaînage mais retourne null (task non trouvée)
+    const mockPopulateChain = {
+  populate: jest.fn().mockReturnThis(),
+  then: jest.fn((resolve) => resolve(null)) // 👈 Corrige ici
+};
+Task.findByIdAndUpdate.mockReturnValue(mockPopulateChain);
+
+
+    // Act
+    await TaskController.updateTask(mockReq, mockRes);
+
+    // Assert
+    expect(Task.findByIdAndUpdate).toHaveBeenCalledWith(
+      '123',
+      mockTaskData,
+      { new: true, runValidators: true }
+    );
+    expect(mockRes.status).toHaveBeenCalledWith(404);
+    expect(mockRes.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Task not found'
+    });
+  });
+
+  it('should return 400 on validation error', async () => {
+    // Arrange
+    const mockError = new Error('Validation error');
+    mockError.name = 'ValidationError';
+
+    const mockTaskData = {
+      title: 'Updated Task',
+      description: 'Updated Description'
+    };
+
+    const mockReq = {
+      params: { id: '123' },
+      body: mockTaskData
+    };
+
+    const mockRes = {
+      json: jest.fn(),
+      status: jest.fn().mockReturnThis()
+    };
+
+    taskValidator.updateTask = {
+      validate: jest.fn().mockReturnValue({ error: null })
+    };
+
+    Task.findByIdAndUpdate.mockImplementation(() => {
+      throw mockError;
+    });
+
+    // Act
+    await TaskController.updateTask(mockReq, mockRes);
+
+    // Assert
+    expect(mockRes.status).toHaveBeenCalledWith(400);
+    expect(mockRes.json).toHaveBeenCalledWith({
+      success: false,
+      message: mockError.message
+    });
+  });
+});
+
 
   // Tests pour deleteTask
   describe('deleteTask', () => {

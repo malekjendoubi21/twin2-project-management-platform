@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require('crypto');
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
-const { validateUser } = require('../validators/validators');
+const validators = require('../validators/validators');
 const sendEmail = require('../utils/sendEmail');
 // const { OAuth2Client } = require('google-auth-library');
 // const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -53,7 +53,7 @@ exports.login = async (req, res) => {
 
 exports.register = async (req, res) => {
     try {
-        const { error, value } = validateUser(req.body);
+        const { error, value } = validators.validateUser(req.body);
         if (error) {
             return res.status(400).json({ errors: error.details.map(err => err.message) });
         }

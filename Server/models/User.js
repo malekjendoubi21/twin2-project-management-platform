@@ -81,7 +81,7 @@ const userSchema = new mongoose.Schema(
   },
   workspaces: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Workspace'  // Make sure this ref matches your Workspace model name
+    ref: 'Workspace'  
   }] ,
   emailVerificationToken: String,
   emailVerificationExpires: Date,

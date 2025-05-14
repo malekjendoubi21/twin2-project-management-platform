@@ -5,24 +5,23 @@ const taskValidator = require('../validators/taskValidator');
 const TaskController = {
     // Create a new task
     createTask: async (req, res) => {
-        try {
-            const { projectId } = req.params;
+        try {            const { projectId } = req.params;
             const taskData = { ...req.body, project_id: projectId };
             
             const task = new Task(taskData);
-            await task.save();
+            const savedTask = await task.save();
             
             // Add task to project's tasks array - FIXED: Convert string ID to ObjectId if needed
             await Project.findByIdAndUpdate(
                 projectId,
-                { $push: { id_tasks: task._id } }
+                { $push: { id_tasks: savedTask._id } }
             );
             
             // Log to verify the operation
-            console.log(`Added task ${task._id} to project ${projectId}`);
+            console.log(`Added task ${savedTask._id} to project ${projectId}`);
             
             // Return the populated task
-            const populatedTask = await Task.findById(task._id)
+            const populatedTask = await Task.findById(savedTask._id)
               .populate('assigned_to', 'name email profile_picture');
               
             res.status(201).json(populatedTask);
@@ -128,9 +127,7 @@ const TaskController = {
                     success: false,
                     errors: errors
                 });
-            }
-    
-            // Change this line - use id instead of taskId to match the route parameter
+            }            // Change this line - use id instead of taskId to match the route parameter
             const { id } = req.params;  // Was using taskId, needs to be id
             const updates = req.body;
     
@@ -146,15 +143,22 @@ const TaskController = {
                     success: false,
                     message: 'Task not found'
                 });
-            }
-    
-            res.status(200).json({
+            }            res.status(200).json({
                 success: true,
                 data: task,
                 message: 'Task updated successfully'
             });
         } catch (error) {
-            res.status(400).json({
+            // Handle validation errors or MongoDB errors with 400 status
+            if (error.name === 'ValidationError' || error.name === 'CastError') {
+                return res.status(400).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+            
+            // For other errors, use 500 status code
+            res.status(500).json({
                 success: false,
                 message: error.message
             });
@@ -175,9 +179,7 @@ const TaskController = {
                     success: false,
                     errors: errors
                 });
-            }
-    
-            // Change this line too
+            }            // Change this line too
             const { id } = req.params;  // Was using taskId, needs to be id
             const { status } = req.body;
     
@@ -193,15 +195,22 @@ const TaskController = {
                     success: false,
                     message: 'Task not found'
                 });
-            }
-    
-            res.status(200).json({
+            }            res.status(200).json({
                 success: true,
                 data: task,
                 message: 'Task status updated successfully'
             });
         } catch (error) {
-            res.status(400).json({
+            // Handle validation errors or MongoDB errors with 400 status
+            if (error.name === 'ValidationError' || error.name === 'CastError') {
+                return res.status(400).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+            
+            // For other errors, use 500 status code
+            res.status(500).json({
                 success: false,
                 message: error.message
             });

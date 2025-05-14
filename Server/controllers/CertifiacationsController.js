@@ -1,7 +1,7 @@
 require('dotenv').config(); // Assure que .env est chargé
 
 const Certification = require('../models/Certifications');
-const { validateCertification } = require('../validators/CertificationsValidators');
+const certificationValidator = require('../validators/CertificationsValidators');
 
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
@@ -54,7 +54,7 @@ exports.getCertificationById = async (req, res) => {
 
 // ✅ POST - Créer une certification (image facultative)
 exports.createCertification = async (req, res) => {
-  const { error } = validateCertification(req.body);
+const { error } = certificationValidator.validateCertification(req.body);
   if (error) {
     return res.status(400).json({ errors: error.details.map(err => err.message) });
   }
@@ -75,7 +75,7 @@ exports.createCertification = async (req, res) => {
 
 // ✅ PUT - Mettre à jour une certification (image facultative)
 exports.updateCertification = async (req, res) => {
-  const { error } = validateCertification(req.body);
+const { error } = certificationValidator.validateCertification(req.body);
   if (error) {
     return res.status(400).json({ errors: error.details.map(err => err.message) });
   }

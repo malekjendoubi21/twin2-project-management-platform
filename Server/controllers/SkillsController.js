@@ -1,5 +1,5 @@
 const Skill = require('../models/Skills');
-const { validateSkill, validateSkillUpdate } = require('../validators/SkillsValidators');
+const SkillsValidators = require('../validators/SkillsValidators');
 // Obtenir toutes les compétences
 exports.getAllSkills = async (req, res) => {
   try {
@@ -26,7 +26,7 @@ exports.createSkill = async (req, res) => {
   console.log('Requête reçue, en-têtes :', req.headers);
   console.log('Données reçues dans req.body :', req.body);
 
-  const { error } = validateSkill(req.body);
+const { error } = SkillsValidators.validateSkill(req.body);
   if (error) {
     console.log('Validation errors:', error.details);
     return res.status(400).json({ errors: error.details.map((err) => err.message) });
@@ -73,7 +73,7 @@ exports.createSkill = async (req, res) => {
 // };
 
 exports.updateSkill = async (req, res) => {
-  const { error } = validateSkillUpdate(req.body); // Utiliser le validateur pour mises à jour
+const { error } = SkillsValidators.validateSkillUpdate(req.body);
   if (error) {
     console.log('Validation errors:', error.details);
     return res.status(400).json({ errors: error.details.map((err) => err.message) });

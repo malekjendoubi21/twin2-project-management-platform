@@ -1,12 +1,12 @@
 const Experience = require("../models/Experience");
-const { validateExperience } = require("../validators/experienceValidator");
+const experienceValidator = require('../validators/experienceValidator');
 
 // Créer une nouvelle expérience
 exports.createExperience = async (req, res) => {
   console.log("Requête reçue, en-têtes :", req.headers);
   console.log("Données reçues dans req.body :", req.body);
+const { error } = experienceValidator.validateExperience(req.body);
 
-  const { error } = validateExperience(req.body);
   if (error) {
     console.log("Erreurs de validation :", error.details);
     return res
@@ -123,7 +123,7 @@ exports.getExperienceById = async (req, res) => {
 
 // Mettre à jour une expérience
 exports.updateExperience = async (req, res) => {
-  const { error } = validateExperience(req.body);
+const { error } = experienceValidator.validateExperience(req.body);
   if (error) {
     console.log("Erreurs de validation :", error.details);
     return res
