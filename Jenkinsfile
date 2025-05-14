@@ -35,16 +35,43 @@ sh 'npx jest --coverage'
 
     
 
-                   stage('SonarQube Analysis') {
-                steps{
+stage('Build Docker Images') {
+            steps {
                 script {
-                def scannerHome = tool 'scanner'
-                withSonarQubeEnv {
-                sh "${scannerHome}/bin/sonar-scanner"
+                    // Build Docker images for the backend and frontend
+                    sh 'docker build -t mern-backend ./Server'
+                    sh 'docker build -t mern-frontend ./Client'
                 }
+            }
+        }
+
+        stage('Deploy to Docker') {
+            steps {
+                script {
+                    // Run MongoDB container
+
+                    // Run Backend container
+                    sh 'docker run -d --name mern-backend --link mongodb -p 3000:3000 mern-backend'
+
+                    // Run Frontend container
+                    sh 'docker run -d --name mern-frontend -p 80:80 mern-frontend'
                 }
-                }
-                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Cleaning up workspace..."
+            cleanWs()
+        }
+        success {
+            echo "✅ Build and deployment completed successfully!"
+        }
+        failure {
+            echo "❌ Build or deployment failed. Check the logs for details."
+        }
+    }
 
     }
 }
