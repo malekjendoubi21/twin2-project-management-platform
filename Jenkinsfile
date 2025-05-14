@@ -44,6 +44,8 @@ pipeline {
             steps {
                 script {
                     // Run Backend container
+                                        sh 'docker run -d --name mongodb -p 27017:27017 mongo'
+
                     sh 'docker run -d --name mern-backend --link mongodb -p 3000:3000 mern-backend'
 
                     // Run Frontend container
