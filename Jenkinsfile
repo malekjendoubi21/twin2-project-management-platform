@@ -39,8 +39,9 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 script {
-                    sh 'docker build -t mern-backend ./Server'
                     sh 'docker build -t mern-frontend ./Client'
+                     sh 'docker build -t mern-backend ./Server'
+
                 }
             }
         }
@@ -52,7 +53,7 @@ pipeline {
                     sh 'docker run -d --name mern-backend --link mongodb -p 3000:3000 mern-backend'
 
                     // Run Frontend container
-                    sh 'docker run -d --name mern-frontend -p 80:80 mern-frontend'
+                    sh 'docker run -d --name mern-frontend -p 5173:5173 mern-frontend'
                 }
             }
         }
