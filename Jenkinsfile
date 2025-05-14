@@ -19,6 +19,13 @@ pipeline {
                 sh 'npm -v'
             }
         }
+   stage('Build Server') {
+            steps {
+                dir('Server') {
+                    sh 'npm install --legacy-peer-deps'
+                }
+            }
+        }
 
           stage('Test Server') {
             steps {
@@ -28,14 +35,7 @@ pipeline {
             }
         }
 
-        stage('Build Server') {
-            steps {
-                dir('Server') {
-                    sh 'npm install --legacy-peer-deps'
-                }
-            }
-        }
-
+     
         stage('Build Docker Images') {
             steps {
                 script {
