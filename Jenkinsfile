@@ -39,7 +39,7 @@ pipeline {
 
 stage('SONARQUBE SCAN') {
     steps {
-        dir('docker') { // ← le dossier où se trouve sonar-project.properties
+        dir('.') {
             withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                 sh '''
                     echo "=== Starting SonarQube Scan ==="
