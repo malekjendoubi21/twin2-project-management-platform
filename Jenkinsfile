@@ -42,7 +42,7 @@ stage('SONARQUBE SCAN') {
                 withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                     sh """
                         docker run --rm \
-                        -e SONAR_HOST_URL="http://172.17.0.2:9000" \
+                        -e SONAR_HOST_URL="http://192.168.56.10:9000" \
                         -e SONAR_LOGIN="$SONAR_TOKEN" \
                         -v \$(pwd):/usr/src \
                         sonarsource/sonar-scanner-cli
