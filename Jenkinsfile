@@ -37,16 +37,16 @@ pipeline {
         }
 stage('SONARQUBE SCAN') {
     steps {
-        dir('.') { // à la racine du repo, là où se trouve sonar-project.properties
+        dir('.') {
             script {
                 withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-          sh """
-                    docker run --rm \
-                    -e SONAR_HOST_URL="http://172.17.0.2:9000" \
-                    -e SONAR_LOGIN="$SONAR_TOKEN" \
-                    -v \$(pwd):/usr/src \
-                    sonarsource/sonar-scanner-cli
-                """
+                    sh """
+                        docker run --rm \
+                        -e SONAR_HOST_URL="http://172.17.0.2:9000" \
+                        -e SONAR_LOGIN="$SONAR_TOKEN" \
+                        -v \$(pwd):/usr/src \
+                        sonarsource/sonar-scanner-cli
+                    """
                 }
             }
         }
