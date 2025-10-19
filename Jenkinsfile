@@ -35,15 +35,23 @@ pipeline {
                 }
             }
         }
-        stage('MVN SONARQUBE') {
-            steps {
-                script {
-                    withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-                        sh 'mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN -Dmaven.test.skip=true'
-                    }
+     stage('SONARQUBE SCAN') {
+    steps {
+        dir('.') { // à la racine du repo, là où se trouve sonar-project.properties
+            script {
+                withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                    sh """
+                        sonar-scanner \
+                        -Dsonar.login=$SONAR_TOKEN \
+                        -Dsonar.projectKey=piwebtest \
+                        -Dsonar.host.url=localhost:9000
+                    """
                 }
             }
         }
+    }
+}
+
 
 
     } // fermeture du bloc stages
