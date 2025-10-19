@@ -19,7 +19,8 @@ pipeline {
                 sh 'npm -v'
             }
         }
-   stage('Build Server') {
+
+        stage('Build Server') {
             steps {
                 dir('Server') {
                     sh 'npm install --legacy-peer-deps'
@@ -27,13 +28,12 @@ pipeline {
             }
         }
 
-stage('Test Server') {
-    steps {
-        dir('Server') {
-            sh 'npx jest --coverage'
+        stage('Test Server') {
+            steps {
+                dir('Server') {
+                    sh 'npx jest --coverage'
+                }
+            }
         }
-    }
-}
-     
-      
-}
+    } // fermeture du bloc stages
+} // fermeture du bloc pipeline
