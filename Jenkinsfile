@@ -37,7 +37,7 @@ pipeline {
         }
 stage('SONARQUBE SCAN') {
     steps {
-        dir('.') { // à la racine du repo
+        dir('.') { // à la racine du repo, là où se trouve sonar-project.properties
             script {
                 withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                     sh """
@@ -52,6 +52,7 @@ stage('SONARQUBE SCAN') {
         }
     }
 }
+
 
 
 
